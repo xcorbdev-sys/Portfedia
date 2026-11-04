@@ -664,20 +664,39 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .globe-avatar--logo { border-radius: 12px; background: #fff; }
 .globe-avatar--logo img { object-fit: contain; padding: 3px; }
 
-/* Followers / following */
-.network__list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.network__list a { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; color: var(--text); font-size: 0.85rem; font-weight: 600; min-width: 0; }
-.network__list a:hover { background: var(--surface); text-decoration: none; }
-.network__list a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.network__list .thumb { width: 32px; height: 32px; flex: none; font-size: 0.7rem; }
-
 /* Followers / following line under the page title */
-.net-summary { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 0 -4px; font-size: 0.85rem; color: var(--text-2); padding: 3px 10px 3px 4px; border-radius: 999px; }
-.net-summary:not(:has(.net-summary__faces)) { padding-left: 4px; }
-.net-summary:hover { text-decoration: none; background: var(--bg-soft); color: var(--text); }
+.net-summary { display: inline-flex; align-items: center; gap: 4px; margin: 10px 0 0 -4px; font-size: 0.85rem; color: var(--text-2); }
+.net-summary__btn { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; font: inherit; color: inherit; padding: 2px 6px 2px 2px; border-radius: 999px; cursor: pointer; }
+.net-summary__btn:hover { background: var(--bg-soft); color: var(--text); }
 .net-summary b { color: var(--text); font-weight: 700; }
 .net-summary__faces { display: inline-flex; }
 .net-summary__faces > * { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 2px solid var(--surface); margin-left: -7px; background: var(--bg-soft); box-sizing: content-box; }
 .net-summary__faces > :first-child { margin-left: 0; }
 .net-summary__initials { display: inline-grid; place-items: center; font-size: 0.55rem; font-weight: 700; color: var(--primary); background: var(--primary-soft) !important; }
 .net-summary__dot { color: var(--text-3); }
+
+/* Followers / following dialog */
+.net-dialog { width: min(420px, calc(100vw - 24px)); max-height: min(620px, calc(100dvh - 48px)); padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25); }
+.net-dialog[open] { display: flex; flex-direction: column; }
+.net-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+.net-dialog__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 4px 18px; }
+.net-dialog__tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 12px; }
+.net-dialog__tabs button { flex: 1; border: 0; background: none; font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--text-3); padding: 10px 6px; border-bottom: 2px solid transparent; cursor: pointer; }
+.net-dialog__tabs button span { font-weight: 500; margin-left: 4px; }
+.net-dialog__tabs [aria-selected="true"] { color: var(--text); border-bottom-color: var(--text); }
+.net-dialog__search { display: flex; align-items: center; gap: 8px; margin: 12px 14px 6px; padding: 0 12px; border-radius: 10px; background: var(--bg-soft); color: var(--text-3); }
+.net-dialog__search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 0.92rem; color: var(--text); height: 38px; }
+.net-dialog__list { overflow-y: auto; flex: 1; min-height: 160px; padding: 4px 6px 10px; }
+.net-dialog__list ul { list-style: none; margin: 0; padding: 0; }
+.net-dialog__list a { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: var(--text); }
+.net-dialog__list a:hover { background: var(--bg-soft); text-decoration: none; }
+.net-dialog__list img, .net-dialog__initials { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; background: var(--bg-soft); }
+.net-dialog__list img.is-logo, .net-dialog__initials.is-logo { border-radius: 10px; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+.net-dialog__initials { display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; color: var(--primary); background: var(--primary-soft); }
+.net-dialog__who { display: grid; min-width: 0; }
+.net-dialog__who b { font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net-dialog__who span { font-size: 0.8rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net-dialog__empty { text-align: center; color: var(--text-3); font-size: 0.88rem; margin: 18px 10px; }
+@media (max-width: 520px) {
+  .net-dialog { width: 100vw; max-width: 100vw; height: 82dvh; max-height: 82dvh; margin: auto 0 0; border-radius: 16px 16px 0 0; }
+}

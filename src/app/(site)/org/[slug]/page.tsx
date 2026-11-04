@@ -21,7 +21,7 @@ import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
 import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
-import { NetworkSection, NetworkSummary } from "@/components/Network";
+import { NetworkSummary } from "@/components/NetworkDialog";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -115,7 +115,6 @@ export default async function OrgPage({ params }: Props) {
   if (alumni.length) nav.push({ id: "alumni", label: "Alumni" });
   if (backlinks.length) nav.push({ id: "connections", label: "Connections" });
   if (page.sources.length) nav.push({ id: "sources", label: "Sources" });
-  nav.push({ id: "network", label: "Followers" });
 
 
   return (
@@ -179,7 +178,7 @@ export default async function OrgPage({ params }: Props) {
                   ))}
                 </div>
               )}
-              <NetworkSummary followers={network.followers} followerTotal={page.followerCount} />
+              <NetworkSummary slug={page.slug} name={page.title} faces={network.followers.slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, image: c.image?.thumbUrl ?? c.image?.url ?? "" }))} followerTotal={page.followerCount} />
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
             </div>
             <PageActions
@@ -415,7 +414,6 @@ export default async function OrgPage({ params }: Props) {
               </ol>
             </section>
           )}
-          <NetworkSection name={page.title} followers={network.followers} followerTotal={page.followerCount} />
           <footer className="page-foot">
             <span>Last edited on {formatDate(page.updatedAt)}</span>
             <span>{page.revisionCount} revision{page.revisionCount === 1 ? "" : "s"}</span>

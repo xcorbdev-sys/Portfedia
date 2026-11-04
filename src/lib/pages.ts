@@ -640,6 +640,42 @@ export async function keyPeopleOf(page: PageDoc, current: PageCard[], makers: Pa
 }
 
 const NETWORK_SHOWN = 24;
+const NETWORK_PAGE = 30;
+
+/**
+ * One page of a followers or following list, optionally filtered by name (the dialog opened from a page's
+ * header). Followers are listed by their own public profiles; members without one are only counted.
+ */
+export async function networkList(slug: string, kind: "followers" | "following", q: string, offset: number) {
+  await connectDB();
+  const page = await Page.findOne({ slug, ...PUBLIC_FILTER }, { _id: 1, type: 1, ownerId: 1 }).lean<{ _id: unknown; type: PageType; ownerId?: unknown }>();
+  if (!page) return null;
+  const filter: Record<string, unknown> = { ...PUBLIC_FILTER };
+  if (kind === "followers") {
+    const userIds = (await Follow.find({ pageId: page._id }, { userId: 1 }).lean<{ userId: unknown }[]>()).map((f) => f.userId);
+    Object.assign(filter, { type: "person", ownerId: { $in: userIds } });
+  } else {
+    if (page.type !== "person" || !page.ownerId) return { items: [], total: 0, withoutProfile: 0 };
+    const pageIds = (await Follow.find({ userId: page.ownerId }, { pageId: 1 }).lean<{ pageId: unknown }[]>()).map((f) => f.pageId);
+    Object.assign(filter, { _id: { $in: pageIds } });
+  }
+  const all = await Page.countDocuments(filter);
+  const term = searchKey(q.slice(0, 80));
+  if (term) filter.titleKey = new RegExp(`(^|\\s)${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+  const [rows, total] = await Promise.all([
+    Page.find(filter, { ...CARD_FIELDS, status: 1 }).sort({ title: 1 }).skip(Math.max(0, offset)).limit(NETWORK_PAGE).lean(),
+    Page.countDocuments(filter),
+  ]);
+  const withoutProfile = kind === "followers" ? Math.max(0, (await Follow.countDocuments({ pageId: page._id })) - all) : 0;
+  return {
+    items: rows.map((r) => {
+      const c = toCard(r);
+      return { slug: c.slug, type: c.type, title: c.title, subtitle: c.subtitle ?? "", image: c.image?.thumbUrl ?? c.image?.url ?? "" };
+    }),
+    total,
+    withoutProfile: term ? 0 : withoutProfile,
+  };
+}
 
 /**
  * Followers of a page (shown as the followers' own profiles) and, for a person, the pages they follow.

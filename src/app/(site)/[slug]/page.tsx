@@ -15,7 +15,7 @@ import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
 import { hasThanked, mutualConnections } from "@/lib/social";
 import { featureUnlocked, followNetwork, getPersonPageOf, getUserPlan, linkedProjectPages, viewStatsHidden } from "@/lib/pages";
-import { NetworkSection, NetworkSummary } from "@/components/Network";
+import { NetworkSummary } from "@/components/NetworkDialog";
 import { countView } from "@/lib/views";
 import { StatsCard } from "@/components/StatsCard";
 import { Users as UsersIcon } from "lucide-react";
@@ -139,7 +139,6 @@ export default async function PersonPage({ params }: Props) {
   if (page.patents.length) nav.push({ id: "patents", label: "Patents" });
   if (page.volunteering.length) nav.push({ id: "volunteering", label: "Volunteering" });
   if (buildTimeline(page)) nav.push({ id: "timeline", label: "Timeline" });
-  nav.push({ id: "network", label: "Network" });
   if (investments.length) nav.push({ id: "investments", label: "Investments" });
   if (recommendations.length) nav.push({ id: "recommendations", label: "Recommendations" });
   if (related.length) nav.push({ id: "related-companies", label: "Related Companies" });
@@ -184,7 +183,7 @@ export default async function PersonPage({ params }: Props) {
                   ))}
                 </div>
               )}
-              <NetworkSummary followers={network.followers} followerTotal={page.followerCount} followingTotal={network.followingTotal} />
+              <NetworkSummary slug={page.slug} name={page.title} faces={network.followers.slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, image: c.image?.thumbUrl ?? c.image?.url ?? "" }))} followerTotal={page.followerCount} followingTotal={network.followingTotal} />
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
               {mutual.length > 0 && (
                 <p className="mutual">
@@ -338,8 +337,6 @@ export default async function PersonPage({ params }: Props) {
               </ol>
             </section>
           )}
-
-          <NetworkSection name={page.title.split(" ")[0]} followers={network.followers} followerTotal={page.followerCount} following={network.following} followingTotal={network.followingTotal} />
 
           <footer className="page-foot">
             <span>Last edited on {formatDate(page.updatedAt)}</span>

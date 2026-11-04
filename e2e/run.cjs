@@ -446,8 +446,8 @@ async function createProfile(p, opts) {
 
   // ── Follow → notification
   await mert.goto(`${BASE}${aysePath}`);
-  await mert.click('button:has-text("Follow")');
-  await mert.waitForSelector('button:has-text("Following")');
+  await mert.click('.p-actions button:has-text("Follow")');
+  await mert.waitForSelector('.p-actions button:has-text("Following")');
   await ayse.goto(`${BASE}/`);
   check("bell shows unread notification", (await ayse.locator(".bell__count").count()) === 1);
   await ayse.goto(`${BASE}/notifications`);
@@ -550,17 +550,29 @@ async function createProfile(p, opts) {
 
   // ── Followers and following on profiles and company pages
   await elif.goto(`${BASE}${aysePath}`);
-  await elif.click('button:has-text("Follow")');
-  await elif.waitForSelector('button:has-text("Following")');
+  await elif.click('.p-actions button:has-text("Follow")');
+  await elif.waitForSelector('.p-actions button:has-text("Following")');
   await elif.goto(`${BASE}/org/northwind-robotics`);
-  await elif.click('button:has-text("Follow")');
-  await elif.waitForSelector('button:has-text("Following")');
+  await elif.click('.p-actions button:has-text("Follow")');
+  await elif.waitForSelector('.p-actions button:has-text("Following")');
   await anon.goto(`${BASE}${aysePath}`);
-  check("profile lists its followers", (await anon.locator('#network a[href="/elif-sahin"]').count()) === 1);
+  await anon.click(".p-head .net-summary__btn >> nth=0");
+  await anon.locator('.net-dialog a[href="/elif-sahin"]').waitFor();
+  check("followers open in a dialog", (await anon.locator('.net-dialog a[href="/elif-sahin"]').count()) === 1);
+  await anon.fill(".net-dialog input[type=search]", "zzz");
+  await anon.locator(".net-dialog >> text=No one found.").waitFor();
+  await anon.fill(".net-dialog input[type=search]", "eli");
+  await anon.locator('.net-dialog a[href="/elif-sahin"]').waitFor();
+  check("followers can be searched", (await anon.locator(".net-dialog li").count()) === 1);
+  await anon.keyboard.press("Escape");
   await anon.goto(`${BASE}/elif-sahin`);
-  check("profile lists what the person follows", (await anon.locator(`#network a[href="${aysePath}"]`).count()) === 1 && (await anon.locator('#network a[href="/org/northwind-robotics"]').count()) === 1);
+  await anon.click(".p-head .net-summary__btn >> nth=1");
+  await anon.locator('.net-dialog a[href="/org/northwind-robotics"]').waitFor();
+  check("following tab lists people and pages", (await anon.locator(`.net-dialog a[href="${aysePath}"]`).count()) === 1 && (await anon.locator('.net-dialog a[href="/org/northwind-robotics"]').count()) === 1);
   await anon.goto(`${BASE}/org/northwind-robotics`);
-  check("company page lists its followers", (await anon.locator('#network a[href="/elif-sahin"]').count()) === 1);
+  await anon.click(".p-head .net-summary__btn");
+  await anon.locator('.net-dialog a[href="/elif-sahin"]').waitFor();
+  check("company followers open in a dialog", (await anon.locator('.net-dialog [role=tab]').count()) === 1);
   check("follower count in the page header", /1\s*follower/.test(await anon.locator(".p-head .net-summary").innerText()));
 
   // ── A company can't be both the parent and a subsidiary of another
