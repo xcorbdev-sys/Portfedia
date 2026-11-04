@@ -10,6 +10,7 @@ import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
 import { AddButton, CoverPicker, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
 import { safeAction } from "./submit-helpers";
+import { SectorPicker } from "./SectorPicker";
 
 const STEPS = ["Basic Info", "Details", "More", "Sources & Submit"];
 const LAST = STEPS.length - 1;
@@ -149,10 +150,7 @@ export function OrgForm({
           <span className="hint">Investors get a portfolio and fund details; events get dates, speakers and sponsors.</span>
         </div>
         <div className="grid-2">
-          <div className="field">
-            <label htmlFor="sector">Sector</label>
-            <input id="sector" name="sector" className="input" maxLength={80} defaultValue={ib.sector} placeholder="e.g. Defense & Aerospace" />
-          </div>
+          <SectorPicker initial={page?.sectors ?? []} saas={category === "saas"} />
           <div className="field">
             <label htmlFor="kind">Legal form</label>
             <input id="kind" name="kind" className="input" maxLength={60} defaultValue={ib.kind} placeholder="e.g. Private company, Non-profit" />

@@ -9,6 +9,7 @@ import { OPEN_TO, type PageDoc } from "@/lib/types";
 import { AchievementsStep, LanguagesEditor, type LinkableProject } from "./Achievements";
 import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
+import { SectorPicker } from "./SectorPicker";
 import { FormError } from "../ui";
 import {
   AddButton, CoverPicker, ImagePicker, MARKDOWN_HINT, OrgInput, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps,
@@ -118,10 +119,7 @@ export function PersonForm({
           <span className="hint">Comma separated, up to 8.</span>
         </div>
         <div className="grid-3">
-          <div className="field">
-            <label htmlFor="sector">Sector</label>
-            <input id="sector" name="sector" className="input" maxLength={80} defaultValue={ib.sector} placeholder="e.g. Technology" />
-          </div>
+          <SectorPicker initial={page?.sectors ?? []} />
           <div className="field">
             <label htmlFor="location">Location</label>
             <input id="location" name="location" className="input" maxLength={120} defaultValue={ib.location} placeholder="e.g. Istanbul, Türkiye" />

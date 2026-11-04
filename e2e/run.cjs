@@ -57,6 +57,7 @@ async function createOrg(page, o) {
   await page.goto(`${BASE}/create?type=${o.type || "org"}&title=${encodeURIComponent(o.name)}`);
   if (o.kind) await page.selectOption("#type", o.kind);
   await page.fill("#sector", o.sector);
+  await page.press("#sector", "Enter"); // picks the first match from the sector list
   await page.fill("#tags", o.tags);
   await page.fill("#summary", o.summary);
   await page.click('button:has-text("Continue")');
@@ -101,6 +102,7 @@ async function createProfile(p, opts) {
   await p.fill("#summary", summary);
   await p.fill("#tags", "Engineer, Robotics");
   await p.fill("#sector", "Robotics & Automation");
+  await p.press("#sector", "Enter");
   if (opts.rich) await p.check('input[name=openTo][value="speaking"]');
   await p.click('button:has-text("Continue")');
   await p.click('button:has-text("Add position")');
@@ -609,6 +611,17 @@ async function createProfile(p, opts) {
   await anon.goto(`${BASE}/education?q=zzz`);
   const foot = await anon.evaluate(() => Math.round(document.querySelector(".site-footer").getBoundingClientRect().bottom) - window.innerHeight);
   check("footer sits at the bottom of short pages", Math.abs(foot) <= 1, foot);
+
+  // ── Sectors come from a fixed list (at most three); the sectors page shows the whole list
+  await elif.goto(`${BASE}/org/sahin-consulting/edit`);
+  check("sector picked from the list", (await elif.locator(".sector-chip:has-text('Management Consulting')").count()) === 1);
+  await elif.fill("#sector", "my own made up sector");
+  await elif.press("#sector", "Enter");
+  check("free text can't become a sector", (await elif.locator(".sector-chip").count()) === 1 && (await elif.locator("text=Not in the list").count()) === 1);
+  await anon.goto(`${BASE}/sectors`);
+  check("sectors page lists the whole grouped list", (await anon.locator(".sector-group").count()) > 10 && (await anon.locator('.sector-group a[href="/companies?sector=Banking"]').count()) === 1);
+  await anon.goto(`${BASE}/people?sector=${encodeURIComponent("Robotics & Automation")}`);
+  check("people filtered by sector", (await anon.locator(`a[href="${aysePath}"]`).count()) === 1);
 
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {

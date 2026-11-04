@@ -20,6 +20,7 @@ import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, SessionUser, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
 import { OPEN_TO, ORG_CATEGORIES, SAAS_PRICING, type OrgCategory, type SaasInfo } from "../types";
+import { cleanSectors } from "../sectors";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 
 const MAX_BODY = 100_000;
@@ -147,6 +148,16 @@ function parseOrgExtras(fd: FormData) {
     press: parseRows<PressItem>(fd, "press", 60, (r) => (str(r.title, 200) && httpUrl(r.url) ? { title: str(r.title, 200), outlet: str(r.outlet, 120), year: year(r.year), url: httpUrl(r.url) } : null)),
     ticker: symbol ? { exchange, symbol } : null,
   };
+}
+
+/** A JSON array of strings from a hidden form field (the sector picker). */
+function parseJsonList(v: FormDataEntryValue | null): string[] {
+  try {
+    const arr = JSON.parse(String(v ?? "[]"));
+    return Array.isArray(arr) ? arr.map((x) => String(x)).slice(0, 10) : [];
+  } catch {
+    return [];
+  }
 }
 
 function parseCategory(fd: FormData) {
@@ -293,13 +304,15 @@ async function personFromForm(user: SessionUser, fd: FormData): Promise<{ error:
   });
   if (extraGuard) return { error: extraGuard };
 
+  const sectors = cleanSectors(parseJsonList(fd.get("sectors")), false);
   const input: PersonInput = {
     title,
     summary,
     tags,
+    sectors,
     infobox: {
       occupation,
-      sector: str(fd.get("sector"), 80),
+      sector: sectors.join(", "),
       nationality: str(fd.get("nationality"), 80),
       birthYear: year(fd.get("birthYear")),
       birthYearPublic: bool(fd.get("birthYearPublic")),
@@ -409,6 +422,8 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (orgGuard) return { error: orgGuard };
   const orgExtras = parseOrgExtras(fd);
+  // SaaS projects pick from the SaaS categories, other organizations from the industry list
+  const orgSectors = cleanSectors(parseJsonList(fd.get("sectors")), fd.get("category") === "saas");
   // "Part of": a company can't be its own parent, nor the parent of its parent
   if (orgExtras.parent) {
     const self = slug ?? slugify(title);
@@ -447,12 +462,13 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       type,
       summary: str(fd.get("summary"), 400),
       tags: parseTags(fd.get("tags")),
+      sectors: orgSectors,
       infobox: {
         kind: str(fd.get("kind"), 60),
         founded: year(fd.get("founded")),
         founders: str(fd.get("founders"), 300),
         headquarters: str(fd.get("headquarters"), 120),
-        sector: str(fd.get("sector"), 80),
+        sector: orgSectors.join(", "),
         employees: str(fd.get("employees"), 40),
         website: httpUrl(fd.get("website")),
       },

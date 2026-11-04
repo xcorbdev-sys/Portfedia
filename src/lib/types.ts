@@ -166,6 +166,8 @@ export interface PageDoc {
   educations: Education[];
   outLinks: OutLink[];
   tags: string[];
+  /** Sectors from the fixed list (at most three) */
+  sectors: string[];
   orgAdmins: string[];
   claimDomain: string | null;
   websiteChangedAt: Date | null;

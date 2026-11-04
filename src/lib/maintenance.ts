@@ -62,6 +62,21 @@ const MIGRATIONS: Migration[] = [
       await Page.updateMany({ review: { $exists: false } }, { $set: { review: { flags: [] } } });
     },
   },
+  {
+    // Free-text sectors ("AI Platforms, Banking, Marketing") become entries of the fixed list
+    id: "2026-11-sectors-from-text",
+    run: async () => {
+      const { sectorsFromText } = await import("./sectors");
+      const pages = await Page.find({ "infobox.sector": { $nin: [null, ""] }, $or: [{ sectors: { $exists: false } }, { sectors: { $size: 0 } }] }, { "infobox.sector": 1, category: 1 }).lean<
+        { _id: unknown; infobox?: { sector?: string }; category?: string }[]
+      >();
+      for (const p of pages) {
+        const found = sectorsFromText(p.infobox?.sector ?? "", p.category === "saas");
+        // Parts that don't match the list are dropped, so filters only show list entries; the owner can pick again
+        await Page.updateOne({ _id: p._id }, { $set: { sectors: found, "infobox.sector": found.join(", ") } });
+      }
+    },
+  },
 ];
 
 export async function runMigrations(): Promise<string[]> {

@@ -709,3 +709,39 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .list-filters__select { width: auto; min-width: 150px; max-width: 240px; height: 42px; }
 .list-filters .btn { height: 42px; }
 @media (max-width: 600px) { .list-filters__select { flex: 1 1 140px; max-width: none; } }
+
+/* Sector picker (fixed list, up to three) */
+.sector-picker { position: relative; }
+.sector-picker__box { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 42px; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); cursor: text; }
+.sector-picker__box.is-open, .sector-picker__box:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.sector-picker__input { flex: 1; min-width: 140px; border: 0; outline: 0; background: transparent; font: inherit; color: var(--text); height: 30px; }
+.sector-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 0.82rem; font-weight: 600; }
+.sector-chip button { display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.sector-chip button:hover { background: var(--primary-soft-2); }
+.sector-picker__menu { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% - 22px); max-height: 280px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; }
+.sector-picker__group { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); padding: 8px 8px 4px; }
+.sector-picker__menu button { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 0.9rem; color: var(--text); padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.sector-picker__menu button.is-active { background: var(--bg-soft); }
+.grid-2 > .sector-picker, .grid-3 > .sector-picker { grid-column: 1 / -1; }
+
+/* Numbered pagination */
+.pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-top: 28px; }
+.pagination a, .pagination span { min-width: 38px; height: 38px; padding: 0 10px; display: inline-grid; place-items: center; border-radius: 10px; font-size: 0.9rem; font-weight: 600; color: var(--text-2); border: 1px solid var(--border); background: var(--surface); }
+.pagination a:hover { text-decoration: none; border-color: var(--primary); color: var(--primary); }
+.pagination [aria-current="page"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.pagination .pagination__gap { border: 0; background: none; min-width: 20px; padding: 0; }
+
+/* Sectors page: the full list, grouped */
+.sector-group { margin-top: 26px; }
+.sector-group h2 { font-size: 1rem; margin: 0 0 10px; }
+.sector-group ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.sector-group li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.sector-group li.is-empty { background: var(--bg-soft); }
+.sector-group li.is-empty .sector-group__name { color: var(--text-3); }
+.sector-group__name { font-weight: 600; font-size: 0.9rem; }
+.sector-group__links { display: flex; gap: 10px; font-size: 0.8rem; color: var(--text-3); white-space: nowrap; }
+@media (max-width: 400px) {
+  .stepper { gap: 6px; }
+  .stepper li { gap: 6px; }
+  .stepper li::after { min-width: 8px; }
+}

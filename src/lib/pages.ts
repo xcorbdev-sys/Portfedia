@@ -34,6 +34,7 @@ function toPage(d: any): PageDoc {
     educations: d.educations ?? [],
     outLinks: d.outLinks ?? [],
     tags: d.tags ?? [],
+    sectors: d.sectors ?? [],
     orgAdmins: (d.orgAdmins ?? []).map(String),
     claimDomain: d.claimDomain ?? null,
     websiteChangedAt: d.websiteChangedAt ?? null,
@@ -290,19 +291,20 @@ export async function searchPages({ q, types, sectors, limit = 40, page = 1 }: S
   }
   const filter: Record<string, unknown> = { ...base };
   if (types?.length) filter.type = { $in: types };
-  if (sectors?.length) filter["infobox.sector"] = { $in: sectors };
+  if (sectors?.length) filter.sectors = { $in: sectors };
 
   const [rows, total, typeFacet, sectorFacet] = await Promise.all([
     Page.find(filter, { ...CARD_FIELDS, status: 1 }).sort({ type: 1, followerCount: -1, title: 1 }).skip((Math.max(1, page) - 1) * limit).limit(limit).lean(),
     Page.countDocuments(filter),
     // Facet counts ignore their own filter so users can switch between options
     Page.aggregate([
-      { $match: { ...base, ...(sectors?.length ? { "infobox.sector": { $in: sectors } } : {}) } },
+      { $match: { ...base, ...(sectors?.length ? { sectors: { $in: sectors } } : {}) } },
       { $group: { _id: "$type", n: { $sum: 1 } } },
     ]),
     Page.aggregate([
-      { $match: { ...base, ...(types?.length ? { type: { $in: types } } : {}), "infobox.sector": { $nin: [null, ""] } } },
-      { $group: { _id: "$infobox.sector", n: { $sum: 1 } } },
+      { $match: { ...base, ...(types?.length ? { type: { $in: types } } : {}), "sectors.0": { $exists: true } } },
+      { $unwind: "$sectors" },
+      { $group: { _id: "$sectors", n: { $sum: 1 } } },
       { $sort: { n: -1, _id: 1 } },
       { $limit: 12 },
     ]),
@@ -331,10 +333,10 @@ export async function listPages(opts: {
   sort?: "popular" | "recent" | "name";
 }) {
   await connectDB();
-  const perPage = opts.perPage ?? 24;
+  const perPage = opts.perPage ?? 20;
   const page = Math.max(1, opts.page ?? 1);
   const filter: Record<string, unknown> = { type: { $in: opts.types }, ...PUBLIC_FILTER };
-  if (opts.sector) filter["infobox.sector"] = opts.sector;
+  if (opts.sector) filter.sectors = opts.sector;
   if (opts.category) filter.category = opts.category;
   else if (opts.excludeCategory) filter.category = { $ne: opts.excludeCategory };
   const term = searchKey((opts.q ?? "").slice(0, 80));
@@ -356,17 +358,18 @@ export async function listPages(opts: {
 /** Sectors used by the pages of a listing, for its filter menu. */
 export async function sectorsFor(types: PageType[], category?: OrgCategory, excludeCategory?: OrgCategory): Promise<string[]> {
   await connectDB();
-  const filter: Record<string, unknown> = { type: { $in: types }, "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER };
+  const filter: Record<string, unknown> = { type: { $in: types }, ...PUBLIC_FILTER };
   if (category) filter.category = category;
   else if (excludeCategory) filter.category = { $ne: excludeCategory };
-  return ((await Page.distinct("infobox.sector", filter)) as string[]).sort((a, b) => a.localeCompare(b)).slice(0, 200);
+  return ((await Page.distinct("sectors", filter)) as string[]).filter(Boolean).sort((a, b) => a.localeCompare(b)).slice(0, 200);
 }
 
 export async function listSectors() {
   await connectDB();
   const rows = await Page.aggregate([
-    { $match: { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER } },
-    { $group: { _id: "$infobox.sector", orgs: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 0, 1] } }, people: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 1, 0] } } } },
+    { $match: { "sectors.0": { $exists: true }, category: { $ne: "saas" }, ...PUBLIC_FILTER } },
+    { $unwind: "$sectors" },
+    { $group: { _id: "$sectors", orgs: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 0, 1] } }, people: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 1, 0] } } } },
     { $sort: { orgs: -1, people: -1, _id: 1 } },
     { $limit: 300 },
   ]);
@@ -465,7 +468,7 @@ export async function homeData() {
   const [people, orgs, sectors, featuredPeople, featuredOrgs, globePeople, featuredSaas] = await Promise.all([
     Page.countDocuments({ type: "person", ...PUBLIC_FILTER }),
     Page.countDocuments({ type: "org", ...PUBLIC_FILTER }),
-    Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER }),
+    Page.distinct("sectors", { category: { $ne: "saas" }, ...PUBLIC_FILTER }),
     Page.find({ type: "person", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
     Page.find({ type: "org", category: { $ne: "saas" }, body: { $ne: "" }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 })
       .sort({ followerCount: -1, updatedAt: -1 })
@@ -823,6 +826,7 @@ export interface PersonInput {
   title: string;
   summary: string;
   tags: string[];
+  sectors: string[];
   infobox: PersonInfobox;
   body: string;
   experiences: (Omit<Experience, "orgSlug" | "orgTitle" | "verification"> & { orgTitle: string })[];
@@ -882,6 +886,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput, opts
     titleKey: searchKey(input.title),
     summary: input.summary,
     tags: input.tags,
+    sectors: input.sectors,
     infobox: input.infobox,
     body: input.body,
     experiences,
@@ -979,6 +984,7 @@ export interface OrgInput {
   type: "org" | "school";
   summary: string;
   tags: string[];
+  sectors: string[];
   infobox: OrgInfobox;
   body: string;
   sources: SourceRef[];
@@ -1048,6 +1054,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   const content = {
     summary: input.summary,
     tags: input.tags,
+    sectors: input.sectors,
     infobox: input.infobox,
     body: input.body,
     sources: input.sources,

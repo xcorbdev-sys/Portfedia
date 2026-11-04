@@ -1,8 +1,8 @@
-import Link from "next/link";
 import type { PageCard } from "@/lib/pages";
 import { EntityGrid } from "./EntityCards";
 import { Breadcrumbs } from "./ui";
 import { ListFilters, type FilterSelect } from "./ListFilters";
+import { Pagination } from "./Pagination";
 
 export function Listing({
   title,
@@ -31,7 +31,6 @@ export function Listing({
   /** Word after the count, e.g. "companies" */
   noun?: string;
 }) {
-  const sep = baseHref.includes("?") ? "&" : "?";
   return (
     <div className="container" style={{ paddingBottom: 56 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: crumb }]} />
@@ -44,13 +43,7 @@ export function Listing({
       </div>
       {filters && <ListFilters {...filters} />}
       <div style={{ marginTop: 18 }}>{items.length ? <EntityGrid items={items} /> : <div className="empty">{empty}</div>}</div>
-      {pages > 1 && (
-        <nav className="pagination" aria-label="Pagination">
-          {page > 1 && <Link className="btn btn--sm" href={`${baseHref}${sep}page=${page - 1}`}>Previous</Link>}
-          <span className="btn btn--sm btn--ghost">Page {page} of {pages}</span>
-          {page < pages && <Link className="btn btn--sm" href={`${baseHref}${sep}page=${page + 1}`}>Next</Link>}
-        </nav>
-      )}
+      <Pagination page={page} pages={pages} baseHref={baseHref} />
     </div>
   );
 }

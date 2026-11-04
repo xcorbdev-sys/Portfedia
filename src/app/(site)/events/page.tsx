@@ -5,6 +5,7 @@ import { listEvents } from "@/lib/pages";
 import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
+import { Pagination, paginate } from "@/components/Pagination";
 
 const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
 
@@ -35,7 +36,7 @@ function EventList({ items }: { items: EventRow[] }) {
   );
 }
 
-export default async function EventsPage({ searchParams }: { searchParams: Promise<{ q?: string; city?: string }> }) {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ q?: string; city?: string; page?: string }> }) {
   await connection();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 80);
@@ -44,7 +45,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const cities = [...new Set([...all.upcoming, ...all.past].map((e) => e.city).filter(Boolean))].sort();
   const keep = (e: EventRow) => (!q || norm(e.card.title).includes(norm(q))) && (!city || e.city === city);
   const upcoming = all.upcoming.filter(keep);
-  const past = all.past.filter(keep);
+  // Upcoming events are few and all shown; past events are paged
+  const { items: past, page, pages } = paginate(all.past.filter(keep), parseInt(sp.page ?? "1", 10) || 1);
+  const params = new URLSearchParams(Object.entries({ q, city }).filter(([, v]) => v));
+  const base = params.size ? `/events?${params}` : "/events";
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Events" }]} />
@@ -57,6 +61,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <>
           <h2 className="card__title" style={{ marginTop: 28 }}>Past events</h2>
           <EventList items={past} />
+          <Pagination page={page} pages={pages} baseHref={base} />
         </>
       )}
       <p className="small muted" style={{ marginTop: 20 }}>

@@ -133,6 +133,8 @@ const PageSchema = new Schema<any>(
     educations: { type: [EducationSchema], default: [] },
     outLinks: { type: [new Schema<any>({ slug: String, title: String }, { _id: false })], default: [] },
     tags: { type: [String], default: [] },
+    // Up to three entries from the fixed sector list (src/lib/sectors.ts); infobox.sector shows them as text
+    sectors: { type: [String], default: [] },
     tagKeys: { type: [String], default: [] }, // URL-friendly tags for /tag/<key>, kept in sync on save
     // Organization ownership (claimed with a work email)
     orgAdmins: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
@@ -242,6 +244,7 @@ PageSchema.pre("save", function syncTagKeys(this: any) {
 });
 PageSchema.index({ type: 1, status: 1, "review.submittedAt": 1 }); // review queue
 PageSchema.index({ "infobox.sector": 1 });
+PageSchema.index({ sectors: 1 });
 
 /* ───────────── Revizyon (yalnızca eklenir, değişmez) ───────────── */
 const RevisionSchema = new Schema<any>(
