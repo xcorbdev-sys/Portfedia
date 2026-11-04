@@ -10,11 +10,14 @@ export function ReportForm({
   reasons,
   signedIn,
   copyright = false,
+  fixedReason,
 }: {
   slug: string;
   reasons: Record<string, string>;
   signedIn: boolean;
   copyright?: boolean;
+  /** Hidden reason instead of the select (e.g. "appeal") */
+  fixedReason?: string;
 }) {
   const [state, formAction, pending] = useActionState(reportAction, undefined);
   if (state?.ok) return <FormError state={state} />;
@@ -43,6 +46,8 @@ export function ReportForm({
             <input id="original" name="original" className="input" maxLength={500} placeholder="Link or description of the original work" required />
           </div>
         </>
+      ) : fixedReason ? (
+        <input type="hidden" name="reason" value={fixedReason} />
       ) : (
         <div className="field">
           <label htmlFor="reason">What&apos;s wrong?</label>
@@ -83,7 +88,7 @@ export function ReportForm({
         </>
       )}
       <button className="btn btn--primary" type="submit" disabled={pending} style={{ width: "fit-content" }}>
-        {pending ? "Sending…" : copyright ? "Send takedown request" : "Send report"}
+        {pending ? "Sending…" : copyright ? "Send takedown request" : fixedReason === "appeal" ? "Send appeal" : "Send report"}
       </button>
     </form>
   );

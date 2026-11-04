@@ -83,3 +83,20 @@ export async function requestWorkVerificationAction(_: FormState, fd: FormData):
   const err = await requestWorkVerification(user, Number(fd.get("index")), workEmail);
   return err ? { error: err } : { ok: `We sent a link to ${workEmail}. Your position is verified when you open it.` };
 }
+
+/** #30: verify or reject several positions at once. */
+export async function decidePositionsBulkAction(fd: FormData): Promise<void> {
+  const slug = str(fd.get("org"), 100);
+  const user = await verifiedUser(`/org/${slug}/manage`);
+  const org = await getPageBySlug(slug, ["org", "school"]);
+  if (!org) redirect("/");
+  const decision = fd.get("decision") === "rejected" ? "rejected" : "verified";
+  const items = fd.getAll("items").map(String).slice(0, 200);
+  for (const it of items) {
+    const [person, index] = it.split("|");
+    await decidePosition(user, org, str(person, 100), Number(index), decision);
+    revalidatePath(`/${person}`);
+  }
+  revalidatePath(`/org/${slug}`);
+  redirect(`/org/${slug}/manage#people`);
+}

@@ -49,6 +49,14 @@ export async function reportAction(_: FormState, fd: FormData): Promise<FormStat
   const page = slug ? await getPageBySlug(slug) : null;
 
   let text = details;
+  if (reason === "appeal") {
+    // Give moderators the account's state right away
+    const { connectDB } = await import("../db");
+    const { User } = await import("../models");
+    await connectDB();
+    const acc = await User.findOne({ email: reporterEmail }, { bannedAt: 1, banReason: 1 }).lean<{ bannedAt?: Date | null; banReason?: string }>();
+    text = `${details}\n\nAccount: ${!acc ? "no account with this email" : acc.bannedAt ? `banned since ${new Date(acc.bannedAt).toISOString().slice(0, 10)}${acc.banReason ? ` (${acc.banReason})` : ""}` : "not banned"}`;
+  }
   if (reason === "copyright") {
     if (!bool(fd.get("goodFaith")) || !bool(fd.get("accurate"))) return { error: "Please confirm both statements." };
     const original = str(fd.get("original"), 500);
@@ -84,4 +92,46 @@ export async function banAction(fd: FormData): Promise<void> {
   const err = await setBan(mod, str(fd.get("userId"), 40), fd.get("ban") === "1", str(fd.get("reason"), 300));
   const back = safeNext(fd.get("back"), "/admin?section=users");
   redirect(err ? `${back}${back.includes("?") ? "&" : "?"}error=${encodeURIComponent(err)}` : back);
+}
+
+/* ───────────── Bulk actions (#37) and organization tools (#23, #24) ───────────── */
+
+export async function bulkApplicationsAction(fd: FormData): Promise<void> {
+  const mod = await moderator();
+  const { decideApplication } = await import("../pages");
+  const slugs = fd.getAll("slugs").map((s) => str(s, 100)).filter(Boolean).slice(0, 100);
+  const approve = fd.get("op") === "approve";
+  const note = str(fd.get("note"), 1000) || "Your profile does not meet our guidelines yet.";
+  for (const slug of slugs) await decideApplication(mod, slug, approve ? { approve: true, verified: false } : { approve: false, note });
+  for (const slug of slugs) revalidatePath(`/${slug}`);
+  redirect("/admin");
+}
+
+export async function bulkReportsAction(fd: FormData): Promise<void> {
+  const mod = await moderator();
+  const ids = fd.getAll("ids").map((s) => str(s, 40)).filter(Boolean).slice(0, 100);
+  const status = fd.get("op") === "resolve" ? "resolved" : "dismissed";
+  for (const id of ids) await closeReport(mod, id, status, str(fd.get("resolution"), 1000));
+  redirect("/admin?section=reports");
+}
+
+export async function renameOrgAction(fd: FormData): Promise<void> {
+  const mod = await moderator();
+  const { renameOrg } = await import("../org-tools");
+  const slug = str(fd.get("slug"), 100);
+  const res = await renameOrg(mod, slug, str(fd.get("title"), 160));
+  if (res.slug) revalidatePath(`/org/${res.slug}`);
+  redirect(res.error ? `/org/${slug}/manage?error=${encodeURIComponent(res.error)}#moderator` : `/org/${res.slug}/manage?done=renamed`);
+}
+
+export async function mergeOrgAction(fd: FormData): Promise<void> {
+  const mod = await moderator();
+  const { mergeOrgs } = await import("../org-tools");
+  const { slugify } = await import("../slug");
+  const slug = str(fd.get("slug"), 100);
+  const raw = str(fd.get("target"), 300);
+  const target = (raw.match(/\/org\/([a-z0-9-]+)/)?.[1] ?? slugify(raw)) || "";
+  const res = await mergeOrgs(mod, slug, target);
+  if (res.slug) revalidatePath(`/org/${res.slug}`);
+  redirect(res.error ? `/org/${slug}/manage?error=${encodeURIComponent(res.error)}#moderator` : `/org/${res.slug}?merged=1`);
 }

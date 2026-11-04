@@ -240,7 +240,8 @@ const ReportSchema = new Schema<any>(
     pageId: { type: Schema.Types.ObjectId, ref: "Page", default: null },
     pageSlug: { type: String, default: "" },
     pageTitle: { type: String, default: "" },
-    reason: { type: String, enum: ["copyright", "impersonation", "false_info", "harassment", "spam", "privacy", "other"], required: true },
+    reason: { type: String, enum: ["copyright", "impersonation", "false_info", "harassment", "spam", "privacy", "other", "appeal"], required: true },
+    priority: { type: Number, default: 1 },
     details: { type: String, default: "", maxlength: 5000 },
     reporterId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     reporterName: { type: String, default: "" },
@@ -253,6 +254,7 @@ const ReportSchema = new Schema<any>(
   { timestamps: true },
 );
 ReportSchema.index({ status: 1, createdAt: -1 });
+ReportSchema.index({ status: 1, priority: -1, createdAt: 1 });
 
 /* ───────────── In-app notifications (bell) ───────────── */
 const NotificationSchema = new Schema<any>(

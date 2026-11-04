@@ -14,6 +14,8 @@ import { saveImage, UploadError } from "../storage";
 import { bool, email, handle, httpUrl, str, year } from "../validate";
 import { slugify } from "../slug";
 import { rateLimit } from "../rate-limit";
+import { duplicatePositions, yearProblems } from "../data-rules";
+import { findSimilarOrgs } from "../org-tools";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
@@ -178,6 +180,14 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     }))
     .filter((e) => slugify(e.schoolTitle));
 
+  // #28 / #29: date consistency and duplicate positions
+  const problems = [
+    ...experiences.flatMap((e) => yearProblems(e.orgTitle, e)),
+    ...educations.flatMap((e) => yearProblems(e.schoolTitle, e)),
+    ...duplicatePositions(experiences).map((t) => `${t}: this position appears twice.`),
+  ];
+  if (problems.length) return { error: problems.slice(0, 4).join(" ") };
+
   const sources = parseSources(fd.get("sources"));
   const tags = parseTags(fd.get("tags"));
   const summary = str(fd.get("summary"), 400);
@@ -286,6 +296,11 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     const existing = await getPageBySlug(slugify(title));
     if (existing && existing.type !== "person" && existing.body) {
       return { error: `A page called "${existing.title}" already exists. You can edit it instead.` };
+    }
+    // #25: warn about likely duplicates ("Acme Inc." vs "ACME") unless the user confirms
+    const similar = (await findSimilarOrgs(title)).filter((x) => x.slug !== existing?.slug);
+    if (similar.length && !bool(fd.get("notDuplicate"))) {
+      return { error: `Similar pages already exist: ${similar.map((x) => x.title).join(", ")}. Edit one of them, or tick “This is a different organization” and save again.` };
     }
   }
 

@@ -82,7 +82,7 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
     return { error: `This account signs in with ${user.googleId ? "Google" : "LinkedIn"}. Use that button, or reset your password to add one.` };
   }
   if (!user || !ok) return { error: "Incorrect email or password." };
-  if (user.bannedAt) return { error: "This account has been suspended." };
+  if (user.bannedAt) return { error: "This account has been suspended. If you think this is a mistake, appeal at /appeal." };
   await createSession(String(user._id));
   redirect(next);
 }

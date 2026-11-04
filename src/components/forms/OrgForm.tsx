@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, startTransition } from "react";
+import { useActionState, useEffect, useRef, useState, startTransition } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { saveOrgAction } from "@/lib/actions/pages";
 import type { PageDoc } from "@/lib/types";
@@ -36,6 +36,20 @@ export function OrgForm({
   const [name, setName] = useState(page?.title ?? defaultTitle);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ib = page?.infobox ?? {};
+  // #25: show existing pages that look like the same organization while typing a new name
+  const [similar, setSimilar] = useState<{ slug: string; title: string }[]>([]);
+  useEffect(() => {
+    if (page || name.trim().length < 3) return setSimilar([]);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/orgs/similar?title=${encodeURIComponent(name)}`);
+        if (res.ok) setSimilar(await res.json());
+      } catch {
+        /* optional */
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [name, page]);
   const rounds = useList<Round>(
     (page?.fundingRounds ?? []).map((r) => ({ round: r.round, year: r.year ? String(r.year) : "", amount: r.amount, investors: r.investors.map((i) => i.title).join(", ") })),
     () => ({ round: "Seed", year: "", amount: "", investors: "" }),
@@ -76,6 +90,21 @@ export function OrgForm({
               </>
             ) : (
               <input id="title" name="title" className="input" required minLength={2} maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Software Inc." />
+            )}
+            {similar.length > 0 && (
+              <div className="notice notice--info small" style={{ marginTop: 6 }}>
+                Similar pages already exist:{" "}
+                {similar.map((x, i) => (
+                  <span key={x.slug}>
+                    {i > 0 && ", "}
+                    <a href={`/org/${x.slug}`} target="_blank" rel="noopener">{x.title}</a>
+                  </span>
+                ))}
+                . Please edit the existing page if it&apos;s the same organization.
+                <label className="check" style={{ marginTop: 6 }}>
+                  <input type="checkbox" name="notDuplicate" /> This is a different organization
+                </label>
+              </div>
             )}
           </div>
           <div className="field">

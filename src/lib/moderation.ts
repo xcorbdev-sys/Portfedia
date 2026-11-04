@@ -4,6 +4,7 @@ import { diffLines } from "diff";
 import { connectDB } from "./db";
 import { Page, Report, Revision, Session, User } from "./models";
 import { sendEmail } from "./email";
+import { reportPriority } from "./data-rules";
 import { siteUrl } from "./site";
 import { canEditOrg } from "./pages";
 import { readSnapshot } from "./snapshots";
@@ -211,6 +212,19 @@ export async function setBan(moderator: SessionUser, userId: string, banned: boo
   target.bannedAt = banned ? new Date() : null;
   target.banReason = banned ? reason : "";
   await target.save();
+  await sendEmail({
+    to: target.email,
+    subject: banned ? "Your Portfedia account has been suspended" : "Your Portfedia account has been restored",
+    lines: banned
+      ? [
+          `Hi ${target.name.split(" ")[0]},`,
+          "Your account has been suspended for breaking our Terms of Use.",
+          ...(reason ? [`Reason: ${reason}`] : []),
+          "If you think this is a mistake, you can appeal using the link below.",
+        ]
+      : [`Hi ${target.name.split(" ")[0]},`, "Your account has been restored. You can log in again."],
+    button: banned ? { label: "Appeal this decision", url: `${siteUrl()}/appeal` } : { label: "Log in", url: `${siteUrl()}/login` },
+  });
   if (banned) {
     await Session.deleteMany({ userId: target._id });
     // Their profile disappears from the site (it stays in the database so the ban can be undone)
@@ -232,6 +246,7 @@ export const REPORT_REASONS: Record<string, string> = {
   privacy: "Private information shared without consent",
   spam: "Spam",
   other: "Something else",
+  appeal: "Ban appeal",
 };
 
 export async function createReport(input: {
@@ -248,6 +263,7 @@ export async function createReport(input: {
     pageSlug: input.page?.slug ?? "",
     pageTitle: input.page?.title ?? "",
     reason: input.reason,
+    priority: reportPriority(input.reason),
     details: input.details,
     reporterId: input.reporter?.id ?? null,
     reporterName: input.reporterName || input.reporter?.name || "",
@@ -264,9 +280,13 @@ export async function createReport(input: {
   }
 }
 
-export async function listReports(status: "open" | "resolved" | "dismissed") {
+/** #35: open reports are sorted by priority (impersonation, privacy, copyright, harassment first), then age. */
+export async function listReports(status: "open" | "resolved" | "dismissed", reason?: string) {
   await connectDB();
-  const rows = await Report.find({ status }).sort({ createdAt: status === "open" ? 1 : -1 }).limit(100).lean<any[]>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, unknown> = { status };
+  if (reason && REPORT_REASONS[reason]) filter.reason = reason;
+  const sort: Record<string, 1 | -1> = status === "open" ? { priority: -1, createdAt: 1 } : { createdAt: -1 };
+  const rows = await Report.find(filter).sort(sort).limit(100).lean<any[]>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const pageIds = rows.map((r) => r.pageId).filter(Boolean);
   const pages = await Page.find({ _id: { $in: pageIds } }, { type: 1, slug: 1, ownerId: 1, status: 1 }).lean<any[]>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const byId = new Map(pages.map((p) => [String(p._id), p]));
@@ -275,6 +295,7 @@ export async function listReports(status: "open" | "resolved" | "dismissed") {
     return {
       id: String(r._id),
       reason: r.reason as string,
+      priority: (r.priority as number) ?? reportPriority(r.reason),
       details: r.details as string,
       pageSlug: (p?.slug ?? r.pageSlug) as string,
       pageTitle: r.pageTitle as string,
@@ -295,10 +316,24 @@ export async function countOpenReports(): Promise<number> {
   return Report.countDocuments({ status: "open" });
 }
 
-export async function closeReport(moderator: SessionUser, id: string, status: "resolved" | "dismissed", resolution: string) {
+export async function closeReport(moderator: SessionUser, id: string, status: "resolved" | "dismissed", resolution: string, notifyReporter = true) {
   if (!Types.ObjectId.isValid(id)) return;
   await connectDB();
-  await Report.updateOne({ _id: id }, { $set: { status, resolution, resolvedBy: moderator.name, resolvedAt: new Date() } });
+  const r = await Report.findOneAndUpdate({ _id: id, status: "open" }, { $set: { status, resolution, resolvedBy: moderator.name, resolvedAt: new Date() } }).lean<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+  // #33: tell the person who reported it (automatic reports have no address)
+  if (r && notifyReporter && r.reporterEmail) {
+    await sendEmail({
+      to: r.reporterEmail,
+      subject: "Your report on Portfedia was reviewed",
+      lines: [
+        `Thank you for your report${r.pageTitle ? ` about ${r.pageTitle}` : ""}.`,
+        status === "resolved"
+          ? "Our team reviewed it and took action."
+          : "Our team reviewed it and decided that no action is needed under our guidelines.",
+        "We don't share details about actions taken on other people's accounts.",
+      ],
+    });
+  }
 }
 
 /** Takes a person profile offline (e.g. after a valid copyright or impersonation report). */

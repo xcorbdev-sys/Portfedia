@@ -3,7 +3,8 @@ import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
 import { countPendingApplications, listApplications } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
-import { banAction, closeReportAction } from "@/lib/actions/moderation";
+import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction } from "@/lib/actions/moderation";
+import { adminStats } from "@/lib/stats";
 import { formatDateTime } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
@@ -12,12 +13,12 @@ import { AdminImport } from "@/components/AdminImport";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
-type SP = { section?: string; tab?: string; q?: string; error?: string };
+type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
   const sp = await searchParams;
-  const section = ["reports", "users", "import"].includes(sp.section ?? "") ? sp.section! : "applications";
+  const section = ["reports", "users", "import", "overview"].includes(sp.section ?? "") ? sp.section! : "applications";
   const [pendingApps, openReports] = await Promise.all([countPendingApplications(), countOpenReports()]);
 
   return (
@@ -25,14 +26,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Admin" }]} />
       <h1 className="section__title" style={{ marginTop: 10, marginBottom: 14 }}>Admin</h1>
       <nav className="tabs" aria-label="Admin sections">
+        <Link href="/admin?section=overview" aria-current={section === "overview" ? "page" : undefined}>Overview</Link>
         <Link href="/admin" aria-current={section === "applications" ? "page" : undefined}>Applications ({pendingApps})</Link>
         <Link href="/admin?section=reports" aria-current={section === "reports" ? "page" : undefined}>Reports ({openReports})</Link>
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Import & collections</Link>
       </nav>
       {sp.error && <div className="notice notice--error" style={{ marginBottom: 14 }}>{sp.error}</div>}
+      {section === "overview" && <Overview />}
       {section === "applications" && <Applications tab={sp.tab} pendingCount={pendingApps} />}
-      {section === "reports" && <Reports tab={sp.tab} />}
+      {section === "reports" && <Reports tab={sp.tab} reason={sp.reason} />}
       {section === "users" && <Users q={sp.q ?? ""} />}
       {section === "import" && <AdminImport />}
     </div>
@@ -58,11 +61,27 @@ async function Applications({ tab: raw, pendingCount }: { tab?: string; pendingC
       {apps.length === 0 ? (
         <div className="empty">{tab === "pending" ? "No applications waiting for review. 🎉" : "Nothing here yet."}</div>
       ) : (
+        <>
+        {tab === "pending" && apps.length > 1 && (
+          <form id="bulk-apps" action={bulkApplicationsAction} className="card bulk-bar">
+            <span className="small muted">Selected applications:</span>
+            <button className="btn btn--sm btn--primary" type="submit" name="op" value="approve">Approve selected</button>
+            <input name="note" className="input" style={{ maxWidth: 320, padding: "5px 10px" }} placeholder="Reason for rejecting (shown to applicants)" maxLength={1000} />
+            <button className="btn btn--sm" type="submit" name="op" value="reject">Reject selected</button>
+          </form>
+        )}
         <ul className="app-list">
           {apps.map((a) => (
             <li key={a.slug} className="card app-card">
               <div className="app-card__head">
-                <Thumb image={a.image} name={a.title} />
+                {tab === "pending" && apps.length > 1 ? (
+                  <label className="bulk-check" title="Select">
+                    <input type="checkbox" form="bulk-apps" name="slugs" value={a.slug} aria-label={`Select ${a.title}`} />
+                    <Thumb image={a.image} name={a.title} />
+                  </label>
+                ) : (
+                  <Thumb image={a.image} name={a.title} />
+                )}
                 <div style={{ minWidth: 0 }}>
                   <Link href={`/${a.slug}`} style={{ fontWeight: 700 }}>{a.title}</Link>
                   <div className="small" style={{ color: "var(--text-2)" }}>{a.subtitle || a.occupation}</div>
@@ -100,6 +119,7 @@ async function Applications({ tab: raw, pendingCount }: { tab?: string; pendingC
             </li>
           ))}
         </ul>
+        </>
       )}
     </>
   );
@@ -107,9 +127,9 @@ async function Applications({ tab: raw, pendingCount }: { tab?: string; pendingC
 
 /* ───────────── Reports ───────────── */
 
-async function Reports({ tab: raw }: { tab?: string }) {
+async function Reports({ tab: raw, reason }: { tab?: string; reason?: string }) {
   const tab = raw === "resolved" || raw === "dismissed" ? raw : "open";
-  const reports = await listReports(tab);
+  const reports = await listReports(tab, reason);
   return (
     <>
       <div className="chips" style={{ marginBottom: 14 }}>
@@ -119,6 +139,20 @@ async function Reports({ tab: raw }: { tab?: string }) {
           </Link>
         ))}
       </div>
+      <div className="chips" style={{ marginBottom: 14 }}>
+        <Link className={`chip${!reason ? "" : " chip--muted"}`} href={`/admin?section=reports${tab === "open" ? "" : `&tab=${tab}`}`}>All reasons</Link>
+        {Object.entries(REPORT_REASONS).map(([k, v]) => (
+          <Link key={k} className={`chip${reason === k ? "" : " chip--muted"}`} href={`/admin?section=reports&reason=${k}${tab === "open" ? "" : `&tab=${tab}`}`}>{v}</Link>
+        ))}
+      </div>
+      {tab === "open" && reports.length > 1 && (
+        <form id="bulk-reports" action={bulkReportsAction} className="card bulk-bar">
+          <span className="small muted">Selected reports:</span>
+          <input name="resolution" className="input" style={{ maxWidth: 300, padding: "5px 10px" }} placeholder="Note" maxLength={1000} />
+          <button className="btn btn--sm btn--primary" type="submit" name="op" value="resolve">Resolve selected</button>
+          <button className="btn btn--sm" type="submit" name="op" value="dismiss">Dismiss selected</button>
+        </form>
+      )}
       {reports.length === 0 ? (
         <div className="empty">No {tab} reports.</div>
       ) : (
@@ -127,7 +161,9 @@ async function Reports({ tab: raw }: { tab?: string }) {
             <li key={r.id} className="card app-card">
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <span className="status-pill status-pill--rejected">{REPORT_REASONS[r.reason] ?? r.reason}</span>{" "}
+                  {tab === "open" && reports.length > 1 && <input type="checkbox" form="bulk-reports" name="ids" value={r.id} aria-label="Select report" style={{ marginRight: 8 }} />}
+                  {r.priority >= 3 && <span className="status-pill status-pill--rejected" style={{ marginRight: 6 }}>High priority</span>}
+                  <span className={`status-pill status-pill--${r.priority >= 3 ? "rejected" : "pending"}`}>{REPORT_REASONS[r.reason] ?? r.reason}</span>{" "}
                   {r.pageSlug ? (
                     <Link href={r.pageType ? pageHref(r.pageType, r.pageSlug) : "#"} style={{ fontWeight: 700 }}>{r.pageTitle || r.pageSlug}</Link>
                   ) : (
@@ -215,6 +251,81 @@ async function Users({ q }: { q: string }) {
         ))}
       </ul>
       {users.length === 0 && <div className="empty">No users found.</div>}
+    </>
+  );
+}
+
+/* ───────────── Overview (#36) ───────────── */
+
+function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+  return (
+    <div className="card stat-card">
+      <div className="card__body">
+        <div className="small muted">{label}</div>
+        <div className="stat-card__value">{value}</div>
+        {hint && <div className="small muted">{hint}</div>}
+      </div>
+    </div>
+  );
+}
+
+async function Overview() {
+  const s = await adminStats();
+  const maxSignups = Math.max(1, ...s.signupsByWeek.map((w) => w.n));
+  return (
+    <>
+      <div className="stat-grid">
+        <Stat label="Accounts" value={s.users} hint={`${s.verified} verified · ${s.banned} banned`} />
+        <Stat label="Live profiles" value={s.people} hint={`${s.pending} waiting for review`} />
+        <Stat label="Organizations" value={s.orgs} hint={`${s.claimed} managed by the organization`} />
+        <Stat label="Open reports" value={s.openReports} />
+        <Stat label="Approval rate (30 days)" value={s.approvalRate30 === null ? "—" : `${s.approvalRate30}%`} hint={`${s.decided30} decisions`} />
+        <Stat label="Average decision time" value={s.avgDecisionHours === null ? "—" : `${s.avgDecisionHours} h`} hint={s.oldestPendingHours === null ? "Nothing waiting" : `Oldest waiting: ${s.oldestPendingHours} h`} />
+        <Stat label="Email queue" value={s.outbox.queued} hint={s.outbox.failed ? `${s.outbox.failed} failed (check logs)` : "No failures"} />
+        <Stat label="Breach check failures" value={s.hibp?.failures ?? 0} hint={s.hibp?.lastFailureAt ? `Last: ${formatDateTime(s.hibp.lastFailureAt)}` : "Service reachable"} />
+      </div>
+      <section className="card" style={{ marginTop: 16 }}>
+        <div className="card__body">
+          <div className="card__title">Sign-ups per week</div>
+          {s.signupsByWeek.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>No sign-ups in the last 8 weeks.</p>
+          ) : (
+            <div className="bars" style={{ height: 140 }}>
+              {s.signupsByWeek.map((w) => (
+                <div key={String(w.week)} className="bars__col" title={`${formatDateTime(w.week)}: ${w.n}`}>
+                  <span className="bars__val">{w.n}</span>
+                  <span className="bars__bar" style={{ height: `${(w.n / maxSignups) * 100}%` }} />
+                  <span className="bars__label">{new Date(w.week).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="card" style={{ marginTop: 16 }}>
+        <div className="card__body">
+          <div className="card__title">Possible duplicate organizations</div>
+          {s.duplicates.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>None found.</p>
+          ) : (
+            <ul className="plain-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {s.duplicates.map((g, i) => (
+                <li key={i} style={{ padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                  {g.map((o, j) => (
+                    <span key={o.slug}>
+                      {j > 0 && " · "}
+                      <Link href={`/org/${o.slug}/manage#moderator`}>{o.title}</Link>
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+      <p className="small muted" style={{ marginTop: 14 }}>
+        Last maintenance run: {s.maintenance?.at ? formatDateTime(String(s.maintenance.at)) : "not yet"}.
+      </p>
     </>
   );
 }

@@ -23,7 +23,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
       </p>
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card__body">
-          <ReportForm slug={page?.slug ?? ""} reasons={REPORT_REASONS} signedIn={Boolean(user)} />
+          <ReportForm slug={page?.slug ?? ""} reasons={Object.fromEntries(Object.entries(REPORT_REASONS).filter(([k]) => k !== "appeal"))} signedIn={Boolean(user)} />
         </div>
       </div>
     </div>
