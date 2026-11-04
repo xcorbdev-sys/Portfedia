@@ -457,7 +457,18 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,
     });
     pageSlug = page.slug;
-    await notifyFollowers(page._id, user.id, { type: "page_update", text: `The ${page.title} page was updated.`, href: `/org/${page.slug}` });
+    // Moderators and the page's own admins can rename it here: the address changes and the old one redirects
+    const canRename = user.role === "admin" || user.role === "moderator" || page.orgAdmins.includes(user.id);
+    if (slug && canRename && title.length >= 2 && title !== page.title) {
+      const { renameOrg } = await import("../org-tools");
+      const res = await renameOrg(user, page.slug, title);
+      if (res.error) return { error: res.error };
+      if (res.slug) {
+        expireOrg(page.slug);
+        pageSlug = res.slug;
+      }
+    }
+    await notifyFollowers(page._id, user.id, { type: "page_update", text: `The ${title.length >= 2 && slug && canRename ? title : page.title} page was updated.`, href: `/org/${pageSlug}` });
     await notifyMentions(user, prevOrg?.body ?? "", page.body, { title: page.title, href: `/org/${page.slug}` });
   } catch (err) {
     if (err instanceof PermissionError) return { error: err.message };

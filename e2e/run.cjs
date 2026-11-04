@@ -221,6 +221,17 @@ async function createProfile(p, opts) {
   await createOrg(elif, { type: "saas", name: "Elif Forms", sector: "Productivity", tags: "SaaS", summary: "Forms for teams", founded: "2025", hq: "Ankara", employees: "1–10", website: "https://elif-forms.example" });
   check("upgraded account can add more SaaS projects", new URL(elif.url()).pathname === "/org/elif-forms");
 
+  // ── Renaming from the edit form (the page's own admin; moderators can too)
+  await elif.goto(`${BASE}/org/elif-forms/edit`);
+  await elif.fill("#title", "Elif Forms Pro");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/elif-forms-pro`);
+  check("page renamed from the edit form", (await elif.locator("h1:has-text('Elif Forms Pro')").count()) === 1);
+  check("old address redirects after renaming", (await anon.goto(`${BASE}/org/elif-forms`)) && new URL(anon.url()).pathname === "/org/elif-forms-pro");
+
   // ── A member shows their SaaS project in the Projects section of their profile
   await elif.goto(`${BASE}/edit`);
   await elif.click('button:has-text("Continue")');

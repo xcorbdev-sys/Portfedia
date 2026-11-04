@@ -31,6 +31,7 @@ export function OrgForm({
   business = false,
   featuredJobs = false,
   initialCategory = "company",
+  canRename = false,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -45,6 +46,8 @@ export function OrgForm({
   featuredJobs?: boolean;
   /** Category of a new page, e.g. "saas" when adding a SaaS project */
   initialCategory?: string;
+  /** Moderators and the page's own admins may rename an existing page */
+  canRename?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveSafely, undefined);
   const [step, setStep] = useState(0);
@@ -101,13 +104,16 @@ export function OrgForm({
         <div className="grid-2">
           <div className="field">
             <label htmlFor="title">Organization name *</label>
-            {page ? (
+            {page && !canRename ? (
               <>
                 <input id="title" className="input" value={page.title} disabled />
                 <span className="hint">Renaming a page is handled by moderators.</span>
               </>
             ) : (
-              <input id="title" name="title" className="input" required minLength={2} maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Software Inc." />
+              <>
+                <input id="title" name="title" className="input" required minLength={2} maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Software Inc." />
+                {page && <span className="hint">Changing the name also changes the page address; the old address keeps redirecting here.</span>}
+              </>
             )}
             {similar.length > 0 && (
               <div className="notice notice--info small" style={{ marginTop: 6 }}>
