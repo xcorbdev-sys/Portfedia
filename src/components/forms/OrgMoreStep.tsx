@@ -107,13 +107,13 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
       <ListEditor
         name="leadership"
         label="Leadership"
-        hint="Board members and executives. People with a Portfedia profile are linked automatically."
+        hint="Board members and executives. Start typing a name and pick the person from the list to link their Portfedia profile."
         addLabel="Add person"
         initial={page?.leadership ?? []}
-        blank={{ kind: "executive", name: "", role: "" }}
+        blank={{ kind: "executive", name: "", role: "", slug: "" }}
         fields={[
           { key: "kind", placeholder: "Group", kind: "select", options: [{ value: "executive", label: "Executive" }, { value: "board", label: "Board" }] },
-          { key: "name", placeholder: "Full name *", max: 120 },
+          { key: "name", placeholder: "Full name *", max: 120, kind: "person" },
           { key: "role", placeholder: "Role (e.g. CEO, Chair)", max: 120 },
         ]}
       />

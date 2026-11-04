@@ -12,6 +12,18 @@ async function moderator() {
   return user;
 }
 
+/** Admin → Home page: which profiles sit on the globe's dots. */
+export async function saveGlobeAction(fd: FormData): Promise<void> {
+  await moderator();
+  const { setGlobeSlugs } = await import("../pages");
+  const { revalidateTag } = await import("next/cache");
+  const res = await setGlobeSlugs(String(fd.get("people") ?? "").split(/[\n,]+/).slice(0, 30));
+  revalidateTag("lists", { expire: 0 });
+  revalidatePath("/");
+  const msg = `Saved ${res.saved.length} profile${res.saved.length === 1 ? "" : "s"} on the globe.` + (res.skipped.length ? ` Not added (no public profile with a photo): ${res.skipped.join(", ")}.` : "");
+  redirect(`/admin?section=home&${res.skipped.length ? "error" : "done"}=${encodeURIComponent(msg)}`);
+}
+
 export type CollectionState = { error?: string; ok?: string } | undefined;
 
 export async function saveCollectionAction(_: CollectionState, fd: FormData): Promise<CollectionState> {

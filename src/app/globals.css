@@ -653,4 +653,11 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
   .open-ribbon__top { font-size: 0.55rem; }
   .open-ribbon__what { font-size: 0.62rem; }
 }
-.project-card__img--logo { object-fit: contain; padding: 18px; background: var(--surface-2); }
+.project-card__img--logo { object-fit: contain; object-position: center; padding: 28px 36px; background: #fff; border-bottom: 1px solid var(--border); image-rendering: auto; }
+.person-pick { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.person-pick__linked { color: var(--ok); }
+.stats-hide { display: inline; }
+.stats-hide .btn { padding: 2px 6px; font-size: 0.75rem; color: var(--text-3); }
+.globe-picks { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+.globe-picks li { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; }
+.globe-picks .thumb { width: 28px; height: 28px; }

@@ -20,7 +20,7 @@ import {
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
-import { featureUnlocked, makersOf, talksAtEvent } from "@/lib/pages";
+import { featureUnlocked, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -77,6 +77,7 @@ export default async function OrgPage({ params }: Props) {
   const isInvestor = page.category === "investor";
   const isSaas = page.category === "saas";
   const makers = isSaas ? await makersOf(page.slug) : [];
+  const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
@@ -144,9 +145,9 @@ export default async function OrgPage({ params }: Props) {
             <div className="notice notice--info" style={{ marginBottom: 18 }}>
               This is a <b>draft</b> page, created automatically when a member added {page.title} to their profile.{" "}
               {user ? (
-                <Link href={`/org/${page.slug}/edit`}>Help complete it.</Link>
+                <Link href={`/org/${page.slug}/edit`}>Is it yours? Complete it.</Link>
               ) : (
-                <Link href={`/login?next=/org/${page.slug}/edit`}>Log in to help complete it.</Link>
+                <Link href={`/login?next=/org/${page.slug}/edit`}>Is it yours? Log in to complete it.</Link>
               )}
             </div>
           )}
@@ -321,7 +322,7 @@ export default async function OrgPage({ params }: Props) {
             </section>
           )}
           <ProductsSection page={page} />
-          <LeadershipSection page={page} existing={existing} />
+          <LeadershipSection page={page} existing={existing} byName={leaderLinks} />
           <JobsSection page={page} />
           {page.fundingRounds.length > 0 && (
             <section className="p-section" id="funding">

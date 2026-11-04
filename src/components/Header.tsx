@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, ClipboardCheck, LogIn, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from "lucide-react";
+import { Bell, Building2, ClipboardCheck, LogIn, LogOut, Menu, Plus, Rocket, Search, Settings, ShieldCheck, User } from "lucide-react";
 import { unreadCount } from "@/lib/notifications";
 import { inboxCountForPage } from "@/lib/feedback";
 import { Inbox } from "lucide-react";
@@ -131,6 +131,8 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                     {inbox > 0 && <span className="menu__badge">{inbox}</span>}
                   </Link>
                 )}
+                <Link href="/my-pages#companies"><Building2 size={16} /> My companies</Link>
+                <Link href="/my-pages#saas"><Rocket size={16} /> My SaaS</Link>
                 <Link href="/create"><Plus size={16} /> New profile</Link>
                 <Link href="/account"><Settings size={16} /> Account</Link>
                 <form action={logoutAction}>

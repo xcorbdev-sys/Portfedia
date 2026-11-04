@@ -25,6 +25,8 @@ const UserSchema = new Schema<any>(
     // #96: plan for people (set by admins until payments exist)
     plan: { type: new Schema<any>({ name: { type: String, enum: ["free", "pro"], default: "free" }, until: { type: Date, default: null } }, { _id: false }), default: () => ({}) },
     banReason: { type: String, default: "" },
+    // The owner chose to hide the "Profile views" card on their profile
+    hideViewStats: { type: Boolean, default: false },
     emailPrefs: {
       type: new Schema<any>({ profileUpdates: { type: Boolean, default: true } }, { _id: false }),
       default: () => ({}),

@@ -345,6 +345,38 @@ export async function listSectors() {
   return rows.map((r) => ({ sector: r._id as string, orgs: r.orgs as number, people: r.people as number }));
 }
 
+/** Company pages and SaaS projects the member owns (created, or manages as admin). */
+export async function listMyOrgPages(userId: string) {
+  await connectDB();
+  const oid = new Types.ObjectId(userId);
+  const rows = await Page.find({ type: { $in: ["org", "school"] }, $or: [{ orgAdmins: oid }, { createdById: oid }] }, { ...CARD_FIELDS, status: 1, category: 1, orgAdmins: 1 })
+    .sort({ title: 1 })
+    .limit(100)
+    .lean();
+  const items = rows.map((r) => ({ card: toCard(r), category: (r.category as string) ?? "company", isAdmin: ((r.orgAdmins ?? []) as unknown[]).map(String).includes(userId) }));
+  return { companies: items.filter((x) => x.category !== "saas"), saas: items.filter((x) => x.category === "saas") };
+}
+
+export async function viewStatsHidden(userId: string): Promise<boolean> {
+  await connectDB();
+  const u = await User.findById(userId, { hideViewStats: 1 }).lean<{ hideViewStats?: boolean }>();
+  return Boolean(u?.hideViewStats);
+}
+
+/** Profiles for names typed without picking a person: linked only when exactly one profile has that name. */
+export async function personSlugsByName(names: string[]): Promise<Record<string, string>> {
+  if (!names.length) return {};
+  await connectDB();
+  const keys = new Map(names.map((n) => [searchKey(n), n]));
+  const rows = await Page.find({ type: "person", titleKey: { $in: [...keys.keys()] }, ...PUBLIC_FILTER }, { slug: 1, titleKey: 1 }).lean<{ slug: string; titleKey: string }[]>();
+  const out: Record<string, string> = {};
+  for (const [key, name] of keys) {
+    const hits = rows.filter((r) => r.titleKey === key);
+    if (hits.length === 1) out[name] = hits[0].slug;
+  }
+  return out;
+}
+
 /** SaaS projects a member made or manages: they can show them on their profile. */
 export async function listMySaas(userId: string) {
   await connectDB();
@@ -359,7 +391,7 @@ export async function listMySaas(userId: string) {
     summary: r.summary ?? "",
     website: r.infobox?.website ?? "",
     year: r.infobox?.founded ?? null,
-    logo: r.image?.thumbUrl || r.image?.url || "",
+    logo: r.image?.url || "",
   }));
 }
 
@@ -375,7 +407,28 @@ export async function linkedProjectPages(slugs: string[]) {
   if (!slugs.length) return {};
   await connectDB();
   const rows = await Page.find({ slug: { $in: slugs }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1 }).lean<{ slug: string; title: string; image?: StoredImage | null }[]>();
-  return Object.fromEntries(rows.map((r) => [r.slug, { title: r.title, logo: r.image?.thumbUrl || r.image?.url || "" }]));
+  // The full-size logo (400 px): the 96 px thumbnail looks blurry stretched over a card
+  return Object.fromEntries(rows.map((r) => [r.slug, { title: r.title, logo: r.image?.url || "" }]));
+}
+
+export const GLOBE_SPOTS = 9;
+
+/** Profiles an admin placed on the home page globe, in order (one per dot). */
+export async function globeSlugs(): Promise<string[]> {
+  const { getMeta } = await import("./maintenance");
+  return ((await getMeta<string[]>("globePeople")) ?? []).slice(0, GLOBE_SPOTS);
+}
+
+/** Saves the admin's choice; only published profiles with a photo can be placed. Returns the addresses that didn't work. */
+export async function setGlobeSlugs(input: string[]): Promise<{ saved: string[]; skipped: string[] }> {
+  await connectDB();
+  const wanted = [...new Set(input.map((x) => x.trim().replace(/^https?:\/\/[^/]+/, "").replace(/^\/+|\/+$/g, "").replace(/^@/, "").toLowerCase()).filter(Boolean))].slice(0, GLOBE_SPOTS);
+  const rows = await Page.find({ type: "person", slug: { $in: wanted }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1 }).lean<{ slug: string }[]>();
+  const ok = new Set(rows.map((r) => r.slug));
+  const saved = wanted.filter((s) => ok.has(s));
+  const { setMeta } = await import("./maintenance");
+  await setMeta("globePeople", saved);
+  return { saved, skipped: wanted.filter((s) => !ok.has(s)) };
 }
 
 export async function homeData() {
@@ -389,11 +442,14 @@ export async function homeData() {
       .sort({ followerCount: -1, updatedAt: -1 })
       .limit(8)
       .lean(),
-    // Profile photos on the globe of the home page: members with a photo, most recently active first
-    Page.find({ type: "person", "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1, "infobox.occupation": 1 })
-      .sort({ updatedAt: -1 })
-      .limit(9)
-      .lean(),
+    // Profile photos on the globe of the home page: chosen by an admin (Admin → Home page)
+    globeSlugs().then((slugs) =>
+      slugs.length
+        ? Page.find({ type: "person", slug: { $in: slugs }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1, "infobox.occupation": 1 })
+            .lean()
+            .then((rows) => slugs.map((s) => rows.find((r) => r.slug === s)).filter(Boolean))
+        : [],
+    ),
   ]);
   return {
     stats: { people, orgs, sectors: sectors.length },
@@ -818,15 +874,26 @@ export function isProtected(page: Pick<PageDoc, "protectedUntil">): boolean {
   return Boolean(page.protectedUntil && new Date(page.protectedUntil).getTime() > Date.now());
 }
 
-export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type" | "orgAdmins" | "protectedUntil">): boolean {
+/** An empty page made automatically (someone added the organization to their profile) and not owned by anyone yet. */
+export function isUnownedDraft(page: { status: string; body?: string; createdById?: unknown; orgAdmins?: unknown[] }): boolean {
+  return page.status === "draft" && !page.body && !page.createdById && !(page.orgAdmins ?? []).length;
+}
+
+/**
+ * Who may edit an organization page: only its owner. That is the organization's admins (verified with a work
+ * email, or the maker of a SaaS project), or the member who created the page as long as nobody has claimed it.
+ * An empty automatic draft may be filled in by a member, who then becomes its creator. Moderators can edit anything.
+ */
+export function canEditOrg(
+  user: SessionUser | null,
+  page: Pick<PageDoc, "status" | "type" | "orgAdmins" | "protectedUntil"> & { createdById?: unknown; body?: string },
+): boolean {
   if (!user || page.type === "person") return false;
   if (user.role === "admin" || user.role === "moderator") return true;
-  // Protected pages (after vandalism) can only be edited by moderators and the organization's admins
-  if (isProtected(page)) return page.orgAdmins.includes(user.id);
-  // Claimed pages are edited only by the organization's admins (verified with a work email);
-  // unclaimed pages are maintained by the community.
-  if (page.status === "claimed") return page.orgAdmins.includes(user.id);
-  return true;
+  if ((page.orgAdmins ?? []).map(String).includes(user.id)) return true;
+  if (page.status === "claimed" || isProtected(page)) return false;
+  if (page.createdById) return String(page.createdById) === user.id;
+  return isUnownedDraft(page);
 }
 
 export function isOrgAdmin(user: SessionUser | null, page: Pick<PageDoc, "orgAdmins">): boolean {
@@ -871,10 +938,10 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     const ref = await ensureOrgPage({ title: input.title, type: input.type }, user.id);
     page = await Page.findOne({ slug: ref.slug });
   }
-  if (!canEditOrg(user, page)) throw new PermissionError("You don't have permission to edit this page");
+  if (!canEditOrg(user, page)) throw new PermissionError("Only the owner of this page can edit it. If something is wrong, use Report.");
 
-  // A page created with the form (not an existing page being edited) counts toward the member's limit
-  const createdNow = !slug && page.status === "draft" && !page.body && !page.createdById;
+  // Filling in an empty page (new, or made automatically) makes the member its creator and counts toward their limit
+  const createdNow = isUnownedDraft(page);
   if (createdNow) {
     const { pageQuota, quotaKind, quotaMessage } = await import("./quotas");
     const quota = await pageQuota(user);

@@ -36,7 +36,7 @@ export function ProductsSection({ page }: { page: PageDoc }) {
   );
 }
 
-export function LeadershipSection({ page, existing }: { page: PageDoc; existing: Map<string, PageType> }) {
+export function LeadershipSection({ page, existing, byName = {} }: { page: PageDoc; existing: Map<string, PageType>; byName?: Record<string, string> }) {
   if (page.leadership.length === 0) return null;
   const groups = [
     { key: "executive", title: "Executives" },
@@ -58,7 +58,9 @@ export function LeadershipSection({ page, existing }: { page: PageDoc; existing:
                     {people.map((l) => (
                       <tr key={l.slug + l.role}>
                         <th>{l.role || "—"}</th>
-                        <td>{linkIf(existing, l.slug, l.name)}</td>
+                        <td>
+                          {existing.has(l.slug) ? linkIf(existing, l.slug, l.name) : byName[l.name] ? <Link href={`/${byName[l.name]}`}>{l.name}</Link> : l.name}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
-import { countPendingApplications, listApplications, paidPlansEnabled, planActive } from "@/lib/pages";
+import { countPendingApplications, getCards, globeSlugs, GLOBE_SPOTS, listApplications, paidPlansEnabled, planActive } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
 import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, confirmEmailAction, setUpgradedAction, setUserPlanAction, setVerifiedAction } from "@/lib/actions/moderation";
 import { adminStats } from "@/lib/stats";
@@ -10,6 +10,7 @@ import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
 import { AdminImport } from "@/components/AdminImport";
+import { saveGlobeAction } from "@/lib/actions/admin";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
@@ -18,7 +19,7 @@ type SP = { section?: string; tab?: string; q?: string; error?: string; reason?:
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
   const sp = await searchParams;
-  const section = ["reports", "users", "import", "overview"].includes(sp.section ?? "") ? sp.section! : "applications";
+  const section = ["reports", "users", "import", "overview", "home"].includes(sp.section ?? "") ? sp.section! : "applications";
   const [pendingApps, openReports] = await Promise.all([countPendingApplications(), countOpenReports()]);
 
   return (
@@ -31,6 +32,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin?section=reports" aria-current={section === "reports" ? "page" : undefined}>Reports ({openReports})</Link>
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
+        <Link href="/admin?section=home" aria-current={section === "home" ? "page" : undefined}>Home page</Link>
       </nav>
       {sp.error && <div className="notice notice--error" style={{ marginBottom: 14 }}>{sp.error}</div>}
       {sp.done && <div className="notice notice--ok" style={{ marginBottom: 14 }}>{sp.done}</div>}
@@ -39,6 +41,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {section === "reports" && <Reports tab={sp.tab} reason={sp.reason} />}
       {section === "users" && <Users q={sp.q ?? ""} />}
       {section === "import" && <AdminImport />}
+      {section === "home" && <HomeGlobe />}
     </div>
   );
 }
@@ -211,6 +214,40 @@ async function Reports({ tab: raw, reason }: { tab?: string; reason?: string }) 
         </ul>
       )}
     </>
+  );
+}
+
+/* ───────────── Home page globe ───────────── */
+
+async function HomeGlobe() {
+  const slugs = await globeSlugs();
+  const people = await getCards(slugs);
+  return (
+    <section className="card">
+      <div className="card__body">
+        <h2 className="card__title">Profiles on the home page globe</h2>
+        <p className="small muted">
+          Up to {GLOBE_SPOTS} profiles, one on each blue dot, in this order. Only published profiles with a photo can be placed.
+          Write one profile address per line (e.g. <code>hakan-yetis</code> or a link to the profile). Leave empty to show plain dots.
+        </p>
+        {people.length > 0 && (
+          <ul className="globe-picks">
+            {people.map((p, i) => (
+              <li key={p.slug}>
+                <span className="muted small">{i + 1}</span>
+                <Thumb image={p.image} name={p.title} variant="round" />
+                <Link href={`/${p.slug}`}>{p.title}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form action={saveGlobeAction} className="form" style={{ gap: 10 }}>
+          <label htmlFor="globe-people" className="visually-hidden">Profile addresses</label>
+          <textarea id="globe-people" name="people" className="textarea textarea--plain" rows={9} defaultValue={slugs.join("\n")} placeholder={"hakan-yetis\nayse-demir"} />
+          <button className="btn btn--primary" type="submit" style={{ width: "fit-content" }}>Save</button>
+        </form>
+      </div>
+    </section>
   );
 }
 

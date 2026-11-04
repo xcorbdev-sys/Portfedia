@@ -47,8 +47,8 @@ export class UploadError extends Error {}
 export const thumbKeyOf = (key: string) => key.replace(/(\.[a-z]+)$/, "_t$1");
 
 /**
- * Validates, resizes and re-encodes an upload: 400×400 WebP (photos are cropped to a square,
- * logos fit inside). Re-encoding also strips metadata such as GPS coordinates from phone photos.
+ * Validates, resizes and re-encodes an upload: photos 400×400 WebP (cropped to a square), logos fit
+ * inside 800×400, covers 1500×500. Re-encoding also strips metadata such as GPS coordinates from phone photos.
  */
 export async function saveImage(file: File, kind: "photo" | "logo" | "cover" = "photo"): Promise<StoredImage> {
   if (file.size > MAX_IMAGE_BYTES) throw new UploadError("Images must be 5 MB or smaller.");
@@ -65,11 +65,12 @@ export async function saveImage(file: File, kind: "photo" | "logo" | "cover" = "
     buf = await sharp(input, { limitInputPixels: 50_000_000 })
       .rotate() // respect EXIF orientation before it is stripped
       .resize(
-        kind === "cover" ? 1500 : OUTPUT_SIZE,
+        // Logos keep their shape and get more room (wide word marks stay sharp); photos are square, covers wide
+        kind === "cover" ? 1500 : kind === "logo" ? OUTPUT_SIZE * 2 : OUTPUT_SIZE,
         kind === "cover" ? 500 : OUTPUT_SIZE,
         kind === "logo" ? { fit: "inside", withoutEnlargement: true } : { fit: "cover", position: "attention" },
       )
-      .webp({ quality: 82 })
+      .webp({ quality: kind === "logo" ? 92 : 82 })
       .toBuffer();
   } catch {
     throw new UploadError("This image could not be read. Please try another file.");
@@ -78,7 +79,11 @@ export async function saveImage(file: File, kind: "photo" | "logo" | "cover" = "
   const hash = createHash("sha256").update(buf).digest("hex");
   const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kindInfo.ext}`;
   // Small variant for avatars and lists, so pages don't download the 400px original everywhere
-  const thumb = await sharp(buf).resize(96, 96, kind === "logo" ? { fit: "inside" } : { fit: "cover" }).webp({ quality: 78 }).toBuffer();
+  // Logos get a sharper thumbnail (192 px) because they are often shown on high-density screens
+  const thumb = await sharp(buf)
+    .resize(kind === "logo" ? 192 : 96, kind === "logo" ? 192 : 96, kind === "logo" ? { fit: "inside", withoutEnlargement: true } : { fit: "cover" })
+    .webp({ quality: kind === "logo" ? 90 : 78 })
+    .toBuffer();
   const thumbKey = thumbKeyOf(key);
 
   if (r2Configured()) {

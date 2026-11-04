@@ -221,6 +221,14 @@ export async function deleteAccountAction(_: FormState, fd: FormData): Promise<F
   redirect("/?deleted=1");
 }
 
+/** Shows or hides the "Profile views" card the owner sees on their own profile. */
+export async function viewStatsCardAction(fd: FormData): Promise<void> {
+  const user = await me();
+  await connectDB();
+  await User.updateOne({ _id: user.id }, { $set: { hideViewStats: fd.get("show") !== "1" } });
+  redirect(safeNext(fd.get("back"), "/account#notifications"));
+}
+
 export async function revokeSessionAction(fd: FormData): Promise<void> {
   const user = await me();
   await revokeSession(user.id, str(fd.get("id"), 40));

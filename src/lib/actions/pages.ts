@@ -132,7 +132,15 @@ function parseOrgExtras(fd: FormData) {
     parent: parentTitle && slugify(parentTitle) ? linked(parentTitle) : null,
     acquisitions: parseRows<Acquisition>(fd, "acquisitions", 50, (r) => (str(r.title, 160) && slugify(str(r.title, 160)) ? { ...linked(str(r.title, 160)), year: year(r.year), amount: str(r.amount, 60) } : null)),
     leadership: parseRows<Leader>(fd, "leadership", 40, (r) =>
-      str(r.name, 120) && slugify(str(r.name, 120)) ? { name: str(r.name, 120), slug: slugify(str(r.name, 120)), role: str(r.role, 120), kind: r.kind === "board" ? "board" : "executive" } : null,
+      str(r.name, 120) && slugify(str(r.name, 120))
+        ? {
+            name: str(r.name, 120),
+            // A person picked from the suggestions keeps their profile's address; otherwise the name decides it
+            slug: /^[a-z0-9-]{2,100}$/.test(String(r.slug ?? "")) ? String(r.slug) : slugify(str(r.name, 120)),
+            role: str(r.role, 120),
+            kind: r.kind === "board" ? "board" : "executive",
+          }
+        : null,
     ),
     formerNames: String(fd.get("formerNames") ?? "").split(",").map((x) => str(x, 160)).filter(Boolean).slice(0, 10),
     milestones: parseRows<Milestone>(fd, "milestones", 60, (r) => (str(r.text, 300) ? { year: year(r.year), text: str(r.text, 300) } : null)).sort((a, b) => (a.year ?? 0) - (b.year ?? 0)),

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listSessions, requireUser } from "@/lib/auth";
-import { revokeOtherSessionsAction, revokeSessionAction } from "@/lib/actions/auth";
+import { revokeOtherSessionsAction, revokeSessionAction, viewStatsCardAction } from "@/lib/actions/auth";
 import { formatDateTime } from "@/lib/site";
-import { getPageBySlug, getPersonPageOf } from "@/lib/pages";
+import { getPageBySlug, getPersonPageOf, viewStatsHidden } from "@/lib/pages";
 import { claimDomainOf } from "@/lib/org-admin";
 import { WorkVerifyForm } from "@/components/forms/OrgAdminForms";
 import { siteUrl } from "@/lib/site";
@@ -32,7 +32,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const user = await requireUser("/account");
   const page = await getPersonPageOf(user.id);
   const { reset } = await searchParams;
-  const sessions = await listSessions(user.id);
+  const [sessions, hideStats] = await Promise.all([listSessions(user.id), viewStatsHidden(user.id)]);
   const host = siteUrl().replace(/^https?:\/\//, "");
   // Domain each position can be verified with (work email at that organization)
   const positions = page
@@ -144,6 +144,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
       <Section id="notifications" title="Email notifications">
         <EmailPrefsForm profileUpdates={user.emailPrefs.profileUpdates} />
+        <form action={viewStatsCardAction} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
+          <input type="hidden" name="show" value={hideStats ? "1" : "0"} />
+          <span className="small">&ldquo;Profile views&rdquo; card on your profile (only you see it): <b>{hideStats ? "hidden" : "shown"}</b></span>
+          <button className="btn btn--sm" type="submit">{hideStats ? "Show it again" : "Hide it"}</button>
+        </form>
       </Section>
 
       <Section id="data" title="Your data">

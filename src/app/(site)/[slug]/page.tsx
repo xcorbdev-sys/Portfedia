@@ -14,7 +14,7 @@ import { slugify } from "@/lib/slug";
 import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
 import { hasThanked, mutualConnections } from "@/lib/social";
-import { featureUnlocked, getPersonPageOf, getUserPlan, linkedProjectPages } from "@/lib/pages";
+import { featureUnlocked, getPersonPageOf, getUserPlan, linkedProjectPages, viewStatsHidden } from "@/lib/pages";
 import { countView } from "@/lib/views";
 import { StatsCard } from "@/components/StatsCard";
 import { Users as UsersIcon } from "lucide-react";
@@ -111,6 +111,7 @@ export default async function PersonPage({ params }: Props) {
   const ownerViewing = Boolean(user && user.id === page.ownerId);
   await countView(page._id, ownerViewing || Boolean(user && (user.role === "admin" || user.role === "moderator")));
   const linkedProjects = await linkedProjectPages(page.projects.map((x) => x.pageSlug).filter((x): x is string => Boolean(x)));
+  const ownerHidesStats = ownerViewing ? await viewStatsHidden(user!.id) : false;
   const ownerPro = ownerViewing ? featureUnlocked(await getUserPlan(user!.id), "pro") : false;
   const isOwner = Boolean(user && (user.id === page.ownerId || user.role === "admin"));
   const reserved = [
@@ -344,7 +345,7 @@ export default async function PersonPage({ params }: Props) {
 
         <aside className="profile__aside" aria-label="Key facts">
           {isOwner && user?.id === page.ownerId && <CompletenessCard page={page} />}
-          {ownerViewing && <StatsCard pageId={page._id} enabled={ownerPro} />}
+          {ownerViewing && !ownerHidesStats && <StatsCard pageId={page._id} enabled={ownerPro} hideBack={`/${page.slug}`} />}
           <div className="card">
             <div className="card__body">
               <div className="card__title">Key Facts</div>

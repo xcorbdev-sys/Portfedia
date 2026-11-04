@@ -6,7 +6,55 @@ import { Upload } from "lucide-react";
 import type { PageDoc } from "@/lib/types";
 import { AddButton, RemoveButton, useList } from "./shared";
 
-type FieldSpec = { key: string; placeholder: string; kind?: "year" | "url" | "text" | "select" | "textarea"; options?: { value: string; label: string }[]; max?: number };
+type FieldSpec = { key: string; placeholder: string; kind?: "year" | "url" | "text" | "select" | "textarea" | "person"; options?: { value: string; label: string }[]; max?: number };
+
+type PersonOption = { slug: string; title: string; occupation: string };
+
+/**
+ * Name field that suggests people with a Portfedia profile while typing. Picking one stores the profile's
+ * address in the row's "slug" field, so the name links to that exact profile.
+ */
+function PersonNameInput({ value, slug, placeholder, max, onChange }: { value: string; slug: string; placeholder: string; max?: number; onChange: (name: string, slug: string) => void }) {
+  const [options, setOptions] = useState<PersonOption[]>([]);
+  const [listId] = useState(() => `people-${Math.random().toString(36).slice(2, 8)}`);
+  async function lookup(q: string) {
+    if (q.trim().length < 2) return setOptions([]);
+    try {
+      const res = await fetch(`/api/people?q=${encodeURIComponent(q)}`);
+      if (res.ok) setOptions(await res.json());
+    } catch {
+      /* suggestions are optional */
+    }
+  }
+  return (
+    <span className="person-pick">
+      <input
+        className="input"
+        value={value}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        maxLength={max ?? 120}
+        list={listId}
+        onChange={(e) => {
+          const name = e.target.value;
+          const match = options.find((o) => o.title === name || `${o.title} · ${o.occupation}` === name);
+          onChange(match ? match.title : name, match ? match.slug : "");
+          void lookup(name);
+        }}
+      />
+      <datalist id={listId}>
+        {options.map((o) => (
+          <option key={o.slug} value={o.occupation ? `${o.title} · ${o.occupation}` : o.title} />
+        ))}
+      </datalist>
+      {slug && (
+        <a className="person-pick__linked small" href={`/${slug}`} target="_blank" rel="noopener">
+          ✓ linked to /{slug}
+        </a>
+      )}
+    </span>
+  );
+}
 type Row = Record<string, string>;
 
 const toRow = (o: object): Row => Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, v === null || v === undefined ? "" : String(v)]));
@@ -41,6 +89,15 @@ export function ListEditor({ name, label, hint, addLabel, fields, initial, blank
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+              ) : f.kind === "person" ? (
+                <PersonNameInput
+                  key={f.key}
+                  value={row[f.key]}
+                  slug={row.slug ?? ""}
+                  placeholder={f.placeholder}
+                  max={f.max}
+                  onChange={(name, slug) => list.update(i, { [f.key]: name, slug })}
+                />
               ) : f.kind === "textarea" ? (
                 <textarea key={f.key} className="textarea textarea--plain list-row__wide" style={{ minHeight: 60 }} value={row[f.key]} maxLength={f.max ?? 600} placeholder={f.placeholder} onChange={(e) => list.update(i, { [f.key]: e.target.value })} />
               ) : (

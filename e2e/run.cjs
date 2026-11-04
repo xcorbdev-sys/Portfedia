@@ -374,17 +374,16 @@ async function createProfile(p, opts) {
   await ayse.goto(`${BASE}/notifications`);
   check("mention notification", (await ayse.locator("text=Mert Kaya mentioned you on Northwind Robotics.").count()) === 1);
 
-  // ── Community page: website lock, vandalism and restore
+  // ── Only a page's owner can edit it; history and restore
   await ayse.goto(`${BASE}/org/bluefin-bank/edit`);
-  check("website is locked for community editors", await ayse.locator("#website").isDisabled());
-  await ayse.fill("#summary", "VANDALISED");
-  await ayse.click('button:has-text("Continue")');
-  await ayse.click('button:has-text("Continue")');
-  await ayse.click('button:has-text("Continue")');
-  await ayse.click('button:has-text("Save changes")');
-  await ayse.waitForURL(`${BASE}/org/bluefin-bank`);
+  check("only the owner can edit an organization page", new URL(ayse.url()).pathname === "/org/bluefin-bank" && (await ayse.locator('a[href="/org/bluefin-bank/edit"]').count()) === 0);
+  await admin.goto(`${BASE}/org/bluefin-bank/edit`);
+  await admin.fill("#summary", "VANDALISED");
+  for (let i = 0; i < 3; i++) await admin.click('button:has-text("Continue")');
+  await admin.click('button:has-text("Save changes")');
+  await admin.waitForURL(`${BASE}/org/bluefin-bank`);
   await admin.goto(`${BASE}/org/bluefin-bank/history`);
-  await admin.locator(".history li a").nth(1).click(); // the version before the vandalism
+  await admin.locator(".history li a").nth(1).click(); // the version before the bad edit
   await admin.waitForURL(/history\/[a-f0-9]{24}/);
   check("revision diff page", (await admin.locator("text=Restore this version").count()) === 1);
   await admin.click('button:has-text("Restore this version")');
@@ -392,8 +391,8 @@ async function createProfile(p, opts) {
   await anon.goto(`${BASE}/org/bluefin-bank`);
   check("restored previous version", (await anon.locator("text=VANDALISED").count()) === 0 && (await anon.locator("text=A retail bank").count()) > 0);
 
-  // ── Link spam from a new account is refused
-  await mert.goto(`${BASE}/org/bluefin-bank/edit`);
+  // ── Link spam from a new account is refused (on a page they own)
+  await mert.goto(`${BASE}/org/northwind-robotics/edit`);
   await mert.click('button:has-text("Continue")');
   await mert.fill("#body", Array.from({ length: 10 }, (_, i) => `https://spam${i}.example/x`).join("\n"));
   await mert.click('button:has-text("Continue")');
@@ -402,7 +401,7 @@ async function createProfile(p, opts) {
   await mert.waitForSelector(".notice--error");
   check("link spam refused and reported", /links per day/.test(await mert.locator(".notice--error").innerText()));
 
-  // ── Page protection
+  // ── Page protection: even the organization's own admins see the notice; members can't edit
   await admin.goto(`${BASE}/org/bluefin-bank/edit`);
   for (let i = 0; i < 3; i++) await admin.click('button:has-text("Continue")');
   await admin.selectOption("#protectDays", "7");
@@ -494,6 +493,44 @@ async function createProfile(p, opts) {
   await mert.click("button[type=submit]");
   await mert.waitForSelector(".notice--error");
   check("banned user can't log in", /suspended/.test(await mert.locator(".notice--error").innerText()));
+
+  // ── Home page globe: only profiles an admin picks
+  await anon.goto(`${BASE}/`);
+  check("globe shows no photos until an admin picks them", (await anon.locator(".globe-avatar").count()) === 0);
+  await admin.goto(`${BASE}/admin?section=home`);
+  await admin.fill("#globe-people", "ayse-demir\nno-such-person");
+  await admin.click('button:has-text("Save")');
+  await admin.waitForSelector(".notice--error");
+  check("admin picks globe profiles (invalid ones are reported)", /Saved 1 profile/.test(await admin.locator(".notice--error").innerText()) && /no-such-person/.test(await admin.locator(".notice--error").innerText()));
+  await anon.goto(`${BASE}/`);
+  check("picked profile is on the globe", (await anon.locator('.globe-avatar[href="/ayse-demir"]').count()) === 1 && (await anon.locator(".globe-avatar").count()) === 1);
+
+  // ── My pages: a member's own companies and SaaS projects
+  await elif.goto(`${BASE}/my-pages`);
+  check("my pages lists own companies and SaaS projects", (await elif.locator('#companies a[href="/org/sahin-consulting/edit"]').count()) === 1 && (await elif.locator('#saas a[href="/org/elif-analytics/edit"]').count()) === 1);
+
+  // ── The owner can hide the profile views card
+  await ayse.goto(`${BASE}${aysePath}`);
+  await ayse.click('.stats-hide button');
+  const hidden = await ayse.locator(".stats-hide").waitFor({ state: "detached", timeout: 10000 }).then(() => true, () => false);
+  check("profile views card can be hidden", hidden && (await ayse.locator(".card__title:has-text('Profile views')").count()) === 0);
+  await ayse.goto(`${BASE}/account`);
+  await ayse.click('button:has-text("Show it again")');
+  await ayse.goto(`${BASE}${aysePath}`);
+  check("and shown again from Account", (await ayse.locator(".card__title:has-text('Profile views')").count()) === 1);
+
+  // ── Leadership names link to the person's profile
+  const people = await (await anon.request.get(`${BASE}/api/people?q=elif`)).json();
+  check("people suggestions for leadership", people.some((p) => p.slug === "elif-sahin"));
+  await elif.goto(`${BASE}/org/sahin-consulting/edit`);
+  for (let i = 0; i < 2; i++) await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Add person")');
+  await visible(elif).getByPlaceholder("Full name *").fill("Elif Sahin");
+  await visible(elif).getByPlaceholder("Role (e.g. CEO, Chair)").fill("Founder");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/sahin-consulting`);
+  check("leadership name links to the profile", (await elif.locator('#leadership a[href="/elif-sahin"]').count()) === 1);
 
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
