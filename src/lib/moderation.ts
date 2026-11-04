@@ -54,6 +54,14 @@ const FIELD_LABELS: Record<string, string> = {
   educations: "Education",
   sources: "Sources",
   fundingRounds: "Funding",
+  projects: "Projects",
+  publications: "Publications",
+  awards: "Awards & certifications",
+  talks: "Talks & events",
+  patents: "Patents",
+  volunteering: "Volunteering",
+  languageLevels: "Languages",
+  openTo: "Open to",
   noindex: "Search engine visibility",
 };
 
@@ -64,7 +72,7 @@ function show(v: unknown): string {
       .map((x) =>
         typeof x === "object" && x
           ? Object.entries(x)
-              .filter(([k, val]) => val !== "" && val !== null && !["orgSlug", "schoolSlug", "verification", "verifiedVia"].includes(k))
+              .filter(([k, val]) => val !== "" && val !== null && !["orgSlug", "schoolSlug", "verification", "verifiedVia", "id", "image"].includes(k))
               .map(([, val]) => (Array.isArray(val) ? val.map((x) => (typeof x === "object" && x ? (x as { title?: string }).title : String(x))).join(", ") : String(val)))
               .join(" · ")
           : String(x),
@@ -123,7 +131,13 @@ export async function restoreRevision(user: SessionUser, page: PageDoc, revId: s
   // The website stays locked (it decides who can claim the page)
   if (page.type !== "person" && !isMod && !page.orgAdmins.includes(user.id) && doc.infobox?.website) infobox.website = doc.infobox.website;
   const fields: Record<string, unknown> = { summary: s.summary ?? "", tags: s.tags ?? [], infobox, body: s.body ?? "", sources: s.sources ?? [], outLinks: s.outLinks ?? [] };
-  if (page.type === "person") Object.assign(fields, { experiences: s.experiences ?? [], educations: s.educations ?? [], noindex: Boolean(s.noindex) });
+  if (page.type === "person") {
+    Object.assign(fields, { experiences: s.experiences ?? [], educations: s.educations ?? [], noindex: Boolean(s.noindex) });
+    // Restored lists keep their text; project images that no longer exist are dropped
+    const liveKeys = new Set((doc.projects ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean));
+    for (const k of ["publications", "awards", "talks", "patents", "volunteering", "languageLevels", "openTo"]) if (k in s) fields[k] = s[k];
+    if ("projects" in s) fields.projects = (s.projects ?? []).map((x: { image?: { key?: string } }) => ({ ...x, image: x.image?.key && liveKeys.has(x.image.key) ? x.image : null }));
+  }
   else Object.assign(fields, { fundingRounds: s.fundingRounds ?? [] });
   const prevSize = doc.body?.length ?? 0;
   doc.set(fields);

@@ -125,6 +125,18 @@ const PageSchema = new Schema<any>(
     protectedUntil: { type: Date, default: null },
     protectedReason: { type: String, default: "" },
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
+    // Person: achievements and extra sections
+    projects: {
+      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null } }, { _id: false })],
+      default: [],
+    },
+    publications: { type: [new Schema<any>({ title: String, publisher: String, year: Number, url: String }, { _id: false })], default: [] },
+    awards: { type: [new Schema<any>({ title: String, issuer: String, year: Number, url: String, kind: String }, { _id: false })], default: [] },
+    talks: { type: [new Schema<any>({ title: String, event: String, year: Number, url: String }, { _id: false })], default: [] },
+    patents: { type: [new Schema<any>({ title: String, number: String, year: Number, url: String }, { _id: false })], default: [] },
+    volunteering: { type: [new Schema<any>({ org: String, role: String, startYear: Number, endYear: Number, description: String }, { _id: false })], default: [] },
+    languageLevels: { type: [new Schema<any>({ name: String, level: String }, { _id: false })], default: [] },
+    openTo: { type: [String], default: [] },
     // Organizations: funding rounds; investors are linked to their pages by slug
     fundingRounds: {
       type: [
@@ -239,6 +251,35 @@ const CollectionSchema = new Schema<any>(
   { timestamps: true },
 );
 
+/* ───────────── Suggested edits & recommendations (for person profiles) ───────────── */
+const SuggestionSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    authorName: { type: String, required: true },
+    message: { type: String, required: true, maxlength: 2000 },
+    proposedBody: { type: String, default: null, maxlength: 100_000 },
+    baseBody: { type: String, default: "" },
+    status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+  },
+  { timestamps: true },
+);
+SuggestionSchema.index({ pageId: 1, status: 1, createdAt: -1 });
+
+const TestimonialSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    authorName: { type: String, required: true },
+    relationship: { type: String, default: "", maxlength: 120 },
+    text: { type: String, required: true, maxlength: 1500 },
+    status: { type: String, enum: ["pending", "published", "hidden"], default: "pending" },
+  },
+  { timestamps: true },
+);
+TestimonialSchema.index({ pageId: 1, status: 1, createdAt: -1 });
+TestimonialSchema.index({ pageId: 1, authorId: 1 }, { unique: true });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -252,3 +293,5 @@ export const Token = getModel("Token", TokenSchema);
 export const Report = getModel("Report", ReportSchema);
 export const Notification = getModel("Notification", NotificationSchema);
 export const Collection = getModel("Collection", CollectionSchema);
+export const Suggestion = getModel("Suggestion", SuggestionSchema);
+export const Testimonial = getModel("Testimonial", TestimonialSchema);

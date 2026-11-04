@@ -81,6 +81,31 @@ export interface FundingRound {
   investors: { title: string; slug: string }[];
 }
 
+export interface Project {
+  id: string;
+  title: string;
+  url: string;
+  year: number | null;
+  description: string;
+  image: StoredImage | null;
+}
+export interface Publication { title: string; publisher: string; year: number | null; url: string }
+export interface Award { title: string; issuer: string; year: number | null; url: string; kind: "award" | "certification" }
+export interface Talk { title: string; event: string; year: number | null; url: string }
+export interface Patent { title: string; number: string; year: number | null; url: string }
+export interface Volunteering { org: string; role: string; startYear: number | null; endYear: number | null; description: string }
+export interface LanguageLevel { name: string; level: string }
+
+export const OPEN_TO = {
+  work: "New roles",
+  freelance: "Freelance work",
+  investment: "Investment",
+  advising: "Advising",
+  speaking: "Speaking",
+  mentoring: "Mentoring",
+} as const;
+export type OpenTo = keyof typeof OPEN_TO;
+
 export interface OutLink {
   slug: string;
   title: string;
@@ -109,6 +134,14 @@ export interface PageDoc {
   protectedReason: string;
   sources: SourceRef[];
   fundingRounds: FundingRound[];
+  projects: Project[];
+  publications: Publication[];
+  awards: Award[];
+  talks: Talk[];
+  patents: Patent[];
+  volunteering: Volunteering[];
+  languageLevels: LanguageLevel[];
+  openTo: OpenTo[];
   verified: boolean;
   review: ReviewInfo;
   followerCount: number;

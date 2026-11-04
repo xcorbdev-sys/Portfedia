@@ -14,7 +14,8 @@ import { bool, email, handle, httpUrl, str, year } from "../validate";
 import { slugify } from "../slug";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
-import type { FundingRound, SourceRef, StoredImage } from "../types";
+import type { Award, FundingRound, LanguageLevel, OpenTo, PageDoc, Patent, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
+import { OPEN_TO } from "../types";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -63,6 +64,35 @@ function parseFunding(v: FormDataEntryValue | null): FundingRound[] {
         .map((title) => ({ title, slug: slugify(title) })),
     }))
     .filter((r) => r.round || r.amount || r.investors.length);
+}
+
+function yearOrNull(v: unknown) {
+  return year(v);
+}
+
+/** Generic parser for the simple repeatable lists of a profile (publications, awards, …). */
+function parseRows<T>(fd: FormData, name: string, max: number, map: (r: Record<string, unknown>) => T | null): T[] {
+  return parseJsonArray(fd.get(name), max)
+    .map(map)
+    .filter((x): x is T => x !== null);
+}
+
+const LEVELS = ["Native", "C2", "C1", "B2", "B1", "A2", "A1"];
+
+async function parseProjects(fd: FormData, prev: PageDoc | null): Promise<Project[]> {
+  const prevImages = new Map((prev?.projects ?? []).filter((x) => x.image).map((x) => [x.image!.key, x.image!]));
+  const out: Project[] = [];
+  for (const r of parseJsonArray(fd.get("projects"), 20)) {
+    const title = str(r.title, 120);
+    if (!title) continue;
+    const id = /^[a-z0-9]{6,16}$/.test(String(r.id)) ? String(r.id) : Math.random().toString(36).slice(2, 10);
+    // Only images this profile already owns may be kept (never trust a client-sent URL)
+    let image = typeof r.imageKey === "string" && !r.removeImage ? (prevImages.get(r.imageKey) ?? null) : null;
+    const file = fd.get(`projectImage_${id}`);
+    if (file instanceof File && file.size > 0) image = await saveImage(file, "logo");
+    out.push({ id, title, url: httpUrl(r.url), year: yearOrNull(r.year), description: str(r.description, 600), image });
+  }
+  return out;
 }
 
 function parseSources(v: FormDataEntryValue | null): SourceRef[] {
@@ -121,12 +151,38 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
   if (guardError) return { error: guardError };
 
   let image: StoredImage | null | undefined;
+  let projects: Project[];
   try {
     image = await imageFrom(fd, "photo");
+    projects = await parseProjects(fd, prev);
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
     throw err;
   }
+  const publications = parseRows<Publication>(fd, "publications", 50, (r) =>
+    str(r.title, 200) ? { title: str(r.title, 200), publisher: str(r.publisher, 120), year: year(r.year), url: httpUrl(r.url) } : null,
+  );
+  const awards = parseRows<Award>(fd, "awards", 50, (r) =>
+    str(r.title, 160) ? { title: str(r.title, 160), issuer: str(r.issuer, 120), year: year(r.year), url: httpUrl(r.url), kind: r.kind === "certification" ? "certification" : "award" } : null,
+  );
+  const talks = parseRows<Talk>(fd, "talks", 50, (r) => (str(r.title, 200) ? { title: str(r.title, 200), event: str(r.event, 120), year: year(r.year), url: httpUrl(r.url) } : null));
+  const patents = parseRows<Patent>(fd, "patents", 30, (r) => (str(r.title, 200) ? { title: str(r.title, 200), number: str(r.number, 60), year: year(r.year), url: httpUrl(r.url) } : null));
+  const volunteering = parseRows<Volunteering>(fd, "volunteering", 20, (r) =>
+    str(r.org, 120) ? { org: str(r.org, 120), role: str(r.role, 120), startYear: year(r.startYear), endYear: year(r.endYear), description: str(r.description, 600) } : null,
+  );
+  const languageLevels = parseRows<LanguageLevel>(fd, "languageLevels", 15, (r) =>
+    str(r.name, 40) ? { name: str(r.name, 40), level: LEVELS.includes(String(r.level)) ? String(r.level) : "" } : null,
+  );
+  const openTo = fd.getAll("openTo").map(String).filter((k): k is OpenTo => k in OPEN_TO);
+  const prevExtra = new Set(
+    prev ? externalLinks(...[...prev.projects, ...prev.publications, ...prev.awards, ...prev.talks, ...prev.patents].map((x) => x.url)) : [],
+  );
+  const extraGuard = await guardContent(user, {
+    texts: [...projects.map((x) => `${x.title} ${x.description}`), ...publications.map((x) => x.title), ...awards.map((x) => x.title), ...talks.map((x) => x.title), ...volunteering.map((x) => x.description)],
+    newLinks: externalLinks(...[...projects, ...publications, ...awards, ...talks, ...patents].map((x) => x.url)).filter((l) => !prevExtra.has(l)),
+    page: prev,
+  });
+  if (extraGuard) return { error: extraGuard };
 
   const page = await savePersonPage(user, {
     title,
@@ -140,7 +196,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
       birthYearPublic: bool(fd.get("birthYearPublic")),
       birthPlace: str(fd.get("birthPlace"), 120),
       location: str(fd.get("location"), 120),
-      languages: str(fd.get("languages"), 200),
+      languages: languageLevels.map((l) => l.name).join(", ") || str(fd.get("languages"), 200),
       skills: str(fd.get("skills"), 400),
       website,
       github: handle(fd.get("github")),
@@ -152,6 +208,14 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     experiences,
     educations,
     sources,
+    projects,
+    publications,
+    awards,
+    talks,
+    patents,
+    volunteering,
+    languageLevels,
+    openTo,
     noindex: bool(fd.get("noindex")),
     editSummary: str(fd.get("editSummary"), 300),
     image,

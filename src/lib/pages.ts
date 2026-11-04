@@ -1,13 +1,13 @@
 import "server-only";
 import { Types } from "mongoose";
 import { connectDB } from "./db";
-import { Follow, Page, Revision, Session, Token, User } from "./models";
+import { Follow, Page, Revision, Session, Suggestion, Testimonial, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  Education, Experience, FundingRound, OrgInfobox, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
+  Award, Education, Experience, FundingRound, LanguageLevel, OpenTo, OrgInfobox, Patent, Project, Publication, Talk, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 
 /* ───────────── Mapping ───────────── */
@@ -37,6 +37,14 @@ function toPage(d: any): PageDoc {
     protectedReason: d.protectedReason ?? "",
     sources: d.sources ?? [],
     fundingRounds: d.fundingRounds ?? [],
+    projects: d.projects ?? [],
+    publications: d.publications ?? [],
+    awards: d.awards ?? [],
+    talks: d.talks ?? [],
+    patents: d.patents ?? [],
+    volunteering: d.volunteering ?? [],
+    languageLevels: d.languageLevels ?? [],
+    openTo: d.openTo ?? [],
     verified: Boolean(d.verified),
     review: {
       submittedAt: d.review?.submittedAt ?? null,
@@ -495,6 +503,14 @@ export interface PersonInput {
   experiences: (Omit<Experience, "orgSlug" | "orgTitle" | "verification"> & { orgTitle: string })[];
   educations: (Omit<Education, "schoolSlug" | "schoolTitle"> & { schoolTitle: string })[];
   sources: SourceRef[];
+  projects: Project[];
+  publications: Publication[];
+  awards: Award[];
+  talks: Talk[];
+  patents: Patent[];
+  volunteering: Volunteering[];
+  languageLevels: LanguageLevel[];
+  openTo: OpenTo[];
   noindex: boolean;
   editSummary: string;
   image?: StoredImage | null; // undefined = keep, null = remove
@@ -506,6 +522,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
 
   // Link organisations/schools to pages (creating drafts when missing)
   const prevExps: Experience[] = existing?.experiences?.map((e: { toObject: () => Experience }) => e.toObject()) ?? [];
+  const prevProjects: Project[] = existing?.projects?.map((e: { toObject: () => Project }) => e.toObject()) ?? [];
   const experiences: Experience[] = [];
   for (const e of input.experiences) {
     const org = await ensureOrgPage({ title: e.orgTitle, type: "org" }, user.id);
@@ -537,6 +554,14 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     experiences,
     educations,
     sources: input.sources,
+    projects: input.projects,
+    publications: input.publications,
+    awards: input.awards,
+    talks: input.talks,
+    patents: input.patents,
+    volunteering: input.volunteering,
+    languageLevels: input.languageLevels,
+    openTo: input.openTo,
     outLinks: extractWikiLinks(input.body),
     noindex: input.noindex,
   };
@@ -594,6 +619,9 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
   });
 
   if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
+  // Project images that were removed or replaced
+  const kept = new Set(input.projects.map((x) => x.image?.key).filter(Boolean));
+  for (const old of (existing ? prevProjects : []) as Project[]) if (old.image?.key && !kept.has(old.image.key)) await deleteImage(old.image);
   return toPage(page.toObject());
 }
 
@@ -708,6 +736,9 @@ export async function deleteAccount(userId: string): Promise<void> {
     for (const key of keys) await deleteImage({ key, url: "" });
     await Revision.deleteMany({ pageId: page._id });
     await Follow.deleteMany({ pageId: page._id });
+    await Suggestion.deleteMany({ pageId: page._id });
+    await Testimonial.deleteMany({ pageId: page._id });
+    for (const pr of (page.projects ?? []) as Project[]) if (pr.image) await deleteImage(pr.image);
     await Page.deleteOne({ _id: page._id });
   }
   // Leave organization pages this user managed; pages without admins go back to community editing
@@ -719,6 +750,9 @@ export async function deleteAccount(userId: string): Promise<void> {
   await Follow.deleteMany({ userId: oid });
   // Contributions to organisation pages stay, but are anonymised
   await Revision.updateMany({ authorId: oid }, { $set: { authorName: "Deleted user" } });
+  // Recommendations and suggestions this person wrote for others
+  await Testimonial.deleteMany({ authorId: oid });
+  await Suggestion.deleteMany({ authorId: oid });
   await Session.deleteMany({ userId: oid });
   await Token.deleteMany({ userId: oid });
   await User.deleteOne({ _id: oid });

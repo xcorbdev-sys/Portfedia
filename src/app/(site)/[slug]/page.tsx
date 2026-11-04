@@ -9,6 +9,11 @@ import { canView, isPublic } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getInvestments, getPageBySlug, isFollowing } from "@/lib/pages";
 import { InvestmentsList } from "@/components/Funding";
+import { AchievementSections, CompletenessCard, LanguagesFact, OpenToBadges, ProjectsSection, TimelineSection } from "@/components/ProfileSections";
+import { slugify } from "@/lib/slug";
+import { buildTimeline } from "@/lib/profile-insights";
+import { listTestimonials } from "@/lib/feedback";
+import { Thumb } from "@/components/ui";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, plainExcerpt, initials } from "@/lib/site";
 import { breadcrumbLd, ldJson, personProfileLd } from "@/lib/seo";
@@ -70,15 +75,19 @@ export default async function PersonPage({ params }: Props) {
   // Profiles awaiting review are visible only to their owner and moderators
   if (!canView(page, user)) notFound();
   const orgSlugs = [...new Set([...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)])];
-  const [existing, backlinks, related, following, investments] = await Promise.all([
-    existingPages(page.outLinks.map((l) => l.slug)),
+  const [existing, backlinks, related, following, investments, recommendations] = await Promise.all([
+    existingPages([...page.outLinks.map((l) => l.slug), ...page.awards.map((a) => slugify(a.issuer)), ...page.volunteering.map((v) => slugify(v.org))].filter(Boolean)),
     getBacklinks(page.slug),
     getCards(orgSlugs),
     user ? isFollowing(user.id, page._id) : Promise.resolve(false),
     getInvestments(page.slug),
+    listTestimonials(page._id, ["published"]),
   ]);
   const isOwner = Boolean(user && (user.id === page.ownerId || user.role === "admin"));
-  const reserved = ["overview", "biography", "career", "education", "investments", "related-companies", "connections", "sources"];
+  const reserved = [
+    "overview", "biography", "timeline", "career", "education", "projects", "publications", "awards", "talks", "patents", "volunteering",
+    "investments", "recommendations", "related-companies", "connections", "sources",
+  ];
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
   const exps = page.experiences.filter((e) => e.verification !== "rejected");
@@ -91,7 +100,15 @@ export default async function PersonPage({ params }: Props) {
   for (const t of article.toc) if (t.level === 2) nav.push({ id: t.id, label: t.title });
   if (exps.length) nav.push({ id: "career", label: "Career" });
   if (page.educations.length) nav.push({ id: "education", label: "Education" });
+  if (page.projects.length) nav.push({ id: "projects", label: "Projects" });
+  if (page.publications.length) nav.push({ id: "publications", label: "Publications" });
+  if (page.awards.length) nav.push({ id: "awards", label: "Awards" });
+  if (page.talks.length) nav.push({ id: "talks", label: "Talks & Events" });
+  if (page.patents.length) nav.push({ id: "patents", label: "Patents" });
+  if (page.volunteering.length) nav.push({ id: "volunteering", label: "Volunteering" });
+  if (buildTimeline(page)) nav.push({ id: "timeline", label: "Timeline" });
   if (investments.length) nav.push({ id: "investments", label: "Investments" });
+  if (recommendations.length) nav.push({ id: "recommendations", label: "Recommendations" });
   if (related.length) nav.push({ id: "related-companies", label: "Related Companies" });
   if (backlinks.length) nav.push({ id: "connections", label: "Connections" });
   if (page.sources.length) nav.push({ id: "sources", label: "Sources" });
@@ -131,6 +148,7 @@ export default async function PersonPage({ params }: Props) {
                 </div>
               )}
               {page.summary && <p className="p-summary">{page.summary}</p>}
+              <OpenToBadges page={page} />
             </div>
             {isPublic(page) ? (
               <PageActions
@@ -140,6 +158,7 @@ export default async function PersonPage({ params }: Props) {
                 following={following}
                 followers={page.followerCount}
                 editHref={isOwner ? "/edit" : null}
+                personLinks={!isOwner}
               />
             ) : (
               // Not public yet: following/sharing make no sense
@@ -202,10 +221,36 @@ export default async function PersonPage({ params }: Props) {
             </section>
           )}
 
+          <ProjectsSection page={page} />
+          <AchievementSections page={page} existing={existing} />
+          <TimelineSection page={page} />
+
           {investments.length > 0 && (
             <section className="p-section" id="investments">
               <h2>Investments</h2>
               <InvestmentsList items={investments} />
+            </section>
+          )}
+
+          {recommendations.length > 0 && (
+            <section className="p-section" id="recommendations">
+              <h2>Recommendations</h2>
+              <ul className="reco-list">
+                {recommendations.map((r) => (
+                  <li key={r.id} className="card">
+                    <div className="card__body">
+                      <p style={{ margin: "0 0 12px", whiteSpace: "pre-wrap" }}>&ldquo;{r.text}&rdquo;</p>
+                      <div className="person-row" style={{ padding: 0 }}>
+                        <Thumb image={r.authorImage} name={r.authorName} variant="round" />
+                        <span>
+                          <b>{r.authorSlug ? <Link href={`/${r.authorSlug}`}>{r.authorName}</Link> : r.authorName}</b>
+                          {r.relationship && <small>{r.relationship}</small>}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 
@@ -249,6 +294,7 @@ export default async function PersonPage({ params }: Props) {
         </article>
 
         <aside className="profile__aside" aria-label="Key facts">
+          {isOwner && user?.id === page.ownerId && <CompletenessCard page={page} />}
           <div className="card">
             <div className="card__body">
               <div className="card__title">Key Facts</div>
@@ -279,7 +325,7 @@ export default async function PersonPage({ params }: Props) {
                       : ib.occupation}
                   </Fact>
                   <Fact label="Sector">{ib.sector}</Fact>
-                  <Fact label="Languages">{ib.languages}</Fact>
+                  <Fact label="Languages">{(page.languageLevels.length > 0 || ib.languages) && <LanguagesFact page={page} />}</Fact>
                   <Fact label="Expertise">{ib.skills}</Fact>
                 </tbody>
               </table>

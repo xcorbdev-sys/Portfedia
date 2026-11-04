@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ellipsis, Flag, History, Pencil, Printer, UserCheck, UserPlus } from "lucide-react";
+import { Ellipsis, Flag, History, MessageSquareQuote, Pencil, PencilLine, Printer, UserCheck, UserPlus } from "lucide-react";
 import { toggleFollowAction } from "@/lib/actions/pages";
 import { PrintButton, ShareButton } from "./client";
 
@@ -10,6 +10,7 @@ export function PageActions({
   following,
   followers,
   editHref,
+  personLinks = false,
 }: {
   slug: string;
   title: string;
@@ -17,6 +18,8 @@ export function PageActions({
   following: boolean;
   followers: number;
   editHref: string | null;
+  /** Show "Suggest an edit" and "Write a recommendation" (person pages, not the owner) */
+  personLinks?: boolean;
 }) {
   return (
     <div className="p-actions no-print">
@@ -41,6 +44,16 @@ export function PageActions({
             <Link href={editHref}>
               <Pencil size={16} /> Edit page
             </Link>
+          )}
+          {personLinks && (
+            <>
+              <Link href={`/${slug}/suggest`} rel="nofollow">
+                <PencilLine size={16} /> Suggest an edit
+              </Link>
+              <Link href={`/${slug}/recommend`} rel="nofollow">
+                <MessageSquareQuote size={16} /> Write a recommendation
+              </Link>
+            </>
           )}
           <Link href={`${base}/history`}>
             <History size={16} /> View history

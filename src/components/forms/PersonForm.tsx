@@ -3,7 +3,8 @@
 import { useActionState, useRef, useState, startTransition } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { savePersonAction } from "@/lib/actions/pages";
-import type { PageDoc } from "@/lib/types";
+import { OPEN_TO, type PageDoc } from "@/lib/types";
+import { AchievementsStep, LanguagesEditor } from "./Achievements";
 import { FormError } from "../ui";
 import {
   AddButton, ImagePicker, MARKDOWN_HINT, OrgInput, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps,
@@ -13,7 +14,8 @@ type Exp = { orgTitle: string; role: string; startYear: string; endYear: string;
 type Edu = { schoolTitle: string; degree: string; field: string; startYear: string; endYear: string };
 const s = (n?: number | null) => (n ? String(n) : "");
 
-const STEPS = ["Basic Info", "Details", "Sources & Submit"];
+const STEPS = ["Basic Info", "Details", "Achievements", "Sources & Submit"];
+const LAST = STEPS.length - 1;
 
 function submitLabel(page: PageDoc | null): string {
   if (!page) return "Submit for review";
@@ -124,6 +126,17 @@ export function PersonForm({
             <input id="birthPlace" name="birthPlace" className="input" maxLength={120} defaultValue={ib.birthPlace} />
           </div>
         </div>
+        <div className="field">
+          <span className="label">Open to</span>
+          <span className="hint">Shown as a badge on your profile. People can find you by it.</span>
+          <div className="open-to">
+            {Object.entries(OPEN_TO).map(([k, label]) => (
+              <label key={k} className="check">
+                <input type="checkbox" name="openTo" value={k} defaultChecked={page?.openTo.includes(k as never)} /> {label}
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Step 2: Details */}
@@ -179,15 +192,10 @@ export function PersonForm({
           ))}
           <AddButton onClick={edus.add}>Add education</AddButton>
         </div>
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="languages">Languages</label>
-            <input id="languages" name="languages" className="input" maxLength={200} defaultValue={ib.languages} placeholder="Turkish, English, German" />
-          </div>
-          <div className="field">
-            <label htmlFor="skills">Expertise</label>
-            <input id="skills" name="skills" className="input" maxLength={400} defaultValue={ib.skills} placeholder="Distributed systems, Product strategy" />
-          </div>
+        <LanguagesEditor initial={page?.languageLevels ?? []} fallback={ib.languages} />
+        <div className="field">
+          <label htmlFor="skills">Expertise</label>
+          <input id="skills" name="skills" className="input" maxLength={400} defaultValue={ib.skills} placeholder="Distributed systems, Product strategy" />
         </div>
         <div className="field">
           <label htmlFor="body">Biography</label>
@@ -203,8 +211,17 @@ export function PersonForm({
         </div>
       </div>
 
-      {/* Step 3: Sources & submit */}
+      {/* Step 3: Achievements */}
       <div className="step form" hidden={step !== 2} ref={(el) => { stepRefs.current[2] = el; }}>
+        <div>
+          <h2>Achievements</h2>
+          <p className="muted small">All optional. Each section appears on your profile only when it has entries.</p>
+        </div>
+        <AchievementsStep page={page} />
+      </div>
+
+      {/* Step 4: Sources & submit */}
+      <div className="step form" hidden={step !== LAST} ref={(el) => { stepRefs.current[LAST] = el; }}>
         <div>
           <h2>Sources &amp; Submit</h2>
           <p className="muted small">Add your links and sources, choose your privacy settings and submit.</p>
@@ -264,7 +281,7 @@ export function PersonForm({
         ) : (
           <span />
         )}
-        {step < 2 ? (
+        {step < LAST ? (
           // Distinct keys: React must not reuse this element as the submit button, or the
           // click that moves to the last step would also submit the form.
           <button key="next" type="button" className="btn btn--primary" onClick={() => go(step + 1)}>
@@ -276,7 +293,7 @@ export function PersonForm({
           </button>
         )}
       </div>
-      {page && step < 2 && (
+      {page && step < LAST && (
         <p className="small muted" style={{ textAlign: "right", marginTop: 10 }}>
           Editing an existing profile? You can{" "}
           <button type="submit" className="read-more" style={{ margin: 0 }} disabled={pending}>save now</button>.
