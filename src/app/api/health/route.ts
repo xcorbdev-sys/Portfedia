@@ -1,9 +1,9 @@
+import { connection } from "next/server";
 import { connectDB } from "@/lib/db";
-
-export const dynamic = "force-dynamic";
 
 /** Used by Docker / Coolify health checks. */
 export async function GET() {
+  await connection(); // always run at request time
   try {
     const m = await connectDB();
     await m.connection.db?.admin().ping();

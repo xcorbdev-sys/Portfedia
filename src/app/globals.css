@@ -533,3 +533,11 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .bulk-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
 .stat-card__value { font-size: 1.6rem; font-weight: 750; letter-spacing: -0.02em; margin: 2px 0; }
+.md-field__tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.md-field__tabs button { background: none; border: 1px solid transparent; border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 0.82rem; color: var(--text-2); cursor: pointer; }
+.md-field__tabs button[aria-selected="true"] { border-color: var(--border-strong); background: var(--surface); color: var(--text); font-weight: 600; }
+.md-field__preview { min-height: 200px; border: 1px solid var(--border-strong); border-radius: 9px; padding: 12px 16px; background: var(--surface); }
+.cropper-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: grid; place-items: center; z-index: 100; padding: 16px; }
+.cropper { width: min(340px, 100%); }
+.cropper__frame { position: relative; overflow: hidden; border-radius: 12px; background: #111; touch-action: none; cursor: grab; margin: 0 auto; }
+.cropper__frame img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }

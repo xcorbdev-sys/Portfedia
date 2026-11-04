@@ -44,6 +44,8 @@ function r2(): S3Client {
 
 export class UploadError extends Error {}
 
+export const thumbKeyOf = (key: string) => key.replace(/(\.[a-z]+)$/, "_t$1");
+
 /**
  * Validates, resizes and re-encodes an upload: 400×400 WebP (photos are cropped to a square,
  * logos fit inside). Re-encoding also strips metadata such as GPS coordinates from phone photos.
@@ -71,42 +73,42 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
   const kindInfo = { mime: "image/webp", ext: "webp" };
   const hash = createHash("sha256").update(buf).digest("hex");
   const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kindInfo.ext}`;
+  // Small variant for avatars and lists, so pages don't download the 400px original everywhere
+  const thumb = await sharp(buf).resize(96, 96, kind === "photo" ? { fit: "cover" } : { fit: "inside" }).webp({ quality: 78 }).toBuffer();
+  const thumbKey = thumbKeyOf(key);
 
   if (r2Configured()) {
-    await r2().send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-        Body: buf,
-        ContentType: kindInfo.mime,
-        CacheControl: "public, max-age=31536000, immutable",
-      }),
-    );
-    return { key, url: `${process.env.R2_PUBLIC_URL!.replace(/\/$/, "")}/${key}`, hash };
+    for (const [k, body] of [[key, buf], [thumbKey, thumb]] as const) {
+      await r2().send(
+        new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: k, Body: body, ContentType: kindInfo.mime, CacheControl: "public, max-age=31536000, immutable" }),
+      );
+    }
+    const base = process.env.R2_PUBLIC_URL!.replace(/\/$/, "");
+    return { key, url: `${base}/${key}`, hash, thumbUrl: `${base}/${thumbKey}` };
   }
 
   const target = path.join(LOCAL_DIR, key);
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, buf);
-  return { key, url: `/media/${key}`, hash };
+  await writeFile(path.join(LOCAL_DIR, thumbKey), thumb);
+  return { key, url: `/media/${key}`, hash, thumbUrl: `/media/${thumbKey}` };
 }
 
 export async function deleteImage(img: StoredImage | null | undefined): Promise<void> {
   if (!img?.key) return;
-  try {
-    if (r2Configured()) {
-      await r2().send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: img.key }));
-    } else {
-      await unlink(localPath(img.key)!);
+  for (const k of [img.key, thumbKeyOf(img.key)]) {
+    try {
+      if (r2Configured()) await r2().send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: k }));
+      else await unlink(localPath(k)!);
+    } catch {
+      // Failing to delete an old image (or a missing thumbnail) is not critical
     }
-  } catch {
-    // Failing to delete an old image is not critical
   }
 }
 
 /** Safe local path (prevents path traversal). */
 export function localPath(key: string): string | null {
-  if (!/^images\/\d{4}\/[a-f0-9]{24}\.(jpg|png|webp)$/.test(key)) return null;
+  if (!/^images\/\d{4}\/[a-f0-9]{24}(_t)?\.(jpg|png|webp)$/.test(key)) return null;
   return path.join(LOCAL_DIR, key);
 }
 

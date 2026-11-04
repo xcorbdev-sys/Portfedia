@@ -1,12 +1,12 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MIN_AGE } from "@/lib/age";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
-// Reads company details from the environment at request time (not at build time)
-export const dynamic = "force-dynamic";
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  await connection(); // always run at request time
   const company = process.env.COMPANY_NAME || "Portfedia";
   const address = process.env.COMPANY_ADDRESS || "[company address]";
   const contact = process.env.CONTACT_EMAIL || "privacy@portfedia.com";

@@ -6,6 +6,8 @@ import { saveOrgAction } from "@/lib/actions/pages";
 import type { PageDoc } from "@/lib/types";
 import { FormError } from "../ui";
 import { OrgMoreStep } from "./OrgMoreStep";
+import { MarkdownField } from "./MarkdownField";
+import { FormDraft } from "./FormDraft";
 import { AddButton, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
 
 const STEPS = ["Basic Info", "Details", "More", "Sources & Submit"];
@@ -71,6 +73,7 @@ export function OrgForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
+      <FormDraft storageKey={`pf-draft:org:${page?.slug ?? "new"}`} savedAt={page?.updatedAt} />
       {page && <input type="hidden" name="slug" value={page.slug} />}
       <Stepper labels={labels} current={step + offset} onJump={(i) => (i < offset ? onBackToType?.() : go(i - offset))} />
 
@@ -205,11 +208,9 @@ export function OrgForm({
         <div className="field">
           <label htmlFor="body">About</label>
           {MARKDOWN_HINT}
-          <textarea
+          <MarkdownField
             id="body"
             name="body"
-            className="textarea"
-            maxLength={100000}
             defaultValue={page?.body}
             placeholder={"Acme Software is a technology company founded in 2012...\n\n## History\n\n## Products and Technologies\n\n## Investments"}
           />

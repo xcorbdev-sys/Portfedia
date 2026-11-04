@@ -10,7 +10,7 @@ import type { PageType } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
-type SP = { q?: string; type?: string | string[]; sector?: string | string[]; go?: string };
+type SP = { q?: string; type?: string | string[]; sector?: string | string[]; go?: string; page?: string };
 const arr = (v?: string | string[]) => (Array.isArray(v) ? v : v ? [v] : []);
 const TYPES: { value: PageType; label: string; tab: string }[] = [
   { value: "org", label: "Company", tab: "Companies" },
@@ -24,7 +24,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const types = arr(sp.type).filter((t): t is PageType => ["person", "org", "school"].includes(t));
   const sectors = arr(sp.sector).map((s) => s.slice(0, 80)).slice(0, 10);
 
-  const data = await searchPages({ q, types, sectors });
+  const pageNo = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const data = await searchPages({ q, types, sectors, page: pageNo });
+  const pages = Math.max(1, Math.ceil(data.total / 40));
+  const pageHrefFor = (n: number) => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    types.forEach((t) => p.append("type", t));
+    sectors.forEach((s) => p.append("sector", s));
+    p.set("page", String(n));
+    return `/search?${p}`;
+  };
 
   // Exact title match from the header search jumps straight to the page (like an encyclopedia "Go")
   if (sp.go && q) {
@@ -84,7 +94,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           ))}
         </nav>
         {data.results.length > 0 ? (
-          <ResultList items={data.results} />
+          <>
+            <ResultList items={data.results} />
+            {pages > 1 && (
+              <nav className="pagination" aria-label="Pagination">
+                {pageNo > 1 && <Link className="btn btn--sm" href={pageHrefFor(pageNo - 1)}>Previous</Link>}
+                <span className="btn btn--sm btn--ghost">Page {pageNo} of {pages}</span>
+                {pageNo < pages && <Link className="btn btn--sm" href={pageHrefFor(pageNo + 1)}>Next</Link>}
+              </nav>
+            )}
+          </>
         ) : (
           <div className="empty">
             <p style={{ margin: "0 0 10px" }}>No results{q ? <> for &ldquo;{q}&rdquo;</> : null}.</p>

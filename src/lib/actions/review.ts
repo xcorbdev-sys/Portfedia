@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../revalidate";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isModerator, safeNext } from "../auth";
 import { decideApplication, getOwnerContact } from "../pages";

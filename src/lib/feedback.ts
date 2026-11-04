@@ -109,7 +109,7 @@ export async function listTestimonials(pageId: string, statuses: string[]): Prom
       id: String(r._id),
       authorName: r.authorName,
       authorSlug: a?.slug ?? null,
-      authorImage: a?.image?.url ? { key: a.image.key, url: a.image.url } : null,
+      authorImage: a?.image?.url ? { key: a.image.key, url: a.image.url, thumbUrl: a.image.thumbUrl } : null,
       relationship: r.relationship,
       text: r.text,
       status: r.status,
@@ -134,6 +134,12 @@ export async function decideTestimonial(owner: SessionUser, id: string, action: 
     }
   }
   return null;
+}
+
+export async function inboxCountForPage(pageId: string): Promise<number> {
+  await connectDB();
+  const [a, b] = await Promise.all([Suggestion.countDocuments({ pageId, status: "pending" }), Testimonial.countDocuments({ pageId, status: "pending" })]);
+  return a + b;
 }
 
 export async function inboxCount(ownerUserId: string): Promise<number> {

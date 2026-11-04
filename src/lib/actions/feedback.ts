@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../revalidate";
 import { getCurrentUser } from "../auth";
 import { getPageBySlug } from "../pages";
 import { createSuggestion, decideSuggestion, decideTestimonial, upsertTestimonial } from "../feedback";

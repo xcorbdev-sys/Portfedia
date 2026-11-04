@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cachedCollections } from "@/lib/cached";
@@ -6,6 +7,7 @@ import { Breadcrumbs, Thumb } from "@/components/ui";
 export const metadata: Metadata = { title: "Collections", description: "Curated lists of people and companies on Portfedia." };
 
 export default async function CollectionsPage() {
+  await connection(); // data comes from the database at request time (cached briefly)
   const collections = await cachedCollections();
   return (
     <div className="container" style={{ paddingBottom: 56 }}>

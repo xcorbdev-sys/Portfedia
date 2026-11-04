@@ -1,11 +1,11 @@
+import { connection } from "next/server";
 import { getPageBySlug } from "@/lib/pages";
-
-export const dynamic = "force-dynamic";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /** Embeddable "Verified on Portfedia" badge for organizations that manage their page (#51). */
 export async function GET(_: Request, { params }: { params: Promise<{ slug: string }> }) {
+  await connection(); // always run at request time
   const slug = (await params).slug.replace(/\.svg$/, "");
   const page = await getPageBySlug(slug, ["org", "school"]);
   const verified = Boolean(page && (page.status === "claimed" || page.verified));

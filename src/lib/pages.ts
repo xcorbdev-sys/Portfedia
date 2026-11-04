@@ -1,5 +1,6 @@
 import "server-only";
 import { Types } from "mongoose";
+import { cache } from "react";
 import { connectDB } from "./db";
 import { Follow, Page, Revision, Session, Suggestion, Testimonial, Thank, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
@@ -25,7 +26,7 @@ function toPage(d: any): PageDoc {
     summary: d.summary ?? "",
     ownerId: d.ownerId ? String(d.ownerId) : null,
     status: d.status,
-    image: d.image?.url ? { key: d.image.key, url: d.image.url, hash: d.image.hash } : null,
+    image: d.image?.url ? { key: d.image.key, url: d.image.url, hash: d.image.hash, thumbUrl: d.image.thumbUrl } : null,
     infobox: d.infobox ?? {},
     body: d.body ?? "",
     experiences: d.experiences ?? [],
@@ -103,7 +104,7 @@ export function toCard(d: any, detail?: string): PageCard {
     title: d.title,
     type: d.type,
     summary: stripWikiLinks(d.summary ?? ""),
-    image: d.image?.url ? { key: d.image.key, url: d.image.url } : null,
+    image: d.image?.url ? { key: d.image.key, url: d.image.url, thumbUrl: d.image.thumbUrl } : null,
     verified: Boolean(d.verified) || d.status === "claimed",
     subtitle,
     detail,
@@ -125,11 +126,11 @@ export async function getPageBySlug(slug: string, type?: PageType | PageType[]):
   return d ? toPage(d) : null;
 }
 
-export async function getPersonPageOf(userId: string): Promise<PageDoc | null> {
+export const getPersonPageOf = cache(async (userId: string): Promise<PageDoc | null> => {
   await connectDB();
   const d = await Page.findOne({ type: "person", ownerId: new Types.ObjectId(userId) }).lean();
   return d ? toPage(d) : null;
-}
+});
 
 /** Which of these slugs exist? (blue vs. red link) */
 export async function existingPages(slugs: string[]): Promise<Map<string, PageType>> {
@@ -161,7 +162,7 @@ export async function getPeopleOfOrg(orgSlug: string) {
   await connectDB();
   const docs = await Page.find({ type: "person", "experiences.orgSlug": orgSlug, ...PUBLIC_FILTER }, CARD_FIELDS)
     .sort({ title: 1 })
-    .limit(500)
+    .limit(5000)
     .lean();
   const current: PageCard[] = [];
   const former: PageCard[] = [];
@@ -181,7 +182,7 @@ export async function getAlumni(schoolSlug: string): Promise<PageCard[]> {
   await connectDB();
   const docs = await Page.find({ type: "person", "educations.schoolSlug": schoolSlug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, educations: 1 })
     .sort({ title: 1 })
-    .limit(500)
+    .limit(5000)
     .lean();
   return docs.map((d) => {
     const e = (d.educations as Education[]).find((x) => x.schoolSlug === schoolSlug)!;
@@ -198,9 +199,20 @@ export async function getBacklinks(slug: string) {
     .lean<{ slug: string; title: string; type: PageType }[]>();
 }
 
-export async function listRevisions(pageId: string): Promise<RevisionDoc[]> {
+export const HISTORY_PAGE_SIZE = 100;
+
+export async function countRevisions(pageId: string): Promise<number> {
   await connectDB();
-  const rows = await Revision.find({ pageId }, { snapshot: 0, snapshotZ: 0 }).sort({ createdAt: -1 }).limit(200).lean();
+  return Revision.countDocuments({ pageId });
+}
+
+export async function listRevisions(pageId: string, page = 1): Promise<RevisionDoc[]> {
+  await connectDB();
+  const rows = await Revision.find({ pageId }, { snapshot: 0, snapshotZ: 0 })
+    .sort({ createdAt: -1 })
+    .skip((Math.max(1, page) - 1) * HISTORY_PAGE_SIZE)
+    .limit(HISTORY_PAGE_SIZE)
+    .lean();
   return rows.map((r) => ({
     _id: String(r._id),
     pageId: String(r.pageId),
@@ -247,9 +259,10 @@ export interface SearchParams {
   types?: PageType[];
   sectors?: string[];
   limit?: number;
+  page?: number;
 }
 
-export async function searchPages({ q, types, sectors, limit = 40 }: SearchParams) {
+export async function searchPages({ q, types, sectors, limit = 40, page = 1 }: SearchParams) {
   const key = searchKey(q);
   await connectDB();
   const base: Record<string, unknown> = { ...PUBLIC_FILTER };
@@ -266,7 +279,7 @@ export async function searchPages({ q, types, sectors, limit = 40 }: SearchParam
   if (sectors?.length) filter["infobox.sector"] = { $in: sectors };
 
   const [rows, total, typeFacet, sectorFacet] = await Promise.all([
-    Page.find(filter, { ...CARD_FIELDS, status: 1 }).sort({ type: 1, followerCount: -1, title: 1 }).limit(limit).lean(),
+    Page.find(filter, { ...CARD_FIELDS, status: 1 }).sort({ type: 1, followerCount: -1, title: 1 }).skip((Math.max(1, page) - 1) * limit).limit(limit).lean(),
     Page.countDocuments(filter),
     // Facet counts ignore their own filter so users can switch between options
     Page.aggregate([
@@ -341,11 +354,27 @@ export async function randomSlug(): Promise<{ slug: string; type: PageType } | n
   return r ?? null;
 }
 
-export async function allSlugsForSitemap() {
+export const SITEMAP_CHUNK = 45_000;
+const SITEMAP_FILTER = () => ({ noindex: { $ne: true }, ...PUBLIC_FILTER, $or: [{ type: "person" }, { body: { $ne: "" } }] });
+
+/** #53: number of sitemap files (each holds up to 45,000 addresses, below the 50,000 limit). */
+export async function sitemapPartCount(): Promise<number> {
   await connectDB();
-  return Page.find({ noindex: { $ne: true }, ...PUBLIC_FILTER, $or: [{ type: "person" }, { body: { $ne: "" } }] }, { slug: 1, type: 1, updatedAt: 1 })
-    .limit(50_000)
+  return Math.max(1, Math.ceil((await Page.countDocuments(SITEMAP_FILTER())) / SITEMAP_CHUNK));
+}
+
+export async function sitemapPart(part: number) {
+  await connectDB();
+  return Page.find(SITEMAP_FILTER(), { slug: 1, type: 1, updatedAt: 1 })
+    .sort({ _id: 1 })
+    .skip(part * SITEMAP_CHUNK)
+    .limit(SITEMAP_CHUNK)
     .lean<{ slug: string; type: PageType; updatedAt: Date }[]>();
+}
+
+/** @deprecated use sitemapPart */
+export async function allSlugsForSitemap() {
+  return sitemapPart(0);
 }
 
 /** For the organisation autocomplete in the editor. */

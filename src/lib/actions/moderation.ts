@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../revalidate";
 import { headers } from "next/headers";
 import { getCurrentUser, isModerator, safeNext } from "../auth";
 import { getPageBySlug } from "../pages";
@@ -75,21 +75,33 @@ export async function closeReportAction(fd: FormData): Promise<void> {
   const slug = str(fd.get("slug"), 100);
   if (bool(fd.get("unpublish")) && slug) {
     await unpublishPage(mod, slug, resolution || "Removed after a report");
+    const ownerOfReported = str(fd.get("ownerId"), 40);
+    if (ownerOfReported) await expireOrgsOfOwner(ownerOfReported);
     revalidatePath(`/${slug}`);
     resolution = `${resolution} [profile unpublished]`.trim();
   }
   const ownerId = str(fd.get("ownerId"), 40);
   if (bool(fd.get("ban")) && ownerId) {
     await setBan(mod, ownerId, true, resolution || "Banned after a report");
+    await expireOrgsOfOwner(ownerId);
     resolution = `${resolution} [owner banned]`.trim();
   }
   await closeReport(mod, id, status, resolution);
   redirect("/admin?section=reports");
 }
 
+async function expireOrgsOfOwner(userId: string) {
+  const { getPersonPageOf } = await import("../pages");
+  const { expireOrg } = await import("../revalidate");
+  const p = await getPersonPageOf(userId);
+  for (const e of p?.experiences ?? []) expireOrg(e.orgSlug);
+  for (const e of p?.educations ?? []) expireOrg(e.schoolSlug);
+}
+
 export async function banAction(fd: FormData): Promise<void> {
   const mod = await moderator();
   const err = await setBan(mod, str(fd.get("userId"), 40), fd.get("ban") === "1", str(fd.get("reason"), 300));
+  await expireOrgsOfOwner(str(fd.get("userId"), 40));
   const back = safeNext(fd.get("back"), "/admin?section=users");
   redirect(err ? `${back}${back.includes("?") ? "&" : "?"}error=${encodeURIComponent(err)}` : back);
 }

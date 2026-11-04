@@ -116,7 +116,7 @@ const PageSchema = new Schema<any>(
       ),
       default: () => ({}),
     },
-    image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null },
+    image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null },
     infobox: { type: Schema.Types.Mixed, default: {} },
     body: { type: String, default: "", maxlength: 100_000 },
     experiences: { type: [ExperienceSchema], default: [] },
@@ -134,7 +134,7 @@ const PageSchema = new Schema<any>(
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
     // Person: achievements and extra sections
     projects: {
-      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null } }, { _id: false })],
+      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null } }, { _id: false })],
       default: [],
     },
     publications: { type: [new Schema<any>({ title: String, publisher: String, year: Number, url: String }, { _id: false })], default: [] },
@@ -146,7 +146,7 @@ const PageSchema = new Schema<any>(
     openTo: { type: [String], default: [] },
     // Organization: structure, history and more
     products: {
-      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null } }, { _id: false })],
+      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null } }, { _id: false })],
       default: [],
     },
     offices: { type: [new Schema<any>({ city: String, country: String, address: String, kind: String }, { _id: false })], default: [] },

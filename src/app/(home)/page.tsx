@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-react";
 import { cachedCollections, cachedHomeData } from "@/lib/cached";
@@ -6,8 +7,6 @@ import { EntityGrid } from "@/components/EntityCards";
 import { Thumb } from "@/components/ui";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
-
-export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -58,6 +57,7 @@ function Globe() {
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
+  await connection(); // always run at request time
   const { deleted } = await searchParams;
   const [data, collections] = await Promise.all([cachedHomeData(), cachedCollections()]);
   const floaters = [...data.featuredPeople.slice(0, 2), ...data.featuredOrgs.slice(0, 1)];

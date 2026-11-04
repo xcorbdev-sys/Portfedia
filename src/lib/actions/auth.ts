@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../revalidate";
 import { connectDB } from "../db";
 import { User } from "../models";
 import { createSession, destroySession, getCurrentUser, revokeOtherSessions, revokeSession, rotateSession, safeNext } from "../auth";
@@ -210,7 +210,13 @@ export async function deleteAccountAction(_: FormState, fd: FormData): Promise<F
   } else if (str(fd.get("confirmEmail"), 200).toLowerCase() !== doc.email) {
     return { error: "Type your email address to confirm." };
   }
+  const { getPersonPageOf } = await import("../pages");
+  const { expireOrg } = await import("../revalidate");
+  const mine = await getPersonPageOf(user.id);
   await deleteAccount(user.id);
+  // The person disappears from organization pages right away
+  for (const e of mine?.experiences ?? []) expireOrg(e.orgSlug);
+  for (const e of mine?.educations ?? []) expireOrg(e.schoolSlug);
   await destroySession();
   redirect("/?deleted=1");
 }

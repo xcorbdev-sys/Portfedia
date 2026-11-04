@@ -19,6 +19,8 @@ export interface StoredImage {
   url: string;
   /** SHA-256 of the processed image, used to spot the same photo on several profiles */
   hash?: string;
+  /** 96×96 variant for avatars, cards and lists (#48) */
+  thumbUrl?: string;
 }
 
 export interface Experience {

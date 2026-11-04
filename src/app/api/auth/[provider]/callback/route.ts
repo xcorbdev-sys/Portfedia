@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { cookies } from "next/headers";
 import { createSession, safeNext } from "@/lib/auth";
 import { fetchProfile, getProvider, resolveOAuthUser } from "@/lib/oauth";
@@ -10,11 +11,10 @@ async function isBanned(userId: string) {
   return Boolean(await User.exists({ _id: userId, bannedAt: { $ne: null } }));
 }
 
-export const dynamic = "force-dynamic";
-
 const redirect = (location: string) => new Response(null, { status: 302, headers: { Location: location, "Cache-Control": "no-store" } });
 
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
+  await connection(); // always run at request time
   const provider = getProvider((await params).provider);
   const url = new URL(req.url);
   const jar = await cookies();

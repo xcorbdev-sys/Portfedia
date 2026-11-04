@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cachedJobs } from "@/lib/cached";
@@ -7,6 +8,7 @@ import { Breadcrumbs, Thumb } from "@/components/ui";
 export const metadata: Metadata = { title: "Jobs", description: "Open positions at organizations that manage their Portfedia page." };
 
 export default async function JobsPage() {
+  await connection(); // data comes from the database at request time (cached briefly)
   const jobs = await cachedJobs();
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>

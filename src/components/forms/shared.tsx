@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+
+// #49/#52: the cropper is only downloaded when someone actually picks a photo
+const Cropper = dynamic(() => import("./Cropper"), { ssr: false });
 import { Check, Plus, Trash2, Upload } from "lucide-react";
 import { initials } from "@/lib/site";
 import type { StoredImage } from "@/lib/types";
@@ -66,6 +70,8 @@ export function validateAllSteps(steps: (HTMLElement | null)[], jump: (i: number
 export function ImagePicker({ current, name, label, logo = false }: { current: StoredImage | null; name: string; label: string; logo?: boolean }) {
   const [preview, setPreview] = useState<string | null>(current?.url ?? null);
   const [removed, setRemoved] = useState(false);
+  const [cropping, setCropping] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const id = useId();
   useEffect(() => () => {
     if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
@@ -83,6 +89,7 @@ export function ImagePicker({ current, name, label, logo = false }: { current: S
             <Upload size={15} /> Upload image
           </label>
           <input
+            ref={inputRef}
             id={id}
             className="visually-hidden"
             type="file"
@@ -90,12 +97,30 @@ export function ImagePicker({ current, name, label, logo = false }: { current: S
             accept="image/jpeg,image/png,image/webp"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) {
-                setPreview(URL.createObjectURL(f));
-                setRemoved(false);
-              }
+              if (!f) return;
+              if (!logo && f.type !== "image/webp") return setCropping(f); // photos: crop to a square first
+              setPreview(URL.createObjectURL(f));
+              setRemoved(false);
             }}
           />
+          {cropping && (
+            <Cropper
+              file={cropping}
+              onCancel={() => {
+                if (inputRef.current) inputRef.current.value = "";
+                setCropping(null);
+              }}
+              onDone={(cropped) => {
+                // Put the cropped photo into the file input so it is uploaded with the form
+                const dt = new DataTransfer();
+                dt.items.add(cropped);
+                if (inputRef.current) inputRef.current.files = dt.files;
+                setPreview(URL.createObjectURL(cropped));
+                setRemoved(false);
+                setCropping(null);
+              }}
+            />
+          )}
           <span className="hint">JPEG, PNG or WebP, up to 5 MB. Resized to 400×400; location data is removed.</span>
           {current && (
             <label className="check">

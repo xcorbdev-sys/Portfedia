@@ -5,6 +5,8 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { savePersonAction } from "@/lib/actions/pages";
 import { OPEN_TO, type PageDoc } from "@/lib/types";
 import { AchievementsStep, LanguagesEditor } from "./Achievements";
+import { MarkdownField } from "./MarkdownField";
+import { FormDraft } from "./FormDraft";
 import { FormError } from "../ui";
 import {
   AddButton, ImagePicker, MARKDOWN_HINT, OrgInput, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps,
@@ -71,6 +73,7 @@ export function PersonForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
+      <FormDraft storageKey="pf-draft:person" savedAt={page?.updatedAt} />
       <Stepper labels={labels} current={step + offset} onJump={(i) => (i < offset ? onBackToType?.() : go(i - offset))} />
 
       {/* Step 1: Basic info */}
@@ -200,11 +203,9 @@ export function PersonForm({
         <div className="field">
           <label htmlFor="body">Biography</label>
           {MARKDOWN_HINT}
-          <textarea
+          <MarkdownField
             id="body"
             name="body"
-            className="textarea"
-            maxLength={100000}
             defaultValue={page?.body}
             placeholder={"Ayşe Demir is a software engineer based in Istanbul. Since 2019 she has worked at [[Acme Software]]...\n\n## Projects\n\n- ..."}
           />

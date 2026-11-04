@@ -31,7 +31,7 @@ export function Thumb({
   const cls = `thumb ${variant === "round" ? "thumb--round" : variant === "logo" ? "thumb--logo" : ""} ${className}`;
   return (
     <span className={cls} aria-hidden="true">
-      {image ? <img src={image.url} alt="" loading="lazy" /> : initials(name)}
+      {image ? <img src={image.thumbUrl ?? image.url} alt="" loading="lazy" decoding="async" width={96} height={96} /> : initials(name)}
     </span>
   );
 }

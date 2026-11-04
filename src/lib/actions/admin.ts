@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "../revalidate";
 import { getCurrentUser, isModerator } from "../auth";
 import { importOrganizations, type ImportResult } from "../import";
 import { deleteCollection, saveCollection } from "../collections";

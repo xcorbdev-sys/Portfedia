@@ -1,14 +1,14 @@
+import { connection } from "next/server";
 import { cookies } from "next/headers";
 import { safeNext } from "@/lib/auth";
 import { authorizationUrl, getProvider } from "@/lib/oauth";
 import { createToken } from "@/lib/tokens";
 
-export const dynamic = "force-dynamic";
-
 const redirect = (location: string) => new Response(null, { status: 302, headers: { Location: location, "Cache-Control": "no-store" } });
 
 /** Starts "Sign in with Google/LinkedIn". */
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
+  await connection(); // always run at request time
   const provider = getProvider((await params).provider);
   if (!provider) return redirect("/login?error=provider");
   const next = safeNext(new URL(req.url).searchParams.get("next"));

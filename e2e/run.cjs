@@ -77,6 +77,7 @@ async function createProfile(p, opts) {
   await p.click("text=Person Profile");
   await p.click('button:has-text("Continue")');
   await p.setInputFiles("input[name=image]", photo("blue"));
+  await p.click('button:has-text("Use photo")'); // square crop dialog
   await p.fill("#occupation", occupation);
   await p.fill("#summary", summary);
   await p.fill("#tags", "Engineer, Robotics");
@@ -162,7 +163,7 @@ async function createProfile(p, opts) {
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
   const aysePath = await createProfile(ayse, { occupation: "Robotics Engineer", summary: "Robotics engineer and CTO of [[Northwind Robotics]].", org: "Northwind Robotics", role: "CTO", rich: true });
   check("profile submitted for review", aysePath === "/ayse-demir" && (await ayse.locator(".review-banner").count()) === 1);
-  check("uploaded photo is resized to WebP", /\.webp$/.test((await ayse.locator(".p-photo img").getAttribute("src")) || ""));
+  check("uploaded photo is resized to WebP", /\.webp$/.test((await ayse.locator(".p-head .p-photo img").getAttribute("src")) || ""));
   check("pending profile is hidden", (await anon.goto(`${BASE}${aysePath}`)).status() === 404);
 
   // ── Approval

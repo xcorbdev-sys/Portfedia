@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate";
 import { confirmWorkVerification, peekWorkVerification } from "@/lib/org-admin";
 
 export const metadata: Metadata = { title: "Verify position", robots: { index: false }, referrer: "no-referrer" };

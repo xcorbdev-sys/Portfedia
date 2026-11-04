@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getPageBySlug } from "@/lib/pages";
 import { HistoryPage } from "@/components/HistoryPage";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ restored?: string; error?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ restored?: string; error?: string; page?: string }> };
 export const metadata: Metadata = { title: "Revision history", robots: { index: false } };
 
 export default async function OrgHistory({ params, searchParams }: Props) {

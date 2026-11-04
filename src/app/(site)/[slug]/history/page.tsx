@@ -6,7 +6,7 @@ import { findRenamedPage } from "@/lib/account";
 import { canView } from "@/lib/visibility";
 import { HistoryPage } from "@/components/HistoryPage";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ restored?: string; error?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ restored?: string; error?: string; page?: string }> };
 export const metadata: Metadata = { title: "Revision history", robots: { index: false } };
 
 export default async function PersonHistory({ params, searchParams }: Props) {

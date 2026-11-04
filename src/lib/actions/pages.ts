@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { expireOrg, revalidatePath } from "../revalidate";
 import { getCurrentUser } from "../auth";
 import { canView, isPublic } from "../visibility";
 import { guardContent } from "../guard";
@@ -277,6 +277,9 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     await notifyMentions(user, prev?.body ?? "", page.body, { title: `${page.title}'s profile`, href: `/${page.slug}` });
   }
   revalidatePath(`/${page.slug}`);
+  // Organizations the person was removed from also need fresh data
+  for (const e of prev?.experiences ?? []) expireOrg(e.orgSlug);
+  for (const e of prev?.educations ?? []) expireOrg(e.schoolSlug);
   for (const e of page.experiences) revalidatePath(`/org/${e.orgSlug}`);
   for (const e of page.educations) revalidatePath(`/org/${e.schoolSlug}`);
   redirect(`/${page.slug}`);
@@ -370,6 +373,16 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     throw err;
   }
   revalidatePath(`/org/${pageSlug}`);
+  // Pages that show this organization's data (investors' "Investments", acquired companies, parent's "Group")
+  const related = new Set([
+    ...orgExtras.acquisitions.map((a) => a.slug),
+    ...(orgExtras.parent ? [orgExtras.parent.slug] : []),
+    ...(prevOrg?.parent ? [prevOrg.parent.slug] : []),
+    ...(prevOrg?.acquisitions ?? []).map((a) => a.slug),
+    ...parseFunding(fd.get("fundingRounds")).flatMap((r) => r.investors.map((i) => i.slug)),
+    ...(prevOrg?.fundingRounds ?? []).flatMap((r) => r.investors.map((i) => i.slug)),
+  ]);
+  for (const s of related) expireOrg(s);
   redirect(`/org/${pageSlug}`);
 }
 
@@ -397,4 +410,16 @@ export async function thankAction(fd: FormData): Promise<void> {
   if (!(await rateLimit(`thanks:${user.id}`, 30, 3600_000))) return;
   await giveThanks(user, page);
   revalidatePath(`/${slug}`);
+}
+
+/** #51: renders Markdown exactly like the published page (wiki links resolved, red links for missing pages). */
+export async function previewMarkdownAction(text: string): Promise<{ html: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { html: "" };
+  const { renderArticle, extractWikiLinks } = await import("../wikitext");
+  const { existingPages } = await import("../pages");
+  const body = String(text ?? "").slice(0, 100_000);
+  const existing = await existingPages(extractWikiLinks(body).map((l) => l.slug));
+  const r = renderArticle(body, existing);
+  return { html: r.leadHtml + r.restHtml };
 }

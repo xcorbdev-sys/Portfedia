@@ -1,13 +1,13 @@
+import { connection } from "next/server";
 import { Types } from "mongoose";
 import { getCurrentUser } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Follow, Page, Report, Revision, User } from "@/lib/models";
 import { readSnapshot } from "@/lib/snapshots";
 
-export const dynamic = "force-dynamic";
-
 /** GDPR / KVKK right of access: everything we hold about the signed-in user, as JSON. */
 export async function GET() {
+  await connection(); // always run at request time
   const user = await getCurrentUser();
   if (!user) return new Response("Not signed in", { status: 401 });
   await connectDB();

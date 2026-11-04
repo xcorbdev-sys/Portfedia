@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Layers } from "lucide-react";
@@ -7,6 +8,7 @@ import { Breadcrumbs } from "@/components/ui";
 export const metadata: Metadata = { title: "Sectors", description: "Browse companies and people on Portfedia by sector." };
 
 export default async function SectorsPage() {
+  await connection(); // data comes from the database at request time (cached briefly)
   const sectors = await cachedSectors();
   return (
     <div className="container" style={{ paddingBottom: 56 }}>

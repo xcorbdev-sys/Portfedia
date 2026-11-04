@@ -18,8 +18,11 @@ import {
   AcquisitionsSection, AlumniEmployersSection, GroupSection, JobsSection, LeadershipSection, MilestonesSection, OfficesSection, PressSection, ProductsSection, TrendSection,
 } from "@/components/OrgSections";
 import { findRenamedPage } from "@/lib/account";
+import { cachedOrgDerived } from "@/lib/cached";
 
 type Props = { params: Promise<{ slug: string }> };
+
+const PREVIEW = 24;
 
 const load = cache(async (slug: string) => getPageBySlug(slug));
 
@@ -60,17 +63,12 @@ export default async function OrgPage({ params }: Props) {
   const user = await getCurrentUser();
   const investorSlugs = page.fundingRounds.flatMap((r) => r.investors.map((i) => i.slug));
   const relatedSlugs = [...page.leadership.map((l) => l.slug), ...page.acquisitions.map((a) => a.slug), page.parent?.slug ?? ""].filter(Boolean);
-  const [existing, backlinks, people, alumni, following, investments, relations, spans, alumniEmployers] = await Promise.all([
+  const [existing, following, derived] = await Promise.all([
     existingPages([...page.outLinks.map((l) => l.slug), ...investorSlugs, ...relatedSlugs]),
-    getBacklinks(page.slug),
-    getPeopleOfOrg(page.slug),
-    page.type === "school" ? getAlumni(page.slug) : Promise.resolve([]),
     user ? isFollowing(user.id, page._id) : Promise.resolve(false),
-    getInvestments(page.slug),
-    getOrgRelations(page.slug),
-    getOrgSpans(page.slug),
-    page.type === "school" ? getAlumniEmployers(page.slug) : Promise.resolve([]),
+    cachedOrgDerived(page.slug, page.type === "school"),
   ]);
+  const { backlinks, people, alumni, investments, relations, spans, alumniEmployers } = derived;
   const canEdit = canEditOrg(user, page);
   const reserved = [
     "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",
@@ -264,19 +262,34 @@ export default async function OrgPage({ params }: Props) {
           {people.current.length > keyPeople.length && (
             <section className="p-section" id="people">
               <h2>All People</h2>
-              <EntityGrid items={people.current} className="entity-grid--3" />
+              <EntityGrid items={people.current.slice(0, PREVIEW)} className="entity-grid--3" />
+              {people.current.length > PREVIEW && (
+                <p style={{ marginTop: 10 }}>
+                  <Link className="link-arrow" href={`/org/${page.slug}/people?list=current`}>See all {people.current.length}</Link>
+                </p>
+              )}
             </section>
           )}
           {people.former.length > 0 && (
             <section className="p-section" id="former-people">
               <h2>Former People</h2>
-              <EntityGrid items={people.former} className="entity-grid--3" />
+              <EntityGrid items={people.former.slice(0, PREVIEW)} className="entity-grid--3" />
+              {people.former.length > PREVIEW && (
+                <p style={{ marginTop: 10 }}>
+                  <Link className="link-arrow" href={`/org/${page.slug}/people?list=former`}>See all {people.former.length}</Link>
+                </p>
+              )}
             </section>
           )}
           {alumni.length > 0 && (
             <section className="p-section" id="alumni">
               <h2>Alumni</h2>
-              <EntityGrid items={alumni} className="entity-grid--3" />
+              <EntityGrid items={alumni.slice(0, PREVIEW)} className="entity-grid--3" />
+              {alumni.length > PREVIEW && (
+                <p style={{ marginTop: 10 }}>
+                  <Link className="link-arrow" href={`/org/${page.slug}/people?list=alumni`}>See all {alumni.length}</Link>
+                </p>
+              )}
             </section>
           )}
           {backlinks.length > 0 && (
