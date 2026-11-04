@@ -670,3 +670,14 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .network__list a:hover { background: var(--surface); text-decoration: none; }
 .network__list a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .network__list .thumb { width: 32px; height: 32px; flex: none; font-size: 0.7rem; }
+
+/* Followers / following line under the page title */
+.net-summary { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 0 -4px; font-size: 0.85rem; color: var(--text-2); padding: 3px 10px 3px 4px; border-radius: 999px; }
+.net-summary:not(:has(.net-summary__faces)) { padding-left: 4px; }
+.net-summary:hover { text-decoration: none; background: var(--bg-soft); color: var(--text); }
+.net-summary b { color: var(--text); font-weight: 700; }
+.net-summary__faces { display: inline-flex; }
+.net-summary__faces > * { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 2px solid var(--surface); margin-left: -7px; background: var(--bg-soft); box-sizing: content-box; }
+.net-summary__faces > :first-child { margin-left: 0; }
+.net-summary__initials { display: inline-grid; place-items: center; font-size: 0.55rem; font-weight: 700; color: var(--primary); background: var(--primary-soft) !important; }
+.net-summary__dot { color: var(--text-3); }

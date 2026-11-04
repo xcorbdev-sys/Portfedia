@@ -561,6 +561,7 @@ async function createProfile(p, opts) {
   check("profile lists what the person follows", (await anon.locator(`#network a[href="${aysePath}"]`).count()) === 1 && (await anon.locator('#network a[href="/org/northwind-robotics"]').count()) === 1);
   await anon.goto(`${BASE}/org/northwind-robotics`);
   check("company page lists its followers", (await anon.locator('#network a[href="/elif-sahin"]').count()) === 1);
+  check("follower count in the page header", /1\s*follower/.test(await anon.locator(".p-head .net-summary").innerText()));
 
   // ── A company can't be both the parent and a subsidiary of another
   await elif.goto(`${BASE}/org/elif-analytics/edit`);

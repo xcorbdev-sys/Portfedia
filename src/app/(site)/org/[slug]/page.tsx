@@ -21,7 +21,7 @@ import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
 import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
-import { NetworkSection } from "@/components/Network";
+import { NetworkSection, NetworkSummary } from "@/components/Network";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -179,6 +179,7 @@ export default async function OrgPage({ params }: Props) {
                   ))}
                 </div>
               )}
+              <NetworkSummary followers={network.followers} followerTotal={page.followerCount} />
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
             </div>
             <PageActions

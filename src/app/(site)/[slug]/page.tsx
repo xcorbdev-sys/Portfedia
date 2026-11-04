@@ -15,7 +15,7 @@ import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
 import { hasThanked, mutualConnections } from "@/lib/social";
 import { featureUnlocked, followNetwork, getPersonPageOf, getUserPlan, linkedProjectPages, viewStatsHidden } from "@/lib/pages";
-import { NetworkSection } from "@/components/Network";
+import { NetworkSection, NetworkSummary } from "@/components/Network";
 import { countView } from "@/lib/views";
 import { StatsCard } from "@/components/StatsCard";
 import { Users as UsersIcon } from "lucide-react";
@@ -184,6 +184,7 @@ export default async function PersonPage({ params }: Props) {
                   ))}
                 </div>
               )}
+              <NetworkSummary followers={network.followers} followerTotal={page.followerCount} followingTotal={network.followingTotal} />
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
               {mutual.length > 0 && (
                 <p className="mutual">

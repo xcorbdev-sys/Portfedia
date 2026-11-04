@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { PageCard } from "@/lib/pages";
 import { pageHref } from "@/lib/wikitext";
 import { Thumb } from "./ui";
+import { initials } from "@/lib/site";
 
 function People({ title, items, total, empty }: { title: string; items: PageCard[]; total: number; empty: string }) {
   return (
@@ -29,6 +30,38 @@ function People({ title, items, total, empty }: { title: string; items: PageCard
         {total > items.length && items.length > 0 && <p className="small muted" style={{ margin: "10px 0 0" }}>and {(total - items.length).toLocaleString("en-US")} more</p>}
       </div>
     </div>
+  );
+}
+
+/** Compact line under the page title: a few follower photos and the counts, linking to the full lists below. */
+export function NetworkSummary({ followers, followerTotal, followingTotal }: { followers: PageCard[]; followerTotal: number; followingTotal?: number }) {
+  const faces = followers.slice(0, 4);
+  return (
+    <a className="net-summary" href="#network">
+      {faces.length > 0 && (
+        <span className="net-summary__faces" aria-hidden="true">
+          {faces.map((c) =>
+            c.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={c.slug} src={c.image.thumbUrl ?? c.image.url} alt="" width={22} height={22} />
+            ) : (
+              <span key={c.slug} className="net-summary__initials">{initials(c.title)}</span>
+            ),
+          )}
+        </span>
+      )}
+      <span>
+        <b>{followerTotal.toLocaleString("en-US")}</b> follower{followerTotal === 1 ? "" : "s"}
+      </span>
+      {followingTotal !== undefined && (
+        <>
+          <span className="net-summary__dot" aria-hidden="true">·</span>
+          <span>
+            <b>{followingTotal.toLocaleString("en-US")}</b> following
+          </span>
+        </>
+      )}
+    </a>
   );
 }
 
