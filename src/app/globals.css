@@ -214,8 +214,9 @@ a.chip:hover { text-decoration: none; background: var(--primary-soft-2); }
 .cta-band { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 26px 28px; border-radius: var(--radius); background: var(--primary-soft); border: 1px solid var(--primary-soft-2); }
 .cta-band h2 { font-size: 1.2rem; }
 @media (max-width: 860px) {
-  .hero__inner { grid-template-columns: 1fr; padding-top: 36px; }
-  .hero-art { display: none; }
+  .hero__inner { grid-template-columns: minmax(0, 1fr); padding-top: 36px; }
+  .hero h1 { overflow-wrap: break-word; }
+  .hero-art { max-width: 380px; justify-self: center; margin-top: 8px; }
   .stats { grid-template-columns: 1fr 1fr; }
   .cta-band { flex-direction: column; align-items: flex-start; }
 }
@@ -614,3 +615,9 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .admin-btn:hover { background: var(--primary-soft); text-decoration: none; }
 .admin-btn__count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--err); color: #fff; font-size: 0.7rem; font-weight: 700; display: inline-grid; place-items: center; line-height: 1; }
 @media (max-width: 480px) { .admin-btn__label { display: none; } .admin-btn { padding-left: 8px; padding-right: 8px; } }
+@media (max-width: 420px) {
+  .site-header .header-right { gap: 6px; }
+  .admin-btn { padding-left: 6px; padding-right: 6px; gap: 4px; }
+}
+/* Very small phones: the admin panel stays reachable from the ☰ menu */
+@media (max-width: 350px) { .admin-btn { display: none; } }

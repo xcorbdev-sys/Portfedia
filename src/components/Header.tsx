@@ -144,6 +144,12 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
             </summary>
             <div className="menu__panel">
               <Link href="/search"><Search size={16} /> Search</Link>
+              {user && isModerator(user) && (
+                <Link href="/admin">
+                  <ShieldCheck size={16} /> Admin panel
+                  {pending > 0 && <span className="menu__badge">{pending}</span>}
+                </Link>
+              )}
               {[...NAV, ...MOBILE_EXTRA].map((n) => (
                 <Link key={n.href} href={n.href}>{n.label}</Link>
               ))}
