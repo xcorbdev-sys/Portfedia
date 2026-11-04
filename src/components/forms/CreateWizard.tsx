@@ -7,6 +7,7 @@ import type { PageDoc } from "@/lib/types";
 import { Stepper } from "./shared";
 import { PersonForm } from "./PersonForm";
 import { OrgForm } from "./OrgForm";
+import type { LinkableProject } from "./Achievements";
 
 type Kind = "person" | "org" | "saas";
 
@@ -37,19 +38,21 @@ export function CreateWizard({
   initialTitle,
   initialKind,
   quota,
+  mySaas = [],
 }: {
   myPage: PageDoc | null;
   defaultName: string;
   initialTitle: string;
   initialKind: Kind | null;
   quota: QuotaView;
+  mySaas?: LinkableProject[];
 }) {
   const router = useRouter();
   const [kind, setKind] = useState<Kind>(initialKind ?? (myPage ? "org" : "person"));
   const [started, setStarted] = useState(Boolean(initialKind && initialTitle));
   const full = (kind === "org" && left(quota.company) === 0) || (kind === "saas" && left(quota.saas) === 0);
 
-  if (started && kind === "person") return <PersonForm page={null} defaultName={defaultName} onBackToType={() => setStarted(false)} />;
+  if (started && kind === "person") return <PersonForm page={null} defaultName={defaultName} mySaas={mySaas} onBackToType={() => setStarted(false)} />;
   if (started && kind !== "person" && !full) {
     return <OrgForm page={null} defaultTitle={initialTitle} initialCategory={kind === "saas" ? "saas" : "company"} onBackToType={() => setStarted(false)} />;
   }

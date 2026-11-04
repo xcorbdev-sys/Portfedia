@@ -221,6 +221,7 @@ export function useList<T>(initial: T[], blank: () => T) {
   return {
     items,
     add: () => setItems((xs) => [...xs, blank()]),
+    addItem: (item: T) => setItems((xs) => [...xs, item]),
     remove: (i: number) => setItems((xs) => xs.filter((_, j) => j !== i)),
     update: (i: number, patch: Partial<T>) => setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x))),
   };

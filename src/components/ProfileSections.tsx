@@ -48,7 +48,7 @@ export function OpenToBadges({ page }: { page: PageDoc }) {
   );
 }
 
-export function ProjectsSection({ page }: { page: PageDoc }) {
+export function ProjectsSection({ page, linked = {} }: { page: PageDoc; linked?: Record<string, { title: string; logo: string }> }) {
   if (page.projects.length === 0) return null;
   return (
     <section className="p-section" id="projects">
@@ -56,12 +56,20 @@ export function ProjectsSection({ page }: { page: PageDoc }) {
       <ul className="project-grid">
         {page.projects.map((p) => (
           <li key={p.id} className="card project-card">
-            {p.image && <img src={p.image.url} alt="" loading="lazy" className="project-card__img" />}
+            {p.image ? (
+              <img src={p.image.url} alt="" loading="lazy" className="project-card__img" />
+            ) : p.pageSlug && linked[p.pageSlug]?.logo ? (
+              <img src={linked[p.pageSlug].logo} alt="" loading="lazy" className="project-card__img project-card__img--logo" />
+            ) : null}
             <div className="card__body">
               <div className="project-card__title">
-                <Ext url={p.url}>{p.title}</Ext>
+                {p.pageSlug && linked[p.pageSlug] ? <Link href={`/org/${p.pageSlug}`}>{p.title}</Link> : <Ext url={p.url}>{p.title}</Ext>}
                 {p.year && <span className="muted small"> · {p.year}</span>}
+                {p.pageSlug && linked[p.pageSlug] && <span className="pill" style={{ marginLeft: 6 }}>SaaS</span>}
               </div>
+              {p.pageSlug && linked[p.pageSlug] && p.url && (
+                <a href={p.url} rel="nofollow ugc noopener" className="external small">{p.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a>
+              )}
               {p.description && <p className="small" style={{ margin: "6px 0 0", color: "var(--text-2)" }}>{p.description}</p>}
             </div>
           </li>

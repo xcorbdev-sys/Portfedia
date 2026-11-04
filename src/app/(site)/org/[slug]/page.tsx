@@ -20,7 +20,7 @@ import {
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
-import { featureUnlocked, talksAtEvent } from "@/lib/pages";
+import { featureUnlocked, makersOf, talksAtEvent } from "@/lib/pages";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -76,6 +76,7 @@ export default async function OrgPage({ params }: Props) {
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
   const isSaas = page.category === "saas";
+  const makers = isSaas ? await makersOf(page.slug) : [];
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
@@ -215,6 +216,12 @@ export default async function OrgPage({ params }: Props) {
                 </span>
               </div>
             </div>
+          )}
+          {isSaas && makers.length > 0 && (
+            <section className="p-section" id="makers">
+              <h2>Made by</h2>
+              <PersonRows items={makers} />
+            </section>
           )}
           {isInvestor && page.investor && (page.investor.fundSize || page.investor.stages.length || page.investor.focus.length) ? (
             <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>

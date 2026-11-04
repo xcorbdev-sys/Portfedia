@@ -221,6 +221,23 @@ async function createProfile(p, opts) {
   await createOrg(elif, { type: "saas", name: "Elif Forms", sector: "Productivity", tags: "SaaS", summary: "Forms for teams", founded: "2025", hq: "Ankara", employees: "1–10", website: "https://elif-forms.example" });
   check("upgraded account can add more SaaS projects", new URL(elif.url()).pathname === "/org/elif-forms");
 
+  // ── A member shows their SaaS project in the Projects section of their profile
+  await elif.goto(`${BASE}/edit`);
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("+ Elif Analytics")');
+  check("own SaaS projects are offered in Projects", (await elif.locator('button:has-text("+ Elif Forms")').count()) === 1 && (await elif.locator('a:has-text("your SaaS page on Portfedia")').count()) === 1);
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Submit for review")');
+  await elif.waitForURL(`${BASE}/elif-sahin`);
+  await admin.goto(`${BASE}/admin`);
+  await admin.locator(".app-card", { has: admin.locator('a[href="/elif-sahin"]') }).locator('button:has-text("Approve")').click();
+  await admin.locator('.app-card a[href="/elif-sahin"]').waitFor({ state: "detached" });
+  await anon.goto(`${BASE}/elif-sahin`);
+  check("profile project links to the SaaS page", (await anon.locator('#projects a[href="/org/elif-analytics"]').count()) === 1);
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("SaaS page shows its maker", (await anon.locator('#makers a[href="/elif-sahin"]').count()) === 1);
+
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
   const aysePath = await createProfile(ayse, { occupation: "Robotics Engineer", summary: "Robotics engineer and CTO of [[Northwind Robotics]].", org: "Northwind Robotics", role: "CTO", rich: true });

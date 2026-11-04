@@ -6,7 +6,7 @@ import { autosavePersonAction, savePersonAction } from "@/lib/actions/pages";
 import { isPublic } from "@/lib/visibility";
 import { safeAction, useAutosave } from "./submit-helpers";
 import { OPEN_TO, type PageDoc } from "@/lib/types";
-import { AchievementsStep, LanguagesEditor } from "./Achievements";
+import { AchievementsStep, LanguagesEditor, type LinkableProject } from "./Achievements";
 import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
 import { FormError } from "../ui";
@@ -35,9 +35,12 @@ export function PersonForm({
   page,
   defaultName,
   onBackToType,
+  mySaas = [],
 }: {
   page: PageDoc | null;
   defaultName: string;
+  /** The member's SaaS projects on Portfedia, offered in the Projects section */
+  mySaas?: LinkableProject[];
   /** When rendered inside the create wizard, the first step is "Profile Type". */
   onBackToType?: () => void;
 }) {
@@ -230,7 +233,7 @@ export function PersonForm({
           <h2>Achievements</h2>
           <p className="muted small">All optional. Each section appears on your profile only when it has entries.</p>
         </div>
-        <AchievementsStep page={page} />
+        <AchievementsStep page={page} mySaas={mySaas} />
       </div>
 
       {/* Step 4: Sources & submit */}

@@ -66,7 +66,10 @@ export function ListEditor({ name, label, hint, addLabel, fields, initial, blank
   );
 }
 
-type ProjectRow = { id: string; title: string; url: string; year: string; description: string; imageKey: string; imageUrl: string; removeImage: boolean; preview: string };
+type ProjectRow = { id: string; title: string; url: string; year: string; description: string; imageKey: string; imageUrl: string; removeImage: boolean; preview: string; pageSlug: string };
+
+/** A SaaS project of the member on Portfedia that can be added to the profile's projects. */
+export interface LinkableProject { slug: string; title: string; summary: string; website: string; year: number | null; logo: string }
 const newId = () => Math.random().toString(36).slice(2, 10);
 
 /** Cards with an optional image each (projects, products); images are uploaded as <filePrefix><id>. */
@@ -79,6 +82,7 @@ export function ProjectsEditor({
   addLabel = "Add project",
   namePlaceholder = "Project name *",
   descPlaceholder = "What is it and what was your role?",
+  linkable = [],
 }: {
   initial: PageDoc["projects"];
   field?: string;
@@ -88,11 +92,23 @@ export function ProjectsEditor({
   addLabel?: string;
   namePlaceholder?: string;
   descPlaceholder?: string;
+  /** The member's own SaaS projects on Portfedia, offered as ready-made cards */
+  linkable?: LinkableProject[];
 }) {
+  const logoOf = new Map(linkable.map((x) => [x.slug, x.logo]));
   const list = useList<ProjectRow>(
-    initial.map((p) => ({ id: p.id || newId(), title: p.title, url: p.url, year: p.year ? String(p.year) : "", description: p.description, imageKey: p.image?.key ?? "", imageUrl: p.image?.url ?? "", removeImage: false, preview: "" })),
-    () => ({ id: newId(), title: "", url: "", year: "", description: "", imageKey: "", imageUrl: "", removeImage: false, preview: "" }),
+    initial.map((p) => ({
+      id: p.id || newId(), title: p.title, url: p.url, year: p.year ? String(p.year) : "", description: p.description,
+      imageKey: p.image?.key ?? "", imageUrl: p.image?.url ?? (p.pageSlug ? logoOf.get(p.pageSlug) ?? "" : ""), removeImage: false, preview: "", pageSlug: p.pageSlug ?? "",
+    })),
+    () => ({ id: newId(), title: "", url: "", year: "", description: "", imageKey: "", imageUrl: "", removeImage: false, preview: "", pageSlug: "" }),
   );
+  const notAdded = linkable.filter((x) => !list.items.some((p) => p.pageSlug === x.slug));
+  const addLinked = (x: LinkableProject) =>
+    list.addItem({
+      id: newId(), title: x.title, url: x.website, year: x.year ? String(x.year) : "", description: x.summary,
+      imageKey: "", imageUrl: x.logo, removeImage: false, preview: "", pageSlug: x.slug,
+    });
   const [, force] = useState(0);
   return (
     <div className="field">
@@ -102,7 +118,15 @@ export function ProjectsEditor({
       {list.items.map((p, i) => (
         <div key={p.id} className="repeat-item">
           <div className="repeat-item__head">
-            <span>{label} {i + 1}</span>
+            <span>
+              {label} {i + 1}
+              {p.pageSlug && (
+                <>
+                  {" · "}
+                  <a href={`/org/${p.pageSlug}`} target="_blank" rel="noopener">your SaaS page on Portfedia</a>
+                </>
+              )}
+            </span>
             <RemoveButton onClick={() => list.remove(i)} label={`Remove ${label.toLowerCase()} ${i + 1}`} />
           </div>
           <div className="project-edit">
@@ -136,7 +160,15 @@ export function ProjectsEditor({
           </div>
         </div>
       ))}
-      <AddButton onClick={list.add}>{addLabel}</AddButton>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <AddButton onClick={list.add}>{addLabel}</AddButton>
+        {notAdded.length > 0 && <span className="small muted">or add your SaaS project:</span>}
+        {notAdded.map((x) => (
+          <button key={x.slug} type="button" className="btn btn--sm btn--primary" onClick={() => addLinked(x)}>
+            + {x.title}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -169,10 +201,10 @@ export function LanguagesEditor({ initial, fallback }: { initial: PageDoc["langu
   );
 }
 
-export function AchievementsStep({ page }: { page: PageDoc | null }) {
+export function AchievementsStep({ page, mySaas = [] }: { page: PageDoc | null; mySaas?: LinkableProject[] }) {
   return (
     <>
-      <ProjectsEditor initial={page?.projects ?? []} />
+      <ProjectsEditor initial={page?.projects ?? []} linkable={mySaas} />
       <ListEditor
         name="publications"
         label="Publications"

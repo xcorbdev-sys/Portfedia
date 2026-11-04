@@ -653,3 +653,4 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
   .open-ribbon__top { font-size: 0.55rem; }
   .open-ribbon__what { font-size: 0.62rem; }
 }
+.project-card__img--logo { object-fit: contain; padding: 18px; background: var(--surface-2); }

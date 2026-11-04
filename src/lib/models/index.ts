@@ -142,7 +142,7 @@ const PageSchema = new Schema<any>(
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
     // Person: achievements and extra sections
     projects: {
-      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null } }, { _id: false })],
+      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null }, pageSlug: { type: String, default: "" } }, { _id: false })],
       default: [],
     },
     publications: { type: [new Schema<any>({ title: String, publisher: String, year: Number, url: String }, { _id: false })], default: [] },

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { getPersonPageOf } from "@/lib/pages";
+import { getPersonPageOf, listMySaas } from "@/lib/pages";
 import { PersonForm } from "@/components/forms/PersonForm";
 
 export const metadata: Metadata = { title: "Edit profile", robots: { index: false } };
 
 export default async function EditMyProfile() {
   const user = await requireUser("/edit");
-  const page = await getPersonPageOf(user.id);
+  const [page, mySaas] = await Promise.all([getPersonPageOf(user.id), listMySaas(user.id)]);
   return (
     <div className="narrow" style={{ maxWidth: 900 }}>
       {!user.emailVerified && (
@@ -34,7 +34,7 @@ export default async function EditMyProfile() {
           )}
         </p>
       </div>
-      <PersonForm page={page} defaultName={user.name} />
+      <PersonForm page={page} defaultName={user.name} mySaas={mySaas} />
     </div>
   );
 }

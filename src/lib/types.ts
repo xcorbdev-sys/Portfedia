@@ -94,6 +94,8 @@ export interface Project {
   year: number | null;
   description: string;
   image: StoredImage | null;
+  /** A SaaS project on Portfedia this card links to (only the person's own projects) */
+  pageSlug?: string;
 }
 export interface Publication { title: string; publisher: string; year: number | null; url: string }
 export interface Award { title: string; issuer: string; year: number | null; url: string; kind: "award" | "certification" }

@@ -345,6 +345,39 @@ export async function listSectors() {
   return rows.map((r) => ({ sector: r._id as string, orgs: r.orgs as number, people: r.people as number }));
 }
 
+/** SaaS projects a member made or manages: they can show them on their profile. */
+export async function listMySaas(userId: string) {
+  await connectDB();
+  const oid = new Types.ObjectId(userId);
+  const rows = await Page.find({ category: "saas", $or: [{ orgAdmins: oid }, { createdById: oid }] }, { slug: 1, title: 1, summary: 1, image: 1, "infobox.website": 1, "infobox.founded": 1 })
+    .sort({ title: 1 })
+    .limit(50)
+    .lean<{ slug: string; title: string; summary?: string; image?: StoredImage | null; infobox?: { website?: string; founded?: number | null } }[]>();
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    summary: r.summary ?? "",
+    website: r.infobox?.website ?? "",
+    year: r.infobox?.founded ?? null,
+    logo: r.image?.thumbUrl || r.image?.url || "",
+  }));
+}
+
+/** People who show this SaaS project on their profile (the makers). */
+export async function makersOf(slug: string) {
+  await connectDB();
+  const rows = await Page.find({ type: "person", "projects.pageSlug": slug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).limit(20).lean();
+  return rows.map((r) => toCard(r));
+}
+
+/** Logos and names of the Portfedia pages that profile projects link to. */
+export async function linkedProjectPages(slugs: string[]) {
+  if (!slugs.length) return {};
+  await connectDB();
+  const rows = await Page.find({ slug: { $in: slugs }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1 }).lean<{ slug: string; title: string; image?: StoredImage | null }[]>();
+  return Object.fromEntries(rows.map((r) => [r.slug, { title: r.title, logo: r.image?.thumbUrl || r.image?.url || "" }]));
+}
+
 export async function homeData() {
   await connectDB();
   const [people, orgs, sectors, featuredPeople, featuredOrgs, globePeople] = await Promise.all([

@@ -6,7 +6,7 @@ import { getCurrentUser } from "../auth";
 import { canView, isPublic } from "../visibility";
 import { guardContent } from "../guard";
 import { externalLinks } from "../content-rules";
-import { getPersonPageOf } from "../pages";
+import { getPersonPageOf, listMySaas } from "../pages";
 import { notify, notifyFollowers } from "../notifications";
 import { giveThanks, notifyMentions } from "../social";
 import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
@@ -92,7 +92,7 @@ function parseRows<T>(fd: FormData, name: string, max: number, map: (r: Record<s
 const LEVELS = ["Native", "C2", "C1", "B2", "B1", "A2", "A1"];
 
 /** Cards with an optional image each (profile projects, organization products). */
-async function parseImageCards(fd: FormData, prevItems: Project[], field: string, filePrefix: string, max = 20): Promise<Project[]> {
+async function parseImageCards(fd: FormData, prevItems: Project[], field: string, filePrefix: string, max = 20, allowLinks = false): Promise<Project[]> {
   const prevImages = new Map(prevItems.filter((x) => x.image).map((x) => [x.image!.key, x.image!]));
   const out: Project[] = [];
   for (const r of parseJsonArray(fd.get(field), max)) {
@@ -105,12 +105,19 @@ async function parseImageCards(fd: FormData, prevItems: Project[], field: string
     if (!image && !r.removeImage && !r.imageKey) image = prevItems.find((x) => x.id === id)?.image ?? null;
     const file = fd.get(`${filePrefix}${id}`);
     if (file instanceof File && file.size > 0) image = await saveImage(file, "logo");
-    out.push({ id, title, url: httpUrl(r.url), year: yearOrNull(r.year), description: str(r.description, 600), image });
+    const pageSlug = allowLinks ? slugify(str(r.pageSlug, 100)) : "";
+    out.push({ id, title, url: httpUrl(r.url), year: yearOrNull(r.year), description: str(r.description, 600), image, ...(pageSlug ? { pageSlug } : {}) });
   }
   return out;
 }
 
-const parseProjects = (fd: FormData, prev: PageDoc | null) => parseImageCards(fd, prev?.projects ?? [], "projects", "projectImage_");
+/** Profile projects; a link to a Portfedia SaaS page is kept only for the person's own SaaS projects. */
+async function parseProjects(fd: FormData, prev: PageDoc | null, userId: string): Promise<Project[]> {
+  const projects = await parseImageCards(fd, prev?.projects ?? [], "projects", "projectImage_", 20, true);
+  if (!projects.some((p) => p.pageSlug)) return projects;
+  const mine = new Set((await listMySaas(userId)).map((x) => x.slug));
+  return projects.map((p) => (p.pageSlug && !mine.has(p.pageSlug) ? { ...p, pageSlug: undefined } : p));
+}
 
 const linked = (title: string) => ({ title, slug: slugify(title) });
 
@@ -248,7 +255,7 @@ async function personFromForm(user: SessionUser, fd: FormData): Promise<{ error:
   try {
     image = await imageFrom(fd, "photo");
     cover = await coverFrom(fd);
-    projects = await parseProjects(fd, prev);
+    projects = await parseProjects(fd, prev, user.id);
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
     throw err;

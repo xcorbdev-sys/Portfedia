@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
-import { getPersonPageOf } from "@/lib/pages";
+import { getPersonPageOf, listMySaas } from "@/lib/pages";
 import { CreateWizard } from "@/components/forms/CreateWizard";
 import { pageQuota } from "@/lib/quotas";
 
@@ -12,7 +12,7 @@ export default async function CreatePage({ searchParams }: Props) {
   const sp = await searchParams;
   const qs = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]).toString();
   const user = await requireUser(`/create${qs ? `?${qs}` : ""}`);
-  const [myPage, q] = await Promise.all([getPersonPageOf(user.id), pageQuota(user)]);
+  const [myPage, q, mySaas] = await Promise.all([getPersonPageOf(user.id), pageQuota(user), listMySaas(user.id)]);
   // Infinity can't be sent to the browser; null means "no limit"
   const quota = {
     upgraded: q.upgraded,
@@ -35,7 +35,7 @@ export default async function CreatePage({ searchParams }: Props) {
         <h1>Create a New Profile</h1>
         <p className="muted">Help the business encyclopedia grow by adding a person or company profile to Portfedia.</p>
       </div>
-      <CreateWizard myPage={myPage} defaultName={user.name} initialTitle={title} initialKind={kind} quota={quota} />
+      <CreateWizard myPage={myPage} defaultName={user.name} initialTitle={title} initialKind={kind} quota={quota} mySaas={mySaas} />
     </div>
   );
 }
