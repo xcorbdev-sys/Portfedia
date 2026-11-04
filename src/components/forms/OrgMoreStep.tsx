@@ -6,10 +6,72 @@ import { ListEditor, ProjectsEditor } from "./Achievements";
 import { OrgInput } from "./shared";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
-export function OrgMoreStep({ page, canManageJobs }: { page: PageDoc | null; canManageJobs: boolean }) {
+export function OrgMoreStep({ page, canManageJobs, category, business }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean }) {
   const [parent, setParent] = useState(page?.parent?.title ?? "");
+  const day = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "");
   return (
     <>
+      {category === "investor" && (
+        <fieldset className="repeat-item" style={{ border: "1px solid var(--border)" }}>
+          <legend className="small" style={{ fontWeight: 700, padding: "0 6px" }}>Investor details</legend>
+          <div className="grid-3">
+            <div className="field">
+              <label htmlFor="fundSize">Fund size / AUM</label>
+              <input id="fundSize" name="fundSize" className="input" maxLength={60} defaultValue={page?.investor?.fundSize} placeholder="e.g. $150M" />
+            </div>
+            <div className="field">
+              <label htmlFor="stages">Stages</label>
+              <input id="stages" name="stages" className="input" defaultValue={page?.investor?.stages.join(", ")} placeholder="Seed, Series A" />
+            </div>
+            <div className="field">
+              <label htmlFor="focus">Focus sectors</label>
+              <input id="focus" name="focus" className="input" defaultValue={page?.investor?.focus.join(", ")} placeholder="Fintech, Robotics" />
+            </div>
+          </div>
+          <span className="hint">The portfolio is built automatically from funding rounds that list this investor.</span>
+        </fieldset>
+      )}
+      {category === "event" && (
+        <fieldset className="repeat-item" style={{ border: "1px solid var(--border)" }}>
+          <legend className="small" style={{ fontWeight: 700, padding: "0 6px" }}>Event details</legend>
+          <div className="grid-3">
+            <div className="field">
+              <label htmlFor="eventStart">Starts</label>
+              <input id="eventStart" name="eventStart" type="date" className="input" defaultValue={day(page?.event?.start)} />
+            </div>
+            <div className="field">
+              <label htmlFor="eventEnd">Ends</label>
+              <input id="eventEnd" name="eventEnd" type="date" className="input" defaultValue={day(page?.event?.end)} />
+            </div>
+            <div className="field">
+              <label htmlFor="eventFormat">Format</label>
+              <select id="eventFormat" name="eventFormat" className="select" defaultValue={page?.event?.format || "In person"}>
+                <option>In person</option>
+                <option>Online</option>
+                <option>Hybrid</option>
+              </select>
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="eventCity">City</label>
+            <input id="eventCity" name="eventCity" className="input" maxLength={80} defaultValue={page?.event?.city} />
+          </div>
+          <div className="field">
+            <label htmlFor="speakers">Speakers</label>
+            <input id="speakers" name="speakers" className="input" defaultValue={page?.event?.speakers.map((x) => x.name).join(", ")} placeholder="Comma separated names (linked when they have a profile)" />
+          </div>
+          <div className="field">
+            <label htmlFor="sponsors">Sponsors</label>
+            <input id="sponsors" name="sponsors" className="input" defaultValue={page?.event?.sponsors.map((x) => x.title).join(", ")} placeholder="Comma separated organizations" />
+          </div>
+        </fieldset>
+      )}
+      {business && (
+        <div className="field">
+          <label htmlFor="brandColor">Brand colour (Business)</label>
+          <input id="brandColor" name="brandColor" type="color" className="input" style={{ width: 80, height: 40, padding: 4 }} defaultValue={page?.brandColor || "#1f5af2"} />
+        </div>
+      )}
       <ProjectsEditor
         initial={page?.products ?? []}
         field="products"
@@ -111,13 +173,16 @@ export function OrgMoreStep({ page, canManageJobs }: { page: PageDoc | null; can
           label="Open positions"
           hint="Shown on this page and on /jobs. Remove a position when it's filled."
           addLabel="Add position"
-          initial={(page?.jobs ?? []).map((j) => ({ id: j.id, title: j.title, location: j.location, type: j.type, url: j.url }))}
-          blank={{ id: Math.random().toString(36).slice(2, 10), title: "", location: "", type: "Full-time", url: "" }}
+          initial={(page?.jobs ?? []).map((j) => ({ id: j.id, title: j.title, location: j.location, type: j.type, url: j.url, featured: j.featured ? "true" : "" }))}
+          blank={{ id: Math.random().toString(36).slice(2, 10), title: "", location: "", type: "Full-time", url: "", featured: "" }}
           fields={[
             { key: "title", placeholder: "Job title *", max: 120 },
             { key: "location", placeholder: "Location (or Remote)", max: 120 },
             { key: "type", placeholder: "Type", kind: "select", options: ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].map((v) => ({ value: v, label: v })) },
             { key: "url", placeholder: "Apply link (https://…)", kind: "url" },
+            ...(business
+              ? [{ key: "featured", placeholder: "Featured", kind: "select" as const, options: [{ value: "", label: "Normal" }, { value: "true", label: "Featured (Business)" }] }]
+              : []),
           ]}
         />
       ) : (

@@ -147,3 +147,22 @@ export async function mergeOrgAction(fd: FormData): Promise<void> {
   if (res.slug) revalidatePath(`/org/${res.slug}`);
   redirect(res.error ? `/org/${slug}/manage?error=${encodeURIComponent(res.error)}#moderator` : `/org/${res.slug}?merged=1`);
 }
+
+/* ───────────── Plans (#96, #97): given by admins until payments exist ───────────── */
+
+export async function setUserPlanAction(fd: FormData): Promise<void> {
+  await moderator();
+  const { setUserPlan } = await import("../pages");
+  const plan = fd.get("plan") === "pro" ? "pro" : "free";
+  await setUserPlan(str(fd.get("userId"), 40), plan, Math.max(1, Math.min(36, Number(fd.get("months")) || 12)));
+  redirect(safeNext(fd.get("back"), "/admin?section=users"));
+}
+
+export async function setOrgPlanAction(fd: FormData): Promise<void> {
+  await moderator();
+  const { setOrgPlan } = await import("../pages");
+  const slug = str(fd.get("slug"), 100);
+  await setOrgPlan(slug, fd.get("plan") === "business" ? "business" : "free", Math.max(1, Math.min(36, Number(fd.get("months")) || 12)));
+  revalidatePath(`/org/${slug}`);
+  redirect(`/org/${slug}/manage#moderator`);
+}

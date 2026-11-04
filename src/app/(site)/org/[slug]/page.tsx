@@ -19,6 +19,9 @@ import {
 } from "@/components/OrgSections";
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
+import { countView } from "@/lib/views";
+import { planActive, talksAtEvent } from "@/lib/pages";
+import { ORG_CATEGORIES } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -69,6 +72,11 @@ export default async function OrgPage({ params }: Props) {
     cachedOrgDerived(page.slug, page.type === "school"),
   ]);
   const { backlinks, people, alumni, investments, relations, spans, alumniEmployers } = derived;
+  await countView(page._id, isOrgAdmin(user, page) || Boolean(user && (user.role === "admin" || user.role === "moderator")));
+  const isEvent = page.category === "event" && page.event;
+  const isInvestor = page.category === "investor";
+  const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
+  const brand = planActive(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
   const reserved = [
     "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",
@@ -89,7 +97,8 @@ export default async function OrgPage({ params }: Props) {
   if (page.status === "claimed" && page.jobs.length) nav.push({ id: "jobs", label: "Open Positions" });
   if (page.fundingRounds.length) nav.push({ id: "funding", label: "Funding" });
   if (page.acquisitions.length || relations.acquiredBy.length) nav.push({ id: "acquisitions", label: "Acquisitions" });
-  if (investments.length) nav.push({ id: "investments", label: "Investments" });
+  if (page.category === "event" && page.event?.speakers.length) nav.push({ id: "speakers", label: "Speakers" });
+  if (investments.length) nav.push({ id: "investments", label: page.category === "investor" ? "Portfolio" : "Investments" });
   if (page.parent || relations.subsidiaries.length) nav.push({ id: "group", label: "Group" });
   if (page.milestones.length) nav.push({ id: "milestones", label: "Milestones" });
   if (page.offices.length) nav.push({ id: "offices", label: "Offices" });
@@ -103,7 +112,7 @@ export default async function OrgPage({ params }: Props) {
 
 
   return (
-    <div className="container">
+    <div className="container" style={brand ? ({ "--primary": brand, "--primary-hover": brand } as React.CSSProperties) : undefined}>
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: isSchool ? "Institutions" : "Companies", href: "/companies" }, { label: page.title }]}
       />
@@ -149,6 +158,7 @@ export default async function OrgPage({ params }: Props) {
                 {page.title} {verified && <VerifiedBadge size={24} label="Verified organization" />}
               </h1>
               <div className="p-sub">
+                {page.category !== "company" && <span className="pill" style={{ marginRight: 8 }}>{ORG_CATEGORIES[page.category]}</span>}
                 {ib.sector || ib.kind || (isSchool ? "Educational institution" : "Organization")}
                 {page.ticker && <span className="pill" style={{ marginLeft: 8 }}>{[page.ticker.exchange, page.ticker.symbol].filter(Boolean).join(": ")}</span>}
               </div>
@@ -183,6 +193,21 @@ export default async function OrgPage({ params }: Props) {
             </div>
           )}
 
+          {isEvent && (
+            <div className="facts" style={{ marginTop: 14 }}>
+              <div className="fact"><CalendarDays /><span><small>When</small><b>{page.event!.start ? formatDate(page.event!.start) : "—"}{page.event!.end && page.event!.start && String(page.event!.end) !== String(page.event!.start) ? ` – ${formatDate(page.event!.end)}` : ""}</b></span></div>
+              <div className="fact"><MapPin /><span><small>Where</small><b>{page.event!.city || "—"}</b></span></div>
+              <div className="fact"><Users /><span><small>Speakers</small><b>{page.event!.speakers.length || "—"}</b></span></div>
+              <div className="fact"><Building2 /><span><small>Format</small><b>{page.event!.format || "—"}</b></span></div>
+            </div>
+          )}
+          {isInvestor && page.investor && (page.investor.fundSize || page.investor.stages.length || page.investor.focus.length) ? (
+            <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
+              <div className="fact"><Building2 /><span><small>Fund size</small><b>{page.investor.fundSize || "—"}</b></span></div>
+              <div className="fact"><Users /><span><small>Stages</small><b>{page.investor.stages.join(", ") || "—"}</b></span></div>
+              <div className="fact"><MapPin /><span><small>Focus</small><b>{page.investor.focus.join(", ") || "—"}</b></span></div>
+            </div>
+          ) : null}
           {article.leadHtml.trim() && (
             <section className="p-section" id="about">
               <h2>About</h2>
@@ -236,6 +261,41 @@ export default async function OrgPage({ params }: Props) {
           </div>
           {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
 
+          {isEvent && page.event!.speakers.length > 0 && (
+            <section className="p-section" id="speakers">
+              <h2>Speakers</h2>
+              <div className="chips">
+                {page.event!.speakers.map((sp) => (
+                  <Link key={sp.slug} className="chip" href={`/${sp.slug}`}>{sp.name}</Link>
+                ))}
+              </div>
+            </section>
+          )}
+          {isEvent && page.event!.sponsors.length > 0 && (
+            <section className="p-section" id="sponsors">
+              <h2>Sponsors</h2>
+              <div className="chips">
+                {page.event!.sponsors.map((sp) => (
+                  <Link key={sp.slug} className="chip" href={`/org/${sp.slug}`}>{sp.title}</Link>
+                ))}
+              </div>
+            </section>
+          )}
+          {eventTalks.length > 0 && (
+            <section className="p-section" id="talks">
+              <h2>Talks at {page.title}</h2>
+              <ul className="item-list">
+                {eventTalks.map((t, i) => (
+                  <li key={i}>
+                    <span>
+                      {t.url ? <a href={t.url} rel="nofollow noopener" className="external">{t.title}</a> : t.title}
+                      <small><Link href={`/${t.person.slug}`}>{t.person.title}</Link>{t.year ? ` · ${t.year}` : ""}</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <ProductsSection page={page} />
           <LeadershipSection page={page} existing={existing} />
           <JobsSection page={page} />
@@ -248,7 +308,7 @@ export default async function OrgPage({ params }: Props) {
           <AcquisitionsSection page={page} existing={existing} acquiredBy={relations.acquiredBy} />
           {investments.length > 0 && (
             <section className="p-section" id="investments">
-              <h2>Investments</h2>
+              <h2>{isInvestor ? "Portfolio" : "Investments"}</h2>
               <InvestmentsList items={investments} />
             </section>
           )}

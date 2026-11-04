@@ -2,7 +2,7 @@ import "server-only";
 import { Types } from "mongoose";
 import { cache } from "react";
 import { connectDB } from "./db";
-import { Follow, Page, Revision, Session, Suggestion, Testimonial, Thank, Token, User } from "./models";
+import { Follow, Page, PageView, Revision, Session, Suggestion, Testimonial, Thank, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks, stripWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
@@ -10,6 +10,7 @@ import { trashImage } from "./image-trash";
 import { readSnapshot } from "./snapshots";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
+  EventInfo, InvestorInfo, OrgCategory, Plan,
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 
@@ -58,6 +59,13 @@ function toPage(d: any): PageDoc {
     press: d.press ?? [],
     jobs: d.jobs ?? [],
     ticker: d.ticker?.symbol ? { exchange: d.ticker.exchange ?? "", symbol: d.ticker.symbol } : null,
+    category: d.category ?? "company",
+    investor: d.investor ? { fundSize: d.investor.fundSize ?? "", stages: d.investor.stages ?? [], focus: d.investor.focus ?? [] } : null,
+    event: d.event
+      ? { start: d.event.start ?? null, end: d.event.end ?? null, city: d.event.city ?? "", format: d.event.format ?? "", speakers: d.event.speakers ?? [], sponsors: d.event.sponsors ?? [] }
+      : null,
+    plan: { name: d.plan?.name ?? "free", until: d.plan?.until ?? null },
+    brandColor: /^#[0-9a-f]{6}$/i.test(d.brandColor ?? "") ? d.brandColor : "",
     verified: Boolean(d.verified),
     review: {
       submittedAt: d.review?.submittedAt ?? null,
@@ -400,6 +408,7 @@ export interface ApplicationRow extends PageCard {
   reviewerName: string;
   note: string;
   flags: string[];
+  pro: boolean;
   email: string;
 }
 
@@ -409,8 +418,11 @@ export async function listApplications(status: "pending" | "rejected" | "publish
   const filter: Record<string, unknown> = { type: "person", status };
   if (status === "published") filter["review.reviewedAt"] = { $ne: null };
   const rows = await Page.find(filter, { ...CARD_FIELDS, status: 1, review: 1, ownerId: 1 }).sort(sort).limit(limit).lean();
-  const owners = await User.find({ _id: { $in: rows.map((r) => r.ownerId).filter(Boolean) } }, { email: 1 }).lean<{ _id: unknown; email: string }[]>();
+  const owners = await User.find({ _id: { $in: rows.map((r) => r.ownerId).filter(Boolean) } }, { email: 1, plan: 1 }).lean<{ _id: unknown; email: string; plan?: Plan }[]>();
   const emailOf = new Map(owners.map((o) => [String(o._id), o.email]));
+  // #96: Pro members' applications are reviewed first
+  const proOwners = new Set(owners.filter((o) => planActive(o.plan, "pro")).map((o) => String(o._id)));
+  if (status === "pending") rows.sort((a, b) => Number(proOwners.has(String(b.ownerId))) - Number(proOwners.has(String(a.ownerId))));
   return rows.map((r) => ({
     ...toCard(r),
     status: r.status,
@@ -420,6 +432,7 @@ export async function listApplications(status: "pending" | "rejected" | "publish
     reviewerName: r.review?.reviewerName ?? "",
     note: r.review?.note ?? "",
     flags: r.review?.flags ?? [],
+    pro: proOwners.has(String(r.ownerId)),
     email: emailOf.get(String(r.ownerId)) ?? "",
   }));
 }
@@ -712,6 +725,11 @@ export interface OrgInput {
   press: PressItem[];
   /** undefined = keep (only the organization's admins and moderators may change job listings) */
   jobs?: Job[];
+  category: OrgCategory;
+  investor: InvestorInfo | null;
+  event: EventInfo | null;
+  /** undefined = keep (Business plan only) */
+  brandColor?: string;
   ticker: Ticker | null;
   editSummary: string;
   image?: StoredImage | null;
@@ -763,6 +781,10 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     milestones: input.milestones,
     press: input.press,
     ticker: input.ticker,
+    category: input.category,
+    investor: input.category === "investor" ? input.investor : null,
+    event: input.category === "event" ? input.event : null,
+    ...(input.brandColor !== undefined ? { brandColor: input.brandColor } : {}),
     ...(input.jobs !== undefined ? { jobs: input.jobs } : {}),
     outLinks: extractWikiLinks(input.body),
   };
@@ -872,11 +894,93 @@ export async function listJobs(limit = 200) {
   const rows = await Page.aggregate([
     { $match: { type: { $in: ["org", "school"] }, status: "claimed", "jobs.0": { $exists: true } } },
     { $unwind: "$jobs" },
-    { $sort: { "jobs.postedAt": -1 } },
+    // #97: featured jobs of Business organizations come first
+    { $addFields: { _featured: { $cond: [{ $and: [{ $eq: ["$jobs.featured", true] }, { $eq: ["$plan.name", "business"] }] }, 1, 0] } } },
+    { $sort: { _featured: -1, "jobs.postedAt": -1 } },
     { $limit: limit },
-    { $project: { slug: 1, title: 1, image: 1, type: 1, job: "$jobs" } },
+    { $project: { slug: 1, title: 1, image: 1, type: 1, job: "$jobs", featured: "$_featured" } },
   ]);
-  return rows.map((r) => ({ org: { slug: r.slug as string, title: r.title as string, image: r.image?.url ? (r.image as StoredImage) : null }, job: r.job as Job }));
+  return rows.map((r) => ({ org: { slug: r.slug as string, title: r.title as string, image: r.image?.url ? (r.image as StoredImage) : null }, job: r.job as Job, featured: r.featured === 1 }));
+}
+
+/* ───────────── Plans (#96, #97) and page views ───────────── */
+
+/** Plans are given by admins until payments exist; `until` = null means no end date. */
+export function planActive(plan: Plan | undefined | null, name: "pro" | "business"): boolean {
+  return Boolean(plan && plan.name === name && (!plan.until || new Date(plan.until).getTime() > Date.now()));
+}
+
+export async function getUserPlan(userId: string): Promise<Plan> {
+  await connectDB();
+  const u = await User.findById(userId, { plan: 1 }).lean<{ plan?: Plan }>();
+  return { name: u?.plan?.name ?? "free", until: u?.plan?.until ?? null };
+}
+
+export async function setUserPlan(userId: string, plan: "free" | "pro", months: number) {
+  await connectDB();
+  await User.updateOne({ _id: userId }, { $set: { plan: { name: plan, until: plan === "free" ? null : new Date(Date.now() + months * 30 * 86400_000) } } });
+}
+
+export async function setOrgPlan(slug: string, plan: "free" | "business", months: number) {
+  await connectDB();
+  await Page.updateOne({ slug, type: { $in: ["org", "school"] } }, { $set: { plan: { name: plan, until: plan === "free" ? null : new Date(Date.now() + months * 30 * 86400_000) } } });
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** Counts one view per request (bots and the page's own owners/admins are skipped by the caller). */
+export async function recordView(pageId: string) {
+  try {
+    await connectDB();
+    await PageView.updateOne({ pageId, day: today() }, { $inc: { count: 1 } }, { upsert: true });
+  } catch {
+    /* statistics must never break a page */
+  }
+}
+
+export async function viewStats(pageId: string, days = 30) {
+  await connectDB();
+  const from = new Date(Date.now() - (days - 1) * 86400_000).toISOString().slice(0, 10);
+  const rows = await PageView.find({ pageId, day: { $gte: from } }, { day: 1, count: 1 }).lean<{ day: string; count: number }[]>();
+  const byDay = new Map(rows.map((r) => [r.day, r.count]));
+  const series = Array.from({ length: days }, (_, i) => {
+    const d = new Date(Date.now() - (days - 1 - i) * 86400_000).toISOString().slice(0, 10);
+    return { day: d, count: byDay.get(d) ?? 0 };
+  });
+  return { series, total: series.reduce((a, b) => a + b.count, 0) };
+}
+
+/* ───────────── Events and investors (#89) ───────────── */
+
+export async function listEvents() {
+  await connectDB();
+  const rows = await Page.find({ category: "event", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, event: 1 }).sort({ "event.start": -1 }).limit(300).lean();
+  const now = Date.now();
+  const items = rows.map((r) => ({ card: toCard(r), start: r.event?.start ? new Date(r.event.start) : null, end: r.event?.end ? new Date(r.event.end) : null, city: (r.event?.city as string) ?? "" }));
+  const upcoming = items.filter((e) => e.start && (e.end ?? e.start).getTime() >= now - 86400_000).sort((a, b) => a.start!.getTime() - b.start!.getTime());
+  const past = items.filter((e) => !upcoming.includes(e));
+  return { upcoming, past };
+}
+
+export async function listInvestors() {
+  await connectDB();
+  const rows = await Page.find({ category: "investor", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, investor: 1 }).sort({ followerCount: -1, title: 1 }).limit(300).lean();
+  const counts = await Page.aggregate([
+    { $match: { "fundingRounds.investors.slug": { $in: rows.map((r) => r.slug) }, ...PUBLIC_FILTER } },
+    { $unwind: "$fundingRounds" },
+    { $unwind: "$fundingRounds.investors" },
+    { $group: { _id: "$fundingRounds.investors.slug", companies: { $addToSet: "$slug" } } },
+  ]);
+  const portfolio = new Map(counts.map((c) => [c._id as string, (c.companies as string[]).length]));
+  return rows.map((r) => ({ card: toCard(r), portfolio: portfolio.get(r.slug as string) ?? 0, stages: (r.investor?.stages as string[]) ?? [] }));
+}
+
+/** Talks people list on their profiles for this event (matched by the event's name). */
+export async function talksAtEvent(eventTitle: string) {
+  await connectDB();
+  const rx = new RegExp(`^${eventTitle.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
+  const rows = await Page.find({ type: "person", "talks.event": rx, ...PUBLIC_FILTER }, { ...CARD_FIELDS, talks: 1 }).limit(100).lean();
+  return rows.flatMap((r) => (r.talks as Talk[]).filter((t) => rx.test(t.event)).map((t) => ({ person: toCard(r), title: t.title, year: t.year, url: t.url })));
 }
 
 /** GDPR / KVKK "right to be forgotten": user, profile, all revisions, follows and sessions are deleted. */

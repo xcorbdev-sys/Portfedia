@@ -11,24 +11,25 @@ export interface CollectionSummary {
   count: number;
   published: boolean;
   preview: PageCard[];
+  sponsor: { name: string; url: string } | null;
 }
 
 export async function listCollections(includeDrafts = false): Promise<CollectionSummary[]> {
   await connectDB();
   const rows = await Collection.find(includeDrafts ? {} : { published: true }).sort({ updatedAt: -1 }).limit(100).lean<
-    { slug: string; title: string; description: string; items: string[]; published: boolean }[]
+    { slug: string; title: string; description: string; items: string[]; published: boolean; sponsor?: { name: string; url: string } | null }[]
   >();
   return Promise.all(
     rows.map(async (c) => {
       const cards = await getCards(c.items);
-      return { slug: c.slug, title: c.title, description: c.description, published: c.published, count: cards.length, preview: cards.slice(0, 4) };
+      return { slug: c.slug, title: c.title, description: c.description, published: c.published, count: cards.length, preview: cards.slice(0, 4), sponsor: c.sponsor?.name ? c.sponsor : null };
     }),
   );
 }
 
 export async function getCollection(slug: string) {
   await connectDB();
-  const c = await Collection.findOne({ slug }).lean<{ slug: string; title: string; description: string; items: string[]; published: boolean; updatedAt: Date }>();
+  const c = await Collection.findOne({ slug }).lean<{ slug: string; title: string; description: string; items: string[]; published: boolean; updatedAt: Date; sponsor?: { name: string; url: string } | null }>();
   if (!c) return null;
   return { ...c, cards: await getCards(c.items) };
 }
@@ -48,7 +49,7 @@ export function itemsFromText(text: string): string[] {
 
 export async function saveCollection(
   author: string,
-  input: { originalSlug: string | null; title: string; description: string; itemsText: string; published: boolean },
+  input: { originalSlug: string | null; title: string; description: string; itemsText: string; published: boolean; sponsor?: { name: string; url: string } | null },
 ): Promise<{ slug?: string; error?: string; missing?: string[] }> {
   if (input.title.length < 3) return { error: "Title must be at least 3 characters." };
   await connectDB();
@@ -59,14 +60,14 @@ export async function saveCollection(
   if (input.originalSlug) {
     const doc = await Collection.findOne({ slug: input.originalSlug });
     if (!doc) return { error: "Collection not found." };
-    doc.set({ title: input.title, description: input.description, items: kept, published: input.published });
+    doc.set({ title: input.title, description: input.description, items: kept, published: input.published, sponsor: input.sponsor ?? null });
     await doc.save();
     return { slug: doc.slug, missing };
   }
   let slug = slugify(input.title) || "collection";
   if (isReservedSlug(slug)) slug = `${slug}-list`;
   for (let i = 2; await Collection.exists({ slug }); i++) slug = `${slugify(input.title)}-${i}`;
-  await Collection.create({ slug, title: input.title, description: input.description, items: kept, published: input.published, createdBy: author });
+  await Collection.create({ slug, title: input.title, description: input.description, items: kept, published: input.published, sponsor: input.sponsor ?? null, createdBy: author });
   return { slug, missing };
 }
 

@@ -587,3 +587,16 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .nav-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--primary); z-index: 200; opacity: 0; transition: width 0.2s, opacity 0.3s; }
 .nav-progress.is-active { opacity: 1; width: 85%; transition: width 8s cubic-bezier(0.1, 0.7, 0.1, 1), opacity 0.1s; }
 @media (prefers-reduced-motion: reduce) { .nav-progress.is-active { transition: opacity 0.1s; } }
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin-top: 6px; }
+.spark span { flex: 1; background: var(--primary); opacity: 0.75; border-radius: 2px 2px 0 0; min-height: 2px; }
+
+/* Pricing (#97) */
+.pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+.pricing__tier--hl { border-color: var(--primary); }
+.pricing__price { font-size: 1.6rem; font-weight: 800; margin-top: 6px; }
+.pricing__list { list-style: none; padding: 0; margin: 14px 0 18px; display: grid; gap: 8px; font-size: 0.92rem; }
+.pricing__list li { display: flex; gap: 8px; align-items: flex-start; }
+.pricing__list svg { color: var(--primary); flex: none; margin-top: 3px; }
+.help-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; }
+.help-list a { font-weight: 700; }
+.badge-featured { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: #fff; margin-left: 6px; vertical-align: middle; }

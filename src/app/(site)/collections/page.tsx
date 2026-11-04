@@ -29,6 +29,7 @@ export default async function CollectionsPage() {
                 <b>{c.title}</b>
                 {c.description && <span className="small muted">{c.description}</span>}
                 <span className="small" style={{ color: "var(--primary)" }}>{c.count} profiles</span>
+                {c.sponsor && <span className="small muted">Sponsored by {c.sponsor.name}</span>}
               </Link>
             </li>
           ))}

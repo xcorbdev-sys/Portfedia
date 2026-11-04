@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, startTransition } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { saveOrgAction } from "@/lib/actions/pages";
-import type { PageDoc } from "@/lib/types";
+import { ORG_CATEGORIES, type PageDoc } from "@/lib/types";
 import { FormError } from "../ui";
 import { OrgMoreStep } from "./OrgMoreStep";
 import { MarkdownField } from "./MarkdownField";
@@ -24,6 +24,7 @@ export function OrgForm({
   websiteLocked = false,
   moderator = false,
   canManageJobs = false,
+  business = false,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -32,12 +33,15 @@ export function OrgForm({
   websiteLocked?: boolean;
   moderator?: boolean;
   canManageJobs?: boolean;
+  /** Business plan features (brand colour, featured jobs) */
+  business?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveOrgAction, undefined);
   const [step, setStep] = useState(0);
   const [name, setName] = useState(page?.title ?? defaultTitle);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ib = page?.infobox ?? {};
+  const [category, setCategory] = useState<string>(page?.category ?? "company");
   // #25: show existing pages that look like the same organization while typing a new name
   const [similar, setSimilar] = useState<{ slug: string; title: string }[]>([]);
   useEffect(() => {
@@ -118,6 +122,15 @@ export function OrgForm({
               <option value="school">Educational institution</option>
             </select>
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor="category">Category</label>
+          <select id="category" name="category" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {Object.entries(ORG_CATEGORIES).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <span className="hint">Investors get a portfolio and fund details; events get dates, speakers and sponsors.</span>
         </div>
         <div className="grid-2">
           <div className="field">
@@ -223,7 +236,7 @@ export function OrgForm({
           <h2>More</h2>
           <p className="muted small">Products, leadership, offices, history and more. Everything here is optional.</p>
         </div>
-        <OrgMoreStep page={page} canManageJobs={canManageJobs} />
+        <OrgMoreStep page={page} canManageJobs={canManageJobs} category={category} business={business} />
       </div>
 
       <div className="step form" hidden={step !== LAST} ref={(el) => { stepRefs.current[LAST] = el; }}>

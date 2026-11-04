@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
-import { countPendingApplications, listApplications } from "@/lib/pages";
+import { countPendingApplications, listApplications, planActive } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
-import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction } from "@/lib/actions/moderation";
+import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, setUserPlanAction } from "@/lib/actions/moderation";
 import { adminStats } from "@/lib/stats";
-import { formatDateTime } from "@/lib/site";
+import { formatDate, formatDateTime } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
@@ -84,6 +84,7 @@ async function Applications({ tab: raw, pendingCount }: { tab?: string; pendingC
                 )}
                 <div style={{ minWidth: 0 }}>
                   <Link href={`/${a.slug}`} style={{ fontWeight: 700 }}>{a.title}</Link>
+                  {a.pro && <span className="badge-featured">Pro</span>}
                   <div className="small" style={{ color: "var(--text-2)" }}>{a.subtitle || a.occupation}</div>
                   <div className="app-card__meta">
                     {a.email} · submitted {a.submittedAt ? formatDateTime(a.submittedAt) : "—"}
@@ -232,13 +233,30 @@ async function Users({ q }: { q: string }) {
                 <b>{u.name}</b> <span className="muted small">{u.email}</span>{" "}
                 {u.role !== "user" && <span className="status-pill status-pill--published">{u.role}</span>}{" "}
                 {!u.emailVerifiedAt && <span className="status-pill status-pill--pending">unverified</span>}{" "}
-                {u.bannedAt && <span className="status-pill status-pill--rejected">banned</span>}
+                {u.bannedAt && <span className="status-pill status-pill--rejected">banned</span>}{" "}
+                {planActive(u.plan as never, "pro") && <span className="badge-featured">Pro{u.plan?.until ? ` until ${formatDate(u.plan.until)}` : ""}</span>}
                 <div className="app-card__meta">
                   joined {formatDateTime(u.createdAt)}
                   {u.profileSlug && <> · <Link href={`/${u.profileSlug}`}>profile</Link></>}
                   {u.bannedAt && u.banReason && <> · reason: {u.banReason}</>}
                 </div>
               </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <form action={setUserPlanAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="hidden" name="userId" value={u.id} />
+                <input type="hidden" name="back" value={back} />
+                {planActive(u.plan as never, "pro") ? (
+                  <button className="btn btn--sm" type="submit" name="plan" value="free">Remove Pro</button>
+                ) : (
+                  <>
+                    <select name="months" className="input" style={{ width: 110, padding: "6px 8px" }} defaultValue="12" aria-label="Months">
+                      <option value="1">1 month</option>
+                      <option value="12">12 months</option>
+                    </select>
+                    <button className="btn btn--sm" type="submit" name="plan" value="pro">Give Pro</button>
+                  </>
+                )}
+              </form>
               <form action={banAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="hidden" name="userId" value={u.id} />
                 <input type="hidden" name="back" value={back} />
@@ -246,6 +264,7 @@ async function Users({ q }: { q: string }) {
                 {!u.bannedAt && <input name="reason" className="input" style={{ width: 220, padding: "6px 10px" }} placeholder="Reason" maxLength={300} />}
                 <button className={`btn btn--sm${u.bannedAt ? "" : " btn--danger"}`} type="submit">{u.bannedAt ? "Unban" : "Ban"}</button>
               </form>
+              </div>
             </div>
           </li>
         ))}

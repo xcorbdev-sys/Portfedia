@@ -19,7 +19,8 @@ import { findSimilarOrgs } from "../org-tools";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
-import { OPEN_TO } from "../types";
+import { OPEN_TO, ORG_CATEGORIES, type OrgCategory } from "../types";
+import { planActive } from "../pages";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -131,6 +132,33 @@ function parseOrgExtras(fd: FormData) {
   };
 }
 
+function parseCategory(fd: FormData) {
+  const raw = String(fd.get("category") ?? "company");
+  const category = (raw in ORG_CATEGORIES ? raw : "company") as OrgCategory;
+  const list = (name: string, max: number) => String(fd.get(name) ?? "").split(",").map((x) => str(x, 60)).filter(Boolean).slice(0, max);
+  const date = (name: string) => {
+    const v = str(fd.get(name), 10);
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : null;
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  };
+  const named = (name: string) => list(name, 40).map((title) => ({ title, slug: slugify(title) })).filter((x) => x.slug);
+  return {
+    category,
+    investor: category === "investor" ? { fundSize: str(fd.get("fundSize"), 60), stages: list("stages", 10), focus: list("focus", 12) } : null,
+    event:
+      category === "event"
+        ? {
+            start: date("eventStart"),
+            end: date("eventEnd"),
+            city: str(fd.get("eventCity"), 80),
+            format: ["In person", "Online", "Hybrid"].includes(String(fd.get("eventFormat"))) ? String(fd.get("eventFormat")) : "In person",
+            speakers: named("speakers").map((x) => ({ name: x.title, slug: x.slug })),
+            sponsors: named("sponsors"),
+          }
+        : null,
+  };
+}
+
 function parseJobs(fd: FormData, prev: PageDoc | null): Job[] {
   const prevById = new Map((prev?.jobs ?? []).map((j) => [j.id, j]));
   const seen = new Set<string>();
@@ -141,7 +169,7 @@ function parseJobs(fd: FormData, prev: PageDoc | null): Job[] {
     if (!id || seen.has(id)) id = Math.random().toString(36).slice(2, 10);
     seen.add(id);
     const type = ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].includes(String(r.type)) ? String(r.type) : "Full-time";
-    return { id, title, location: str(r.location, 120), type, url: httpUrl(r.url), postedAt: prevById.get(id)?.postedAt ?? new Date() };
+    return { id, title, location: str(r.location, 120), type, url: httpUrl(r.url), postedAt: prevById.get(id)?.postedAt ?? new Date(), featured: bool(r.featured) };
   });
 }
 
@@ -336,6 +364,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (extrasGuard) return { error: extrasGuard };
   const canManageJobs = user.role !== "user" || Boolean(prevOrg && prevOrg.orgAdmins.includes(user.id));
+  const business = Boolean(prevOrg && planActive(prevOrg.plan, "business") && canManageJobs);
 
   let image: StoredImage | null | undefined;
   let products: Project[];
@@ -371,7 +400,10 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       products,
       ...orgExtras,
       // Job listings: only the organization's own admins (and moderators) can publish them
-      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg) : undefined,
+      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: business && j.featured })) : undefined,
+      ...parseCategory(fd),
+      // #97: brand colour is a Business-plan feature
+      brandColor: business && fd.has("brandColor") ? (/^#[0-9a-f]{6}$/i.test(String(fd.get("brandColor"))) ? String(fd.get("brandColor")) : "") : undefined,
       editSummary: str(fd.get("editSummary"), 300),
       image,
       cover: orgCover,

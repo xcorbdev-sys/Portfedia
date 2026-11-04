@@ -5,7 +5,7 @@ import { revalidatePath } from "../revalidate";
 import { getCurrentUser, isModerator } from "../auth";
 import { importOrganizations, type ImportResult } from "../import";
 import { deleteCollection, saveCollection } from "../collections";
-import { bool, str } from "../validate";
+import { bool, httpUrl, str } from "../validate";
 
 async function moderator() {
   const user = await getCurrentUser();
@@ -39,6 +39,8 @@ export async function saveCollectionAction(_: CollectionState, fd: FormData): Pr
     description: str(fd.get("description"), 600),
     itemsText: String(fd.get("items") ?? "").slice(0, 50_000),
     published: bool(fd.get("published")),
+    // #100: sponsorship is always labelled on the collection
+    sponsor: str(fd.get("sponsorName"), 80) ? { name: str(fd.get("sponsorName"), 80), url: httpUrl(fd.get("sponsorUrl")) } : null,
   });
   if (res.error) return { error: res.error };
   revalidatePath("/collections");

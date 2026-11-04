@@ -20,6 +20,8 @@ const UserSchema = new Schema<any>(
     googleId: { type: String, default: null },
     linkedinId: { type: String, default: null },
     bannedAt: { type: Date, default: null },
+    // #96: plan for people (set by admins until payments exist)
+    plan: { type: new Schema<any>({ name: { type: String, enum: ["free", "pro"], default: "free" }, until: { type: Date, default: null } }, { _id: false }), default: () => ({}) },
     banReason: { type: String, default: "" },
     emailPrefs: {
       type: new Schema<any>({ profileUpdates: { type: Boolean, default: true } }, { _id: false }),
@@ -144,6 +146,26 @@ const PageSchema = new Schema<any>(
     volunteering: { type: [new Schema<any>({ org: String, role: String, startYear: Number, endYear: Number, description: String }, { _id: false })], default: [] },
     languageLevels: { type: [new Schema<any>({ name: String, level: String }, { _id: false })], default: [] },
     openTo: { type: [String], default: [] },
+    // #89: what kind of organization page this is, with category-specific facts
+    category: { type: String, enum: ["company", "investor", "event", "nonprofit", "public"], default: "company" },
+    investor: { type: new Schema<any>({ fundSize: String, stages: [String], focus: [String] }, { _id: false }), default: null },
+    event: {
+      type: new Schema<any>(
+        {
+          start: Date,
+          end: Date,
+          city: String,
+          format: String,
+          speakers: { type: [new Schema<any>({ name: String, slug: String }, { _id: false })], default: [] },
+          sponsors: { type: [new Schema<any>({ title: String, slug: String }, { _id: false })], default: [] },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    // #97: plan for organizations (set by admins until payments exist)
+    plan: { type: new Schema<any>({ name: { type: String, enum: ["free", "business"], default: "free" }, until: { type: Date, default: null } }, { _id: false }), default: () => ({}) },
+    brandColor: { type: String, default: "" },
     // Organization: structure, history and more
     products: {
       type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null } }, { _id: false })],
@@ -156,7 +178,7 @@ const PageSchema = new Schema<any>(
     formerNames: { type: [String], default: [] },
     milestones: { type: [new Schema<any>({ year: Number, text: String }, { _id: false })], default: [] },
     press: { type: [new Schema<any>({ title: String, outlet: String, year: Number, url: String }, { _id: false })], default: [] },
-    jobs: { type: [new Schema<any>({ id: String, title: String, location: String, type: String, url: String, postedAt: Date }, { _id: false })], default: [] },
+    jobs: { type: [new Schema<any>({ id: String, title: String, location: String, type: String, url: String, postedAt: Date, featured: Boolean }, { _id: false })], default: [] },
     ticker: { type: new Schema<any>({ exchange: String, symbol: String }, { _id: false }), default: null },
     // Organizations: funding rounds; investors are linked to their pages by slug
     fundingRounds: {
@@ -198,7 +220,8 @@ PageSchema.index({ "image.hash": 1 }, { sparse: true });
 PageSchema.index({ "fundingRounds.investors.slug": 1 });
 PageSchema.index({ "parent.slug": 1 }); // subsidiaries
 PageSchema.index({ "acquisitions.slug": 1 }); // "acquired by"
-PageSchema.index({ "jobs.postedAt": -1 }); // /jobs // "Investments" of an investor
+PageSchema.index({ "jobs.postedAt": -1 }); // /jobs
+PageSchema.index({ category: 1, "event.start": -1 }); // /events, /investors // "Investments" of an investor
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });
@@ -282,6 +305,8 @@ const CollectionSchema = new Schema<any>(
     title: { type: String, required: true, maxlength: 120 },
     description: { type: String, default: "", maxlength: 600 },
     items: { type: [String], default: [] }, // page slugs, in order
+    // #100: clearly labelled sponsorship
+    sponsor: { type: new Schema<any>({ name: String, url: String }, { _id: false }), default: null },
     published: { type: Boolean, default: true },
     createdBy: { type: String, default: "" },
   },
@@ -367,6 +392,14 @@ const RateCounterSchema = new Schema<any>({
 });
 RateCounterSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
+/* ───────────── Page views per day (#96/#97 statistics) ───────────── */
+const PageViewSchema = new Schema<any>({
+  pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+  day: { type: String, required: true }, // YYYY-MM-DD
+  count: { type: Number, default: 0 },
+});
+PageViewSchema.index({ pageId: 1, day: 1 }, { unique: true });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -387,3 +420,4 @@ export const Job = getModel("Job", JobSchema);
 export const Meta = getModel("Meta", MetaSchema);
 export const ImageTrash = getModel("ImageTrash", ImageTrashSchema);
 export const RateCounter = getModel("RateCounter", RateCounterSchema);
+export const PageView = getModel("PageView", PageViewSchema);

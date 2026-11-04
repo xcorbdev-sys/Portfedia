@@ -3,13 +3,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Check, RotateCcw, X } from "lucide-react";
 import { isModerator, requireUser } from "@/lib/auth";
-import { getPageBySlug } from "@/lib/pages";
+import { getPageBySlug, planActive } from "@/lib/pages";
 import { claimDomainOf, listOrgAdmins, listPositions } from "@/lib/org-admin";
-import { siteUrl } from "@/lib/site";
+import { formatDate, siteUrl } from "@/lib/site";
 import { decidePositionAction, decidePositionsBulkAction, removeOrgAdminAction } from "@/lib/actions/org";
-import { mergeOrgAction, renameOrgAction } from "@/lib/actions/moderation";
+import { mergeOrgAction, renameOrgAction, setOrgPlanAction } from "@/lib/actions/moderation";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { InviteAdminForm } from "@/components/forms/OrgAdminForms";
+import { StatsCard } from "@/components/StatsCard";
 
 export const metadata: Metadata = { title: "Manage organization", robots: { index: false } };
 
@@ -41,6 +42,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
   const pending = positions.filter((p) => p.entry.verification === "unverified").length;
   const { claimed, error, done } = await searchParams;
   const isMod = isModerator(user);
+  const business = planActive(page.plan, "business");
 
   return (
     <div className="container" style={{ maxWidth: 980, paddingBottom: 56 }}>
@@ -54,6 +56,10 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
           <p className="muted" style={{ margin: "4px 0 0" }}>Only admins of this organization and Portfedia moderators can see this page.</p>
         </div>
         <Link className="btn" href={`/org/${slug}/edit`}>Edit page</Link>
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <StatsCard pageId={page._id} enabled={business} label="Page views" />
       </div>
 
       <section className="card" id="people" style={{ marginTop: 18 }}>
@@ -148,6 +154,20 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
         <section className="card" id="moderator" style={{ marginTop: 16, borderColor: "var(--warn)" }}>
           <div className="card__body">
             <div className="card__title">Moderator tools</div>
+            <form action={setOrgPlanAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="months" value="12" />
+              <span className="small" style={{ fontWeight: 600 }}>
+                Plan: {business ? `Business${page.plan?.until ? ` until ${formatDate(page.plan.until)}` : ""}` : "Free"}
+              </span>
+              <div>
+                {business ? (
+                  <button className="btn btn--sm" type="submit" name="plan" value="free">Remove Business</button>
+                ) : (
+                  <button className="btn btn--sm" type="submit" name="plan" value="business">Give Business for 12 months</button>
+                )}
+              </div>
+            </form>
             <form action={renameOrgAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
               <input type="hidden" name="slug" value={slug} />
               <label htmlFor="rename-title" className="small" style={{ fontWeight: 600 }}>Rename</label>

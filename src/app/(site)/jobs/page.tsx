@@ -19,12 +19,13 @@ export default async function JobsPage() {
         <div className="empty">No open positions right now.</div>
       ) : (
         <ul className="result-list card" style={{ marginTop: 16 }}>
-          {jobs.map(({ org, job }) => (
+          {jobs.map(({ org, job, featured }) => (
             <li key={`${org.slug}-${job.id}`}>
               <div className="result">
                 <Thumb image={org.image} name={org.title} variant="logo" />
                 <span style={{ minWidth: 0 }}>
-                  <span className="result__name">{job.url ? <a href={job.url} rel="nofollow noopener" className="external">{job.title}</a> : job.title}</span>
+                  <span className="result__name">{job.url ? <a href={job.url} rel="nofollow noopener" className="external">{job.title}</a> : job.title}
+                    {featured && <span className="badge-featured">Featured</span>}</span>
                   <span className="result__sub">
                     <Link href={`/org/${org.slug}#jobs`}>{org.title}</Link>
                     {job.location && ` · ${job.location}`}

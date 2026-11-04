@@ -31,6 +31,8 @@ export default async function EditCollectionPage({ params, searchParams }: { par
               description: c?.description ?? "",
               items: c ? c.cards.map((x) => `${base}${x.type === "person" ? "" : "/org"}/${x.slug}`).join("\n") : "",
               published: c?.published ?? true,
+              sponsorName: c?.sponsor?.name ?? "",
+              sponsorUrl: c?.sponsor?.url ?? "",
             }}
           />
         </div>

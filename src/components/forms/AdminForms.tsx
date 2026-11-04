@@ -62,7 +62,7 @@ export function ImportCsvForm() {
 export function CollectionForm({
   initial,
 }: {
-  initial: { originalSlug: string; title: string; description: string; items: string; published: boolean };
+  initial: { originalSlug: string; title: string; description: string; items: string; published: boolean; sponsorName?: string; sponsorUrl?: string };
 }) {
   const [state, formAction, pending] = useActionState(saveCollectionAction, undefined);
   return (
@@ -87,6 +87,17 @@ export function CollectionForm({
       <div className="field">
         <label htmlFor="items">Pages</label>
         <textarea id="items" name="items" className="textarea" style={{ minHeight: 200 }} defaultValue={initial.items} placeholder={"One per line: a Portfedia link, an address or a page name\nhttps://portfedia.com/org/northwind-robotics\nayse-demir\nBluefin Bank"} />
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <label htmlFor="sponsorName">Sponsor (optional)</label>
+          <input id="sponsorName" name="sponsorName" className="input" defaultValue={initial.sponsorName} maxLength={80} placeholder="e.g. Atlas Ventures" />
+          <span className="hint">Shown as “Sponsored by …” on the collection. The sponsor can&apos;t choose which pages are listed.</span>
+        </div>
+        <div className="field">
+          <label htmlFor="sponsorUrl">Sponsor link</label>
+          <input id="sponsorUrl" name="sponsorUrl" className="input" defaultValue={initial.sponsorUrl} placeholder="https://…" />
+        </div>
       </div>
       <label className="check">
         <input type="checkbox" name="published" defaultChecked={initial.published} /> Published (visible on /collections)

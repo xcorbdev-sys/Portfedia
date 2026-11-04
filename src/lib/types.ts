@@ -114,8 +114,27 @@ export interface Acquisition { title: string; slug: string; year: number | null;
 export interface Leader { name: string; slug: string; role: string; kind: "board" | "executive" }
 export interface Milestone { year: number | null; text: string }
 export interface PressItem { title: string; outlet: string; year: number | null; url: string }
-export interface Job { id: string; title: string; location: string; type: string; url: string; postedAt: Date | null }
+export interface Job { id: string; title: string; location: string; type: string; url: string; postedAt: Date | null; featured?: boolean }
 export interface Ticker { exchange: string; symbol: string }
+
+export const ORG_CATEGORIES = {
+  company: "Company",
+  investor: "Investor / fund",
+  event: "Event",
+  nonprofit: "Non-profit",
+  public: "Public institution",
+} as const;
+export type OrgCategory = keyof typeof ORG_CATEGORIES;
+export interface InvestorInfo { fundSize: string; stages: string[]; focus: string[] }
+export interface EventInfo {
+  start: Date | null;
+  end: Date | null;
+  city: string;
+  format: string;
+  speakers: { name: string; slug: string }[];
+  sponsors: { title: string; slug: string }[];
+}
+export interface Plan { name: "free" | "pro" | "business"; until: Date | null }
 
 export interface OutLink {
   slug: string;
@@ -163,6 +182,11 @@ export interface PageDoc {
   press: PressItem[];
   jobs: Job[];
   ticker: Ticker | null;
+  category: OrgCategory;
+  investor: InvestorInfo | null;
+  event: EventInfo | null;
+  plan: Plan;
+  brandColor: string;
   verified: boolean;
   review: ReviewInfo;
   followerCount: number;

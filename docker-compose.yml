@@ -52,6 +52,18 @@ services:
     restart: unless-stopped
     profiles: ["security"]
 
+  # Optional uptime monitoring (#96): docker compose --profile monitoring up -d, then open port 3001.
+  # Add an HTTP monitor for http://app:3000/api/health (see docs/OPERATIONS.md).
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma:/app/data
+
 volumes:
   mongo-data:
   uploads:
+  uptime-kuma:
