@@ -1,24 +1,47 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listPages } from "@/lib/pages";
+import { listPages, sectorsFor } from "@/lib/pages";
+import { ORG_CATEGORIES, type OrgCategory } from "@/lib/types";
+import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
 
-export const metadata: Metadata = { title: "Companies", description: "Companies, holdings, funds and institutions on Portfedia." };
+export const metadata: Metadata = { title: "Companies", description: "Companies, holdings, funds and organizations on Portfedia." };
 
-export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ page?: string; sector?: string }> }) {
-  const sp = await searchParams;
-  const sector = sp.sector?.slice(0, 80);
-  // SaaS projects have their own section (/saas)
+type SP = Record<string, string | undefined>;
+
+export default async function CompaniesPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const { values, page, href } = listParams(await searchParams, ["q", "sector", "category", "sort"]);
   // SaaS projects (/saas) and universities and schools (/education) have their own sections
-  const data = await listPages({ types: ["org"], sector, excludeCategory: "saas", page: parseInt(sp.page ?? "1", 10) || 1 });
+  const category = values.category in ORG_CATEGORIES && values.category !== "saas" ? (values.category as OrgCategory) : undefined;
+  const [data, sectors] = await Promise.all([
+    listPages({ types: ["org"], q: values.q, sector: values.sector || undefined, category, excludeCategory: "saas", sort: values.sort as never, page }),
+    sectorsFor(["org"], undefined, "saas"),
+  ]);
+  const filtered = Boolean(values.q || values.sector || category);
   return (
     <Listing
-      title={sector ? `Companies in ${sector}` : "Companies"}
-      intro={sector ? "Organizations in this sector." : "Companies, holdings, funds and other organizations."}
+      title={values.sector ? `Companies in ${values.sector}` : "Companies"}
+      intro="Companies, holdings, funds and other organizations."
       crumb="Companies"
-      baseHref={sector ? `/companies?sector=${encodeURIComponent(sector)}` : "/companies"}
+      baseHref={href("/companies")}
+      noun="companies"
       {...data}
-      empty={<>No companies yet. <Link href="/create?type=org">Add one.</Link></>}
+      filters={{
+        action: "/companies",
+        q: values.q,
+        placeholder: "Search companies by name",
+        selects: [
+          { name: "sector", label: "All sectors", value: values.sector, options: sectors.map((s) => ({ value: s, label: s })) },
+          {
+            name: "category",
+            label: "All types",
+            value: category ?? "",
+            options: Object.entries(ORG_CATEGORIES).filter(([k]) => k !== "saas").map(([k, v]) => ({ value: k, label: v })),
+          },
+          { name: "sort", label: "Most followed", value: values.sort, options: SORTS },
+        ],
+      }}
+      empty={filtered ? <>No company matches. <Link href="/companies">Clear the filters.</Link></> : <>No companies yet. <Link href="/create?type=org">Add one.</Link></>}
     />
   );
 }

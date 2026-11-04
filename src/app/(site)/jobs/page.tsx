@@ -5,19 +5,40 @@ import { cachedJobs } from "@/lib/cached";
 import { paidPlansEnabled } from "@/lib/pages";
 import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { ListFilters } from "@/components/ListFilters";
+
+const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
 
 export const metadata: Metadata = { title: "Jobs", description: "Open positions at organizations that manage their Portfedia page." };
 
-export default async function JobsPage() {
+export default async function JobsPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; location?: string }> }) {
   await connection(); // data comes from the database at request time (cached briefly)
-  const jobs = await cachedJobs();
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim().slice(0, 80);
+  const type = (sp.type ?? "").trim().slice(0, 30);
+  const location = (sp.location ?? "").trim().slice(0, 120);
+  const all = await cachedJobs();
+  const locations = [...new Set(all.map((j) => j.job.location).filter(Boolean))].sort();
+  const jobs = all.filter(
+    (j) => (!q || norm(`${j.job.title} ${j.org.title}`).includes(norm(q))) && (!type || j.job.type === type) && (!location || j.job.location === location),
+  );
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Jobs" }]} />
       <h1 className="section__title" style={{ marginTop: 10 }}>Jobs</h1>
       <p className="muted">Open positions published by organizations that manage their own Portfedia page.</p>
+      <ListFilters
+        action="/jobs"
+        q={q}
+        placeholder="Search jobs or companies"
+        selects={[
+          { name: "type", label: "Any type", value: type, options: ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].map((t) => ({ value: t, label: t })) },
+          { name: "location", label: "Any location", value: location, options: locations.map((l) => ({ value: l, label: l })) },
+        ]}
+      />
       {jobs.length === 0 ? (
-        <div className="empty">No open positions right now.</div>
+        <div className="empty">{q || type || location ? "No job matches your search." : "No open positions right now."}</div>
       ) : (
         <ul className="result-list card" style={{ marginTop: 16 }}>
           {jobs.map(({ org, job, featured }) => (

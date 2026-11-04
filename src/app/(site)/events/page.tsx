@@ -4,6 +4,10 @@ import Link from "next/link";
 import { listEvents } from "@/lib/pages";
 import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { ListFilters } from "@/components/ListFilters";
+
+const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
 
 export const metadata: Metadata = { title: "Events", description: "Conferences, summits and meetups on Portfedia, with their speakers and sponsors." };
 
@@ -31,14 +35,22 @@ function EventList({ items }: { items: EventRow[] }) {
   );
 }
 
-export default async function EventsPage() {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ q?: string; city?: string }> }) {
   await connection();
-  const { upcoming, past } = await listEvents();
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim().slice(0, 80);
+  const city = (sp.city ?? "").trim().slice(0, 80);
+  const all = await listEvents();
+  const cities = [...new Set([...all.upcoming, ...all.past].map((e) => e.city).filter(Boolean))].sort();
+  const keep = (e: EventRow) => (!q || norm(e.card.title).includes(norm(q))) && (!city || e.city === city);
+  const upcoming = all.upcoming.filter(keep);
+  const past = all.past.filter(keep);
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Events" }]} />
       <h1 className="section__title" style={{ marginTop: 10 }}>Events</h1>
       <p className="muted">Conferences, summits and meetups. Speakers link their talks from their own profiles.</p>
+      <ListFilters action="/events" q={q} placeholder="Search events" selects={[{ name: "city", label: "All cities", value: city, options: cities.map((c) => ({ value: c, label: c })) }]} />
       <h2 className="card__title" style={{ marginTop: 24 }}>Upcoming</h2>
       {upcoming.length ? <EventList items={upcoming} /> : <div className="empty">No upcoming events yet.</div>}
       {past.length > 0 && (

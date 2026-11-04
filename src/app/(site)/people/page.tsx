@@ -1,21 +1,40 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listPages } from "@/lib/pages";
+import { listPages, sectorsFor } from "@/lib/pages";
+import { OPEN_TO } from "@/lib/types";
+import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
 
 export const metadata: Metadata = { title: "People", description: "Profiles of entrepreneurs, executives, investors and professionals on Portfedia." };
 
-export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const n = parseInt((await searchParams).page ?? "1", 10) || 1;
-  const data = await listPages({ types: ["person"], page: n });
+type SP = Record<string, string | undefined>;
+
+export default async function PeoplePage({ searchParams }: { searchParams: Promise<SP> }) {
+  const { values, page, href } = listParams(await searchParams, ["q", "sector", "openTo", "sort"]);
+  const openTo = values.openTo in OPEN_TO ? values.openTo : "";
+  const [data, sectors] = await Promise.all([
+    listPages({ types: ["person"], q: values.q, sector: values.sector || undefined, openTo: openTo || undefined, sort: values.sort as never, page }),
+    sectorsFor(["person"]),
+  ]);
   return (
     <Listing
       title="People"
       intro="Entrepreneurs, executives, investors and professionals."
       crumb="People"
-      baseHref="/people"
+      baseHref={href("/people")}
+      noun="profiles"
       {...data}
-      empty={<>No profiles yet. <Link href="/create">Create the first one.</Link></>}
+      filters={{
+        action: "/people",
+        q: values.q,
+        placeholder: "Search people by name",
+        selects: [
+          { name: "sector", label: "All sectors", value: values.sector, options: sectors.map((s) => ({ value: s, label: s })) },
+          { name: "openTo", label: "Open to anything", value: openTo, options: Object.entries(OPEN_TO).map(([k, v]) => ({ value: k, label: `Open to ${v.toLowerCase()}` })) },
+          { name: "sort", label: "Most followed", value: values.sort, options: SORTS },
+        ],
+      }}
+      empty={values.q || values.sector || openTo ? <>No one matches. <Link href="/people">Clear the filters.</Link></> : <>No profiles yet. <Link href="/create">Create the first one.</Link></>}
     />
   );
 }

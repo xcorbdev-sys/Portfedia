@@ -3,17 +3,27 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listInvestors } from "@/lib/pages";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { ListFilters } from "@/components/ListFilters";
+
+const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
 
 export const metadata: Metadata = { title: "Investors", description: "Venture capital firms, angels and funds on Portfedia, with the companies they backed." };
 
-export default async function InvestorsPage() {
+export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ q?: string; stage?: string }> }) {
   await connection();
-  const investors = await listInvestors();
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim().slice(0, 80);
+  const stage = (sp.stage ?? "").trim().slice(0, 60);
+  const all = await listInvestors();
+  const stages = [...new Set(all.flatMap((i) => i.stages))].sort();
+  const investors = all.filter((i) => (!q || norm(i.card.title).includes(norm(q))) && (!stage || i.stages.includes(stage)));
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Investors" }]} />
       <h1 className="section__title" style={{ marginTop: 10 }}>Investors</h1>
       <p className="muted">Funds and investment firms. The portfolio count comes from funding rounds listed on company pages.</p>
+      <ListFilters action="/investors" q={q} placeholder="Search investors" selects={[{ name: "stage", label: "All stages", value: stage, options: stages.map((s) => ({ value: s, label: s })) }]} />
       {investors.length === 0 ? (
         <div className="empty">No investor pages yet.</div>
       ) : (

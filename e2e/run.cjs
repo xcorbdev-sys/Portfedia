@@ -590,6 +590,26 @@ async function createProfile(p, opts) {
   await elif.waitForSelector(".notice--error");
   check("circular parent companies are refused", /already listed as part of this company/.test(await elif.locator(".notice--error").innerText()));
 
+  // ── Search and filters on lists; the footer stays at the bottom of short pages
+  await anon.goto(`${BASE}/saas?q=forms`);
+  check("SaaS list can be searched", (await anon.locator('a[href="/org/elif-forms-pro"]').count()) === 1 && (await anon.locator('a[href="/org/elif-analytics"]').count()) === 0);
+  await anon.goto(`${BASE}/companies`);
+  await anon.fill(".list-filters input[name=q]", "blue");
+  await anon.click('.list-filters button:has-text("Search")');
+  await anon.waitForURL(/q=blue/);
+  check("companies can be searched", (await anon.locator('a[href="/org/bluefin-bank"]').count()) === 1 && (await anon.locator('a[href="/org/northwind-robotics"]').count()) === 0);
+  await anon.goto(`${BASE}/companies`);
+  await anon.selectOption(".list-filters select[name=sector]", "Banking");
+  await anon.waitForURL(/sector=Banking/);
+  check("filter menus apply right away", (await anon.locator('a[href="/org/bluefin-bank"]').count()) === 1 && (await anon.locator('a[href="/org/northwind-robotics"]').count()) === 0);
+  await anon.goto(`${BASE}/people?q=ayse`);
+  check("people can be searched", (await anon.locator(`a[href="${aysePath}"]`).count()) === 1 && (await anon.locator('a[href="/elif-sahin"]').count()) === 0);
+  await anon.goto(`${BASE}/jobs?q=nothing-like-this`);
+  check("jobs can be searched", (await anon.locator("text=No job matches your search.").count()) === 1);
+  await anon.goto(`${BASE}/education?q=zzz`);
+  const foot = await anon.evaluate(() => Math.round(document.querySelector(".site-footer").getBoundingClientRect().bottom) - window.innerHeight);
+  check("footer sits at the bottom of short pages", Math.abs(foot) <= 1, foot);
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

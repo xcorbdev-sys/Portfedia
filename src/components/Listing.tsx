@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { PageCard } from "@/lib/pages";
 import { EntityGrid } from "./EntityCards";
 import { Breadcrumbs } from "./ui";
+import { ListFilters, type FilterSelect } from "./ListFilters";
 
 export function Listing({
   title,
@@ -13,6 +14,8 @@ export function Listing({
   baseHref,
   crumb,
   empty,
+  filters,
+  noun = "profiles",
 }: {
   title: string;
   intro: string;
@@ -23,6 +26,10 @@ export function Listing({
   baseHref: string;
   crumb: string;
   empty: React.ReactNode;
+  /** Search box and filter menus; when set, the list can be searched */
+  filters?: { action: string; q: string; placeholder: string; selects: FilterSelect[] };
+  /** Word after the count, e.g. "companies" */
+  noun?: string;
 }) {
   const sep = baseHref.includes("?") ? "&" : "?";
   return (
@@ -33,8 +40,9 @@ export function Listing({
           <h1 className="section__title">{title}</h1>
           <p className="muted" style={{ margin: "4px 0 0" }}>{intro}</p>
         </div>
-        <span className="muted small">{total.toLocaleString("en-US")} profiles</span>
+        <span className="muted small" style={{ whiteSpace: "nowrap" }}>{total.toLocaleString("en-US")} {total === 1 ? noun.replace(/ies$/, "y").replace(/s$/, "") : noun}</span>
       </div>
+      {filters && <ListFilters {...filters} />}
       <div style={{ marginTop: 18 }}>{items.length ? <EntityGrid items={items} /> : <div className="empty">{empty}</div>}</div>
       {pages > 1 && (
         <nav className="pagination" aria-label="Pagination">

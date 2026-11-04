@@ -315,7 +315,21 @@ export async function searchPages({ q, types, sectors, limit = 40, page = 1 }: S
   };
 }
 
-export async function listPages(opts: { types: PageType[]; sector?: string; page?: number; perPage?: number; category?: OrgCategory; excludeCategory?: OrgCategory }) {
+export async function listPages(opts: {
+  types: PageType[];
+  sector?: string;
+  page?: number;
+  perPage?: number;
+  category?: OrgCategory;
+  excludeCategory?: OrgCategory;
+  /** Name search (start of any word) */
+  q?: string;
+  /** SaaS pricing model */
+  pricing?: string;
+  /** People: open to (work, investment, …) */
+  openTo?: string;
+  sort?: "popular" | "recent" | "name";
+}) {
   await connectDB();
   const perPage = opts.perPage ?? 24;
   const page = Math.max(1, opts.page ?? 1);
@@ -323,15 +337,29 @@ export async function listPages(opts: { types: PageType[]; sector?: string; page
   if (opts.sector) filter["infobox.sector"] = opts.sector;
   if (opts.category) filter.category = opts.category;
   else if (opts.excludeCategory) filter.category = { $ne: opts.excludeCategory };
+  const term = searchKey((opts.q ?? "").slice(0, 80));
+  if (term) filter.titleKey = new RegExp(`(^|\\s)${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+  if (opts.pricing) filter["saas.pricing"] = opts.pricing;
+  if (opts.openTo) filter.openTo = opts.openTo;
+  const sort: Record<string, 1 | -1> = opts.sort === "recent" ? { createdAt: -1 } : opts.sort === "name" ? { title: 1 } : { followerCount: -1, updatedAt: -1 };
   const [rows, total] = await Promise.all([
     Page.find(filter, { ...CARD_FIELDS, status: 1 })
-      .sort({ followerCount: -1, updatedAt: -1 })
+      .sort(sort)
       .skip((page - 1) * perPage)
       .limit(perPage)
       .lean(),
     Page.countDocuments(filter),
   ]);
   return { items: rows.map((r) => toCard(r)), total, page, pages: Math.max(1, Math.ceil(total / perPage)) };
+}
+
+/** Sectors used by the pages of a listing, for its filter menu. */
+export async function sectorsFor(types: PageType[], category?: OrgCategory, excludeCategory?: OrgCategory): Promise<string[]> {
+  await connectDB();
+  const filter: Record<string, unknown> = { type: { $in: types }, "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER };
+  if (category) filter.category = category;
+  else if (excludeCategory) filter.category = { $ne: excludeCategory };
+  return ((await Page.distinct("infobox.sector", filter)) as string[]).sort((a, b) => a.localeCompare(b)).slice(0, 200);
 }
 
 export async function listSectors() {

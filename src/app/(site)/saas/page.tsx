@@ -1,22 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listPages } from "@/lib/pages";
+import { listPages, sectorsFor } from "@/lib/pages";
+import { SAAS_PRICING } from "@/lib/types";
+import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
 
 export const metadata: Metadata = { title: "SaaS Projects", description: "Software products introduced by their makers on Portfedia." };
 
-export default async function SaasPage({ searchParams }: { searchParams: Promise<{ page?: string; sector?: string }> }) {
-  const sp = await searchParams;
-  const sector = sp.sector?.slice(0, 80);
-  const data = await listPages({ types: ["org"], category: "saas", sector, page: parseInt(sp.page ?? "1", 10) || 1 });
+type SP = Record<string, string | undefined>;
+
+export default async function SaasPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const { values, page, href } = listParams(await searchParams, ["q", "sector", "pricing", "sort"]);
+  const pricing = values.pricing in SAAS_PRICING ? values.pricing : "";
+  const [data, sectors] = await Promise.all([
+    listPages({ types: ["org"], category: "saas", q: values.q, sector: values.sector || undefined, pricing: pricing || undefined, sort: values.sort as never, page }),
+    sectorsFor(["org"], "saas"),
+  ]);
+  const filtered = Boolean(values.q || values.sector || pricing);
   return (
     <Listing
-      title={sector ? `SaaS projects in ${sector}` : "SaaS Projects"}
+      title={values.sector ? `SaaS projects in ${values.sector}` : "SaaS Projects"}
       intro="Software products introduced by the people who build them."
       crumb="SaaS Projects"
-      baseHref={sector ? `/saas?sector=${encodeURIComponent(sector)}` : "/saas"}
+      baseHref={href("/saas")}
+      noun="projects"
       {...data}
-      empty={<>No SaaS projects yet. <Link href="/create?type=saas">Add yours.</Link></>}
+      filters={{
+        action: "/saas",
+        q: values.q,
+        placeholder: "Search SaaS projects by name",
+        selects: [
+          { name: "sector", label: "All categories", value: values.sector, options: sectors.map((s) => ({ value: s, label: s })) },
+          { name: "pricing", label: "Any pricing", value: pricing, options: Object.entries(SAAS_PRICING).map(([k, v]) => ({ value: k, label: v })) },
+          { name: "sort", label: "Most followed", value: values.sort, options: SORTS },
+        ],
+      }}
+      empty={filtered ? <>No project matches. <Link href="/saas">Clear the filters.</Link></> : <>No SaaS projects yet. <Link href="/create?type=saas">Add yours.</Link></>}
     />
   );
 }
