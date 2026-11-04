@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, ClipboardCheck, LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
+import { Bell, ClipboardCheck, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from "lucide-react";
 import { unreadCount } from "@/lib/notifications";
 import { inboxCountForPage } from "@/lib/feedback";
 import { Inbox } from "lucide-react";
@@ -81,6 +81,13 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
               <input type="hidden" name="go" value="1" />
             </form>
           )}
+          {user && isModerator(user) && (
+            <Link href="/admin" className="btn btn--sm admin-btn" aria-label={pending ? `Admin panel (${pending} applications waiting)` : "Admin panel"}>
+              <ShieldCheck size={16} aria-hidden="true" />
+              <span className="admin-btn__label">Admin</span>
+              {pending > 0 && <span className="admin-btn__count">{pending > 99 ? "99+" : pending}</span>}
+            </Link>
+          )}
           {user && (
             <Link href="/notifications" className="bell" aria-label={unread ? `Notifications (${unread} unread)` : "Notifications"}>
               <Bell size={19} />
@@ -99,7 +106,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                 </div>
                 {isModerator(user) && (
                   <Link href="/admin">
-                    <ClipboardCheck size={16} /> Review applications
+                    <ClipboardCheck size={16} /> Admin panel
                     {pending > 0 && <span className="menu__badge">{pending}</span>}
                   </Link>
                 )}

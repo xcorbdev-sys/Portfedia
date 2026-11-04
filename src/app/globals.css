@@ -608,3 +608,9 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
   .brand__mark { width: 28px; height: 28px; }
   .brand__word { font-size: 1.18rem; }
 }
+
+/* Admin panel button in the header (moderators only) */
+.admin-btn { display: inline-flex; align-items: center; gap: 6px; border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.admin-btn:hover { background: var(--primary-soft); text-decoration: none; }
+.admin-btn__count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--err); color: #fff; font-size: 0.7rem; font-weight: 700; display: inline-grid; place-items: center; line-height: 1; }
+@media (max-width: 480px) { .admin-btn__label { display: none; } .admin-btn { padding-left: 8px; padding-right: 8px; } }
