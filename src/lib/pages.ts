@@ -343,7 +343,7 @@ export async function listSectors() {
 
 export async function homeData() {
   await connectDB();
-  const [people, orgs, sectors, featuredPeople, featuredOrgs] = await Promise.all([
+  const [people, orgs, sectors, featuredPeople, featuredOrgs, globePeople] = await Promise.all([
     Page.countDocuments({ type: "person", ...PUBLIC_FILTER }),
     Page.countDocuments({ type: { $in: ["org", "school"] } }),
     Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER }),
@@ -352,11 +352,23 @@ export async function homeData() {
       .sort({ followerCount: -1, updatedAt: -1 })
       .limit(8)
       .lean(),
+    // Profile photos on the globe of the home page: members with a photo, most recently active first
+    Page.find({ type: "person", "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1, "infobox.occupation": 1 })
+      .sort({ updatedAt: -1 })
+      .limit(9)
+      .lean(),
   ]);
   return {
     stats: { people, orgs, sectors: sectors.length },
     featuredPeople: featuredPeople.map((d) => toCard(d)),
     featuredOrgs: featuredOrgs.map((d) => toCard(d)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globePeople: (globePeople as any[]).map((d) => ({
+      slug: d.slug as string,
+      title: d.title as string,
+      occupation: (d.infobox?.occupation as string) ?? "",
+      photo: (d.image?.thumbUrl as string) || (d.image?.url as string),
+    })),
   };
 }
 

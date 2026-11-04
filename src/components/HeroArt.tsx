@@ -9,7 +9,8 @@ function rand(seed: number) {
   return x - Math.floor(x);
 }
 
-const NODES: [number, number][] = [
+/** Positions of the globe's dots in the 480×390 drawing; the home page puts member photos on them. */
+export const NODES: [number, number][] = [
   [240, 40], [114, 80], [364, 79], [175, 125], [72, 182], [405, 181], [240, 193], [112, 275], [368, 273],
 ];
 const LINKS: [number, number][] = [

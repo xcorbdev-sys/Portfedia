@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { siteUrl } from "@/lib/site";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavProgress } from "@/components/NavProgress";
 import { Suspense } from "react";
 import "./globals.css";
@@ -27,13 +26,9 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Reading the request makes every page dynamic, which the per-request CSP nonce requires
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  await headers();
   return (
-    <html lang="en" className={logoFont.variable} suppressHydrationWarning>
-      <head>
-        {/* Applies a saved dark-theme choice before the first paint (light is the default) */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('pf-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}" }} />
-      </head>
+    <html lang="en" className={logoFont.variable}>
       <body>
         <Suspense fallback={null}>
           <NavProgress />
@@ -59,7 +54,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/kvkk">KVKK</Link>
               <Link href="/cookies">Cookies</Link>
               <Link href="/legal">Legal notice</Link>
-              <ThemeToggle />
             </nav>
           </div>
         </footer>

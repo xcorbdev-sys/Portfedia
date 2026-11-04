@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-react";
 import { cachedCollections, cachedHomeData } from "@/lib/cached";
 import { EntityGrid } from "@/components/EntityCards";
-import { HeroArt } from "@/components/HeroArt";
+import { HeroArt, NODES } from "@/components/HeroArt";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
 
@@ -45,7 +45,23 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
               // eslint-disable-next-line @next/next/no-img-element
               <img className="hero-art__img" src={`/brand/${HERO_IMAGE}`} alt="Office towers inside a connected globe" />
             ) : (
-              <HeroArt />
+              <>
+                <HeroArt />
+                {/* Members' profile photos sit on the globe's dots, one per dot; each opens the profile */}
+                {data.globePeople.slice(0, NODES.length).map((p, i) => (
+                  <Link
+                    key={p.slug}
+                    href={`/${p.slug}`}
+                    className="globe-avatar"
+                    style={{ left: `${(NODES[i][0] / 480) * 100}%`, top: `${(NODES[i][1] / 390) * 100}%`, animationDelay: `${i * 60}ms` }}
+                    title={p.occupation ? `${p.title} · ${p.occupation}` : p.title}
+                    aria-label={p.title}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.photo} alt="" width={48} height={48} loading="lazy" decoding="async" />
+                  </Link>
+                ))}
+              </>
             )}
           </div>
         </div>

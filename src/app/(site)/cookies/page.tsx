@@ -8,7 +8,6 @@ const COOKIES = [
   { name: "pf_session", kind: "Cookie", purpose: "Keeps you signed in. Only a random token; the server stores a hash of it.", duration: "30 days, or until you log out" },
   { name: "pf_oauth_state", kind: "Cookie", purpose: "Protects Google/LinkedIn sign-in against forged requests.", duration: "10 minutes" },
   { name: "pf_oauth_signup", kind: "Cookie", purpose: "Remembers a Google/LinkedIn sign-up while you finish the age and terms step.", duration: "30 minutes" },
-  { name: "pf-theme", kind: "Local storage", purpose: "Remembers if you chose dark mode.", duration: "Until you clear it" },
   { name: "pf-draft:…", kind: "Local storage", purpose: "Keeps an unsaved form draft on your device so you don't lose your work.", duration: "Until you save or discard it" },
 ];
 

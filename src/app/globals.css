@@ -34,33 +34,6 @@
   color-scheme: light;
 }
 
-/* Light is the default (as in the design); dark only when the visitor picks it in the footer */
-:root[data-theme="dark"] {
-  --bg: #0c111b;
-  --bg-soft: #111827;
-  --surface: #131a27;
-  --surface-2: #182132;
-  --border: #243045;
-  --border-strong: #33415a;
-  --text: #e8edf6;
-  --text-2: #b7c1d3;
-  --text-3: #8592a8;
-  --primary: #6d93ff;
-  --primary-hover: #8eabff;
-  --primary-soft: #1a2747;
-  --primary-soft-2: #22335c;
-  --on-primary: #0c111b;
-  --link-new: #ff7b6e;
-  --ok: #3ccf91;
-  --ok-soft: #10291f;
-  --warn-soft: #2b2310;
-  --warn: #f0b44c;
-  --err: #ff7b6e;
-  --err-soft: #34171a;
-  --shadow-sm: none;
-  --shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-  color-scheme: dark;
-}
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; }
@@ -88,7 +61,6 @@ svg.icon { width: 18px; height: 18px; flex-shrink: 0; }
 .brand:hover { text-decoration: none; }
 .brand__mark { flex: none; display: block; }
 .brand__word { font-family: var(--font-logo), Georgia, "Times New Roman", serif; font-weight: 900; font-size: 1.42rem; letter-spacing: -0.01em; color: #0b1430; line-height: 1; }
-:root[data-theme="dark"] .brand__word { color: var(--text); }
 .hero-art__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .main-nav { display: flex; gap: 4px; }
 .main-nav a { color: var(--text); font-weight: 500; font-size: 0.92rem; padding: 6px 12px; border-radius: 8px; }
@@ -170,8 +142,9 @@ a.chip:hover { text-decoration: none; background: var(--primary-soft-2); }
 .thumb--logo { object-fit: contain; padding: 4px; background: var(--surface); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .thumb--logo img { object-fit: contain; }
-.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--border); margin-bottom: 18px; overflow-x: auto; }
-.tabs a, .tabs button { padding: 8px 2px 10px; border: 0; background: none; font: inherit; font-size: 0.88rem; font-weight: 500; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap; }
+.tabs { display: flex; gap: 22px; box-shadow: inset 0 -1px 0 var(--border); margin-bottom: 18px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a, .tabs button { padding: 8px 2px 10px; border: 0; background: none; font: inherit; font-size: 0.88rem; font-weight: 500; color: var(--text-2); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .tabs a:hover { text-decoration: none; color: var(--text); }
 .tabs [aria-selected="true"], .tabs [aria-current="page"] { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
 .empty { padding: 32px; text-align: center; color: var(--text-3); border: 1px dashed var(--border-strong); border-radius: var(--radius); }
@@ -553,7 +526,7 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 
 /* ───────────── Design pass: match the reference screens ───────────── */
-:root:not([data-theme="dark"]) {
+:root {
   --surface-2: #f7f9fc;
   --border: #e7eaf0;
   --text-2: #444e60;
@@ -636,3 +609,15 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 /* Autosave status under the profile form */
 .autosave-status { text-align: right; margin: 10px 0 0; color: var(--text-3); }
 .autosave-status--error { color: var(--err); }
+
+/* Member photos on the home page globe */
+.globe-avatar {
+  position: absolute; width: clamp(28px, 8%, 42px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; overflow: hidden; background: var(--surface); border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #1463f3, 0 4px 12px rgba(20, 99, 243, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease; animation: globe-pop 0.35s ease backwards;
+}
+.globe-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.globe-avatar:hover, .globe-avatar:focus-visible { transform: translate(-50%, -50%) scale(1.18); box-shadow: 0 0 0 3px #1463f3, 0 6px 16px rgba(20, 99, 243, 0.35); z-index: 2; }
+@keyframes globe-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .globe-avatar { animation: none; transition: none; } }
