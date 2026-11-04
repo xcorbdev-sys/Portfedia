@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { getCurrentUser } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Follow, Page, Report, Revision, User } from "@/lib/models";
+import { readSnapshot } from "@/lib/snapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET() {
   const followedPages = await Page.find({ _id: { $in: follows.map((f) => f.pageId) } }, { slug: 1, title: 1, type: 1 }).lean();
   const [profileHistory, edits] = await Promise.all([
     profile ? Revision.find({ pageId: profile._id }, { __v: 0 }).sort({ createdAt: 1 }).lean() : Promise.resolve([]),
-    Revision.find({ authorId: oid, ...(profile ? { pageId: { $ne: profile._id } } : {}) }, { snapshot: 0, __v: 0 }).sort({ createdAt: 1 }).lean(),
+    Revision.find({ authorId: oid, ...(profile ? { pageId: { $ne: profile._id } } : {}) }, { snapshot: 0, snapshotZ: 0, __v: 0 }).sort({ createdAt: 1 }).lean(),
   ]);
   const managedOrganizations = await Page.find({ orgAdmins: oid }, { slug: 1, title: 1 }).lean();
 
@@ -30,7 +31,7 @@ export async function GET() {
       note: "Images are referenced by URL. Your year of birth is not stored, only the confirmation that you are old enough.",
       account,
       profile,
-      profileHistory,
+      profileHistory: (profileHistory as { snapshotZ?: unknown }[]).map(({ snapshotZ, ...r }) => ({ ...r, snapshot: readSnapshot({ ...r, snapshotZ } as never) })),
       editsToOtherPages: edits,
       managedOrganizations,
       following: followedPages,

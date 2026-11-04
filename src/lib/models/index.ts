@@ -207,7 +207,9 @@ const RevisionSchema = new Schema<any>(
     authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     authorName: { type: String, required: true },
     editSummary: { type: String, default: "", maxlength: 300 },
-    snapshot: { type: Schema.Types.Mixed, required: true },
+    // Full content at this revision. Older revisions are compressed into snapshotZ by the maintenance job.
+    snapshot: { type: Schema.Types.Mixed, default: undefined },
+    snapshotZ: { type: Buffer, default: undefined },
     size: { type: Number, default: 0 },
     delta: { type: Number, default: 0 },
   },
@@ -314,6 +316,38 @@ const ThankSchema = new Schema<any>(
 );
 ThankSchema.index({ pageId: 1, userId: 1 }, { unique: true });
 
+/* ───────────── Background work: outbox jobs, key/value meta & locks, image trash ───────────── */
+const JobSchema = new Schema<any>(
+  {
+    type: { type: String, required: true }, // "email" | "notify_followers"
+    payload: { type: Schema.Types.Mixed, required: true },
+    status: { type: String, enum: ["queued", "processing", "failed"], default: "queued" },
+    attempts: { type: Number, default: 0 },
+    runAt: { type: Date, default: () => new Date() },
+    lockedUntil: { type: Date, default: null },
+    lastError: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+JobSchema.index({ status: 1, runAt: 1 });
+
+const MetaSchema = new Schema<any>(
+  {
+    key: { type: String, required: true, unique: true },
+    value: { type: Schema.Types.Mixed, default: null },
+    lockedUntil: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+
+/** Replaced images are kept for 90 days so older revisions can still be restored with them. */
+const ImageTrashSchema = new Schema<any>({
+  key: { type: String, required: true, unique: true },
+  url: { type: String, default: "" },
+  deleteAfter: { type: Date, required: true },
+});
+ImageTrashSchema.index({ deleteAfter: 1 });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -330,3 +364,6 @@ export const Collection = getModel("Collection", CollectionSchema);
 export const Suggestion = getModel("Suggestion", SuggestionSchema);
 export const Testimonial = getModel("Testimonial", TestimonialSchema);
 export const Thank = getModel("Thank", ThankSchema);
+export const Job = getModel("Job", JobSchema);
+export const Meta = getModel("Meta", MetaSchema);
+export const ImageTrash = getModel("ImageTrash", ImageTrashSchema);

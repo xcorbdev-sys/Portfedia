@@ -12,8 +12,14 @@ export async function notify(userIds: string[], n: { type: NotificationType; tex
   await Notification.insertMany(ids.map((userId) => ({ userId, type: n.type, text: n.text.slice(0, 300), href: n.href, pageId: n.pageId ?? null })));
 }
 
-/** Tells the followers of a page that it changed (at most one unread update per page per day). */
+/** Tells the followers of a page that it changed; fanned out in the background (outbox). */
 export async function notifyFollowers(pageId: string, authorId: string, n: { type: NotificationType; text: string; href: string }) {
+  const { enqueue } = await import("./outbox");
+  await enqueue("notify_followers", { pageId, authorId, ...n });
+}
+
+/** At most one unread update per page per day for each follower. */
+export async function fanOutToFollowers(pageId: string, authorId: string, n: { type: NotificationType; text: string; href: string }) {
   await connectDB();
   const follows = await Follow.find({ pageId }, { userId: 1 }).limit(1000).lean<{ userId: unknown }[]>();
   const followers = follows.map((f) => String(f.userId)).filter((id) => id !== authorId);

@@ -5,6 +5,8 @@ import { Follow, Page, Revision, Session, Suggestion, Testimonial, Thank, Token,
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks, stripWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
+import { trashImage } from "./image-trash";
+import { readSnapshot } from "./snapshots";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
@@ -198,7 +200,7 @@ export async function getBacklinks(slug: string) {
 
 export async function listRevisions(pageId: string): Promise<RevisionDoc[]> {
   await connectDB();
-  const rows = await Revision.find({ pageId }, { snapshot: 0 }).sort({ createdAt: -1 }).limit(200).lean();
+  const rows = await Revision.find({ pageId }, { snapshot: 0, snapshotZ: 0 }).sort({ createdAt: -1 }).limit(200).lean();
   return rows.map((r) => ({
     _id: String(r._id),
     pageId: String(r.pageId),
@@ -645,10 +647,10 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     delta: input.body.length - prevSize,
   });
 
-  if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
-  // Project images that were removed or replaced
+  // Replaced images go to the trash for 90 days, so older revisions can still be restored with them
+  if (oldImage && oldImage.key !== input.image?.key) await trashImage(oldImage);
   const kept = new Set(input.projects.map((x) => x.image?.key).filter(Boolean));
-  for (const old of (existing ? prevProjects : []) as Project[]) if (old.image?.key && !kept.has(old.image.key)) await deleteImage(old.image);
+  for (const old of (existing ? prevProjects : []) as Project[]) if (old.image?.key && !kept.has(old.image.key)) await trashImage(old.image);
   return toPage(page.toObject());
 }
 
@@ -774,9 +776,9 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     size: input.body.length,
     delta: input.body.length - prevSize,
   });
-  if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
+  if (oldImage && oldImage.key !== input.image?.key) await trashImage(oldImage);
   const keptProducts = new Set(input.products.map((x) => x.image?.key).filter(Boolean));
-  for (const img of prevProductImages) if (!keptProducts.has(img.key)) await deleteImage(img);
+  for (const img of prevProductImages) if (!keptProducts.has(img.key)) await trashImage(img);
   return toPage(page.toObject());
 }
 
@@ -839,10 +841,15 @@ export async function deleteAccount(userId: string): Promise<void> {
   const oid = new Types.ObjectId(userId);
   const page = await Page.findOne({ type: "person", ownerId: oid });
   if (page) {
-    const revs = await Revision.find({ pageId: page._id }, { "snapshot.image": 1 }).lean<{ snapshot?: { image?: StoredImage | null } }[]>();
+    // Privacy: on account deletion every image of the profile (current, older revisions, projects) goes immediately
+    const revs = await Revision.find({ pageId: page._id }, { snapshot: 1, snapshotZ: 1 }).lean<{ snapshot?: unknown; snapshotZ?: unknown }[]>();
     const keys = new Set<string>();
     if (page.image?.key) keys.add(page.image.key);
-    for (const r of revs) if (r.snapshot?.image?.key) keys.add(r.snapshot.image.key);
+    for (const r of revs) {
+      const snap = readSnapshot(r as never);
+      if (snap.image?.key) keys.add(snap.image.key);
+      for (const pr of (snap.projects ?? []) as Project[]) if (pr.image?.key) keys.add(pr.image.key);
+    }
     for (const key of keys) await deleteImage({ key, url: "" });
     await Revision.deleteMany({ pageId: page._id });
     await Follow.deleteMany({ pageId: page._id });

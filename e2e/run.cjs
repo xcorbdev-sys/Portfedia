@@ -29,7 +29,7 @@ function logs() {
 
 /** Latest emailed link of a kind (e.g. "verify-email") sent to an address. */
 async function emailLink(to, kind) {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const text = logs();
     const at = text.lastIndexOf(`To: ${to}`);
     if (at >= 0) {

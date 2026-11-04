@@ -6,6 +6,8 @@ import { Page, Report, Revision, Session, User } from "./models";
 import { sendEmail } from "./email";
 import { siteUrl } from "./site";
 import { canEditOrg } from "./pages";
+import { readSnapshot } from "./snapshots";
+import { restoreFromTrash, trashImage, trashedKeys } from "./image-trash";
 import type { PageDoc, SessionUser } from "./types";
 
 /* ───────────── Revisions: compare & restore ───────────── */
@@ -32,15 +34,17 @@ export async function getRevisionPair(pageId: string, revId: string): Promise<{ 
   const r = await Revision.findOne({ _id: revId, pageId }).lean<any>();
   if (!r) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const p = await Revision.findOne({ pageId, createdAt: { $lt: r.createdAt }, "snapshot.body": { $exists: true } }).sort({ createdAt: -1 }).lean<any>();
+  // Previous content revision (status-only entries such as approvals are skipped)
+  const candidates = await Revision.find({ pageId, createdAt: { $lt: r.createdAt } }).sort({ createdAt: -1 }).limit(20).lean<any[]>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const p = candidates.find((c) => isContent(readSnapshot(c))) ?? null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const view = (x: any): RevisionView => ({
     id: String(x._id),
     authorName: x.authorName,
     editSummary: x.editSummary,
     createdAt: x.createdAt,
-    isContent: isContent(x.snapshot),
-    snapshot: x.snapshot ?? {},
+    isContent: isContent(readSnapshot(x)),
+    snapshot: readSnapshot(x),
   });
   return { rev: view(r), prev: p ? view(p) : null };
 }
@@ -141,21 +145,30 @@ export async function restoreRevision(user: SessionUser, page: PageDoc, revId: s
   // The website stays locked (it decides who can claim the page)
   if (page.type !== "person" && !isMod && !page.orgAdmins.includes(user.id) && doc.infobox?.website) infobox.website = doc.infobox.website;
   const fields: Record<string, unknown> = { summary: s.summary ?? "", tags: s.tags ?? [], infobox, body: s.body ?? "", sources: s.sources ?? [], outLinks: s.outLinks ?? [] };
+  // Images: the current ones, plus replaced ones still in the 90-day trash, can come back
+  const snapKeys = [s.image?.key, ...((s.projects ?? []) as { image?: { key?: string } }[]).map((x) => x.image?.key), ...((s.products ?? []) as { image?: { key?: string } }[]).map((x) => x.image?.key)].filter(Boolean) as string[];
+  const inTrash = await trashedKeys(snapKeys);
+  if (s.image?.key && s.image.key !== doc.image?.key && inTrash.has(s.image.key)) {
+    await restoreFromTrash(s.image.key);
+    await trashImage(doc.image);
+    fields.image = s.image;
+  }
   if (page.type === "person") {
     Object.assign(fields, { experiences: s.experiences ?? [], educations: s.educations ?? [], noindex: Boolean(s.noindex) });
-    // Restored lists keep their text; project images that no longer exist are dropped
-    const liveKeys = new Set((doc.projects ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean));
+    // Restored lists keep their text; project images come back if they still exist (live or in the trash)
+    const liveKeys = new Set([...(doc.projects ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean), ...inTrash]);
     for (const k of ["publications", "awards", "talks", "patents", "volunteering", "languageLevels", "openTo"]) if (k in s) fields[k] = s[k];
     if ("projects" in s) fields.projects = (s.projects ?? []).map((x: { image?: { key?: string } }) => ({ ...x, image: x.image?.key && liveKeys.has(x.image.key) ? x.image : null }));
   }
   else {
     Object.assign(fields, { fundingRounds: s.fundingRounds ?? [] });
     for (const k of ["offices", "parent", "acquisitions", "leadership", "formerNames", "milestones", "press", "ticker"]) if (k in s) fields[k] = s[k];
-    const liveKeys = new Set((doc.products ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean));
+    const liveKeys = new Set([...(doc.products ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean), ...inTrash]);
     if ("products" in s) fields.products = (s.products ?? []).map((x: { image?: { key?: string } }) => ({ ...x, image: x.image?.key && liveKeys.has(x.image.key) ? x.image : null }));
   }
   const prevSize = doc.body?.length ?? 0;
   doc.set(fields);
+  for (const k of inTrash) if (JSON.stringify(fields).includes(k)) await restoreFromTrash(k);
   doc.revisionCount = (doc.revisionCount ?? 0) + 1;
   await doc.save();
   await Revision.create({
@@ -163,7 +176,7 @@ export async function restoreRevision(user: SessionUser, page: PageDoc, revId: s
     authorId: user.id,
     authorName: user.name,
     editSummary: `Restored the version from ${new Date(pair.rev.createdAt).toISOString().slice(0, 16).replace("T", " ")} UTC`,
-    snapshot: { title: doc.title, ...fields, image: doc.image ?? null },
+    snapshot: { title: doc.title, ...fields, image: (fields.image as unknown) ?? doc.image ?? null },
     size: String(fields.body).length,
     delta: String(fields.body).length - prevSize,
   });

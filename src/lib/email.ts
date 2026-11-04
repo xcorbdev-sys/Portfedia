@@ -56,7 +56,14 @@ ${e.button ? `<p style="margin:20px 0"><a href="${esc(e.button.url)}" style="dis
   return { html, text };
 }
 
+/** Queues an email; it is delivered in the background with retries (see outbox.ts). */
 export async function sendEmail(e: Email): Promise<void> {
+  const { enqueue } = await import("./outbox");
+  await enqueue("email", e as unknown as Record<string, unknown>);
+}
+
+/** Actually delivers an email. Throws on failure so the outbox retries it. */
+export async function deliverEmail(e: Email): Promise<void> {
   const { html, text } = renderEmail(e);
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
@@ -64,16 +71,15 @@ export async function sendEmail(e: Email): Promise<void> {
     console.info(`[email:dev] To: ${e.to}\n[email:dev] Subject: ${e.subject}\n${text.replace(/^/gm, "[email:dev] ")}`);
     return;
   }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [e.to], subject: e.subject, html, text }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) console.error(`[email] Resend error ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  } catch (err) {
-    // Email failures must never break the user's action
-    console.error("[email] send failed:", err);
-  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [e.to], subject: e.subject, html, text, headers: e.preferencesNote ? listUnsubscribe() : undefined }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Resend error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+}
+
+function listUnsubscribe() {
+  return { "List-Unsubscribe": `<${siteUrl()}/account#notifications>` };
 }
