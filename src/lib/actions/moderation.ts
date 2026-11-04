@@ -48,6 +48,8 @@ export async function reportAction(_: FormState, fd: FormData): Promise<FormStat
   const slug = str(fd.get("slug"), 100);
   const page = slug ? await getPageBySlug(slug) : null;
 
+  // DSA Art. 16(2)(d): notices include a good-faith statement that they are accurate and complete
+  if (reason !== "appeal" && reason !== "copyright" && !bool(fd.get("accurate"))) return { error: "Please confirm that the report is accurate." };
   let text = details;
   if (reason === "appeal") {
     // Give moderators the account's state right away

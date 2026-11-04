@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { connectDB } from "./db";
-import { Session, User } from "./models";
+import { LoginLog, Session, User } from "./models";
 import type { SessionUser } from "./types";
 import { adminEmailList, OWNER_EMAILS } from "./admins";
 
@@ -30,7 +30,14 @@ export async function createSession(userId: string): Promise<void> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
   // Only a hash is stored: a leaked database cannot be used to hijack sessions
-  await Session.create({ tokenHash: hash(token), userId, expiresAt });
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "";
+  const userAgent = (h.get("user-agent") ?? "").slice(0, 300);
+  // Shown on the account page: only the start of the address
+  const ipPrefix = ip.includes(":") ? ip.split(":").slice(0, 3).join(":") + ":…" : ip.split(".").slice(0, 3).join(".") + (ip ? ".…" : "");
+  await Session.create({ tokenHash: hash(token), userId, expiresAt, userAgent, ipPrefix });
+  // Law No. 5651 requires hosting providers to keep traffic data; deleted automatically after one year
+  await LoginLog.create({ userId, ip, userAgent }).catch(() => {});
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

@@ -368,6 +368,7 @@ async function createProfile(p, opts) {
   await anon.selectOption("#reason", "false_info");
   await anon.fill("#details", "This profile contains a wrong job title.");
   await anon.fill("#email", "someone@example.com");
+  await anon.check("input[name=accurate]");
   await anon.waitForTimeout(2700);
   await anon.click('button:has-text("Send report")');
   await anon.waitForSelector(".notice--ok");
@@ -403,6 +404,12 @@ async function createProfile(p, opts) {
   await mert.click("button[type=submit]");
   await mert.waitForSelector(".notice--error");
   check("banned user can't log in", /suspended/.test(await mert.locator(".notice--error").innerText()));
+
+  // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
+  for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
+    const res = await anon.goto(`${BASE}${path}`);
+    check(`legal page ${path}`, res.status() === 200 && (await anon.locator("h1").count()) === 1);
+  }
 
   // ── Mobile layout
   const mobile = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();

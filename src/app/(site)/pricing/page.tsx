@@ -55,7 +55,8 @@ export default function PricingPage() {
         ))}
       </div>
       <p className="small muted" style={{ marginTop: 20 }}>
-        Plans are activated by our team after payment. Questions? Email <a href={`mailto:${contact}`}>{contact}</a>.
+        Before you buy, we send you the price including taxes, the term and the contract in writing. Consumers have a 14-day right of
+        withdrawal (see the <Link href="/terms">Terms of Use</Link>). Plans are activated by our team after payment. Questions? Email <a href={`mailto:${contact}`}>{contact}</a>.
       </p>
     </div>
   );

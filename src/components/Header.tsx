@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, ClipboardCheck, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from "lucide-react";
+import { Bell, ClipboardCheck, LogIn, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from "lucide-react";
 import { unreadCount } from "@/lib/notifications";
 import { inboxCountForPage } from "@/lib/feedback";
 import { Inbox } from "lucide-react";
@@ -134,7 +134,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
             </details>
           ) : (
             <>
-              <Link href="/login" className="btn btn--sm">Log in</Link>
+              <Link href="/login" className="btn btn--sm header-login">Log in</Link>
               <Link href="/signup" className="btn btn--sm btn--primary">Sign up</Link>
             </>
           )}
@@ -143,6 +143,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
               <Menu size={20} />
             </summary>
             <div className="menu__panel">
+              {!user && <Link href="/login" className="menu-login"><LogIn size={16} /> Log in</Link>}
               <Link href="/search"><Search size={16} /> Search</Link>
               {user && isModerator(user) && (
                 <Link href="/admin">

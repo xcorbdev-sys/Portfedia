@@ -75,6 +75,12 @@ export function ReportForm({
           </div>
         </div>
       )}
+      {!copyright && fixedReason !== "appeal" && (
+        <label className="check">
+          <input type="checkbox" name="accurate" required />
+          <span>I confirm in good faith that the information in this report is accurate and complete to the best of my knowledge.</span>
+        </label>
+      )}
       {copyright && (
         <>
           <label className="check">

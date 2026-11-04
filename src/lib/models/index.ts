@@ -392,6 +392,16 @@ const RateCounterSchema = new Schema<any>({
 });
 RateCounterSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
+/* ───────────── Sign-in log (Turkish Law No. 5651: traffic data kept for one year) ───────────── */
+const LoginLogSchema = new Schema<any>({
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  ip: { type: String, default: "" },
+  userAgent: { type: String, default: "", maxlength: 300 },
+  method: { type: String, default: "password" },
+  at: { type: Date, default: () => new Date() },
+});
+LoginLogSchema.index({ at: 1 }, { expireAfterSeconds: 365 * 86400 });
+
 /* ───────────── Page views per day (#96/#97 statistics) ───────────── */
 const PageViewSchema = new Schema<any>({
   pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
@@ -420,4 +430,5 @@ export const Job = getModel("Job", JobSchema);
 export const Meta = getModel("Meta", MetaSchema);
 export const ImageTrash = getModel("ImageTrash", ImageTrashSchema);
 export const RateCounter = getModel("RateCounter", RateCounterSchema);
+export const LoginLog = getModel("LoginLog", LoginLogSchema);
 export const PageView = getModel("PageView", PageViewSchema);

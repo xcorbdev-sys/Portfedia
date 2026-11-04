@@ -55,6 +55,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/terms">Terms</Link>
               <Link href="/copyright">Copyright</Link>
               <Link href="/privacy">Privacy</Link>
+              <Link href="/kvkk">KVKK</Link>
+              <Link href="/cookies">Cookies</Link>
+              <Link href="/legal">Legal notice</Link>
               <ThemeToggle />
             </nav>
           </div>

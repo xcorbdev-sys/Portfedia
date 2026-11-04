@@ -85,8 +85,9 @@ function Consent() {
     <label className="check">
       <input type="checkbox" name="consent" required />
       <span>
-        I agree to the <Link href="/terms" target="_blank">Terms of Use</Link> and have read the{" "}
-        <Link href="/privacy" target="_blank">Privacy Policy</Link>. I understand that my profile will be public once approved.
+        I accept the <Link href="/terms" target="_blank">Terms of Use</Link>. I have read the{" "}
+        <Link href="/privacy" target="_blank">Privacy Policy</Link> and the{" "}
+        <Link href="/kvkk" target="_blank">KVKK notice</Link>, and understand that my profile will be public once approved.
       </span>
     </label>
   );

@@ -16,6 +16,13 @@ services:
       COMPANY_NAME: ${COMPANY_NAME:-Portfedia}
       COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      # Legal notice (künye): shown on /legal, /privacy and /kvkk when set
+      COMPANY_PHONE: ${COMPANY_PHONE:-}
+      COMPANY_MERSIS: ${COMPANY_MERSIS:-}
+      COMPANY_TAX: ${COMPANY_TAX:-}
+      COMPANY_REGISTRY: ${COMPANY_REGISTRY:-}
+      COMPANY_KEP: ${COMPANY_KEP:-}
+      EU_REPRESENTATIVE: ${EU_REPRESENTATIVE:-}
       PWNED_CHECK: ${PWNED_CHECK:-}
       # Virus scanning of uploads: start with `docker compose --profile security up` and set CLAMAV_HOST=clamav
       CLAMAV_HOST: ${CLAMAV_HOST:-}

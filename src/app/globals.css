@@ -627,3 +627,14 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .wd-hits { list-style: none; padding: 0; margin: 14px 0 0; }
 .wd-hits li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
 .wd-hits__desc { display: block; }
+/* Between tablet and desktop the logo, menu, search and buttons must share the row */
+@media (max-width: 960px) and (min-width: 861px) {
+  .header-search { width: 160px; }
+  .main-nav { gap: 0; }
+  .main-nav a { padding: 6px 7px; }
+}
+.menu-login { display: none !important; }
+@media (max-width: 380px) {
+  .header-login { display: none; }
+  .menu-login { display: flex !important; }
+}
