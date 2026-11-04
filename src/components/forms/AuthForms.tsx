@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, startTransition } from "react";
+import { useActionState, useEffect, useRef, useState, startTransition } from "react";
+import { passwordStrength } from "@/lib/content-rules";
 import {
   changeEmailAction, changePasswordAction, changeSlugAction, completeOAuthSignupAction, deleteAccountAction, emailPrefsAction,
   forgotPasswordAction, loginAction, registerAction, resendVerificationAction, resetPasswordAction, type FormState,
@@ -39,6 +40,26 @@ export function BotFields() {
         </label>
       </div>
     </>
+  );
+}
+
+/** New-password input with a live strength meter (the server also checks known data breaches). */
+function NewPassword({ id = "password", label = "Password" }: { id?: string; label?: string }) {
+  const [value, setValue] = useState("");
+  const s = passwordStrength(value);
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <input id={id} name="password" type="password" className="input" autoComplete="new-password" required minLength={8} value={value} onChange={(e) => setValue(e.target.value)} />
+      <div className="pw-meter" aria-hidden="true">
+        {[1, 2, 3, 4].map((i) => (
+          <span key={i} className={value && s.score >= i ? `on s${s.score}` : undefined} />
+        ))}
+      </div>
+      <span className="hint" aria-live="polite">
+        {value ? `${s.label}${s.tip ? ` · ${s.tip}` : ""}` : "At least 8 characters. A short sentence works great."}
+      </span>
+    </div>
   );
 }
 
@@ -138,11 +159,7 @@ export function SignupForm() {
         <label htmlFor="email">Email</label>
         <input id="email" name="email" type="email" className="input" autoComplete="email" required />
       </div>
-      <div className="field">
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" className="input" autoComplete="new-password" required minLength={8} />
-        <span className="hint">At least 8 characters.</span>
-      </div>
+      <NewPassword />
       <BirthYear />
       <Consent />
       <button className="btn btn--primary btn--lg" type="submit" disabled={pending}>
@@ -201,10 +218,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form className="form" onSubmit={onSubmit}>
       <input type="hidden" name="token" value={token} />
       <FormError state={state} />
-      <div className="field">
-        <label htmlFor="password">New password</label>
-        <input id="password" name="password" type="password" className="input" autoComplete="new-password" required minLength={8} />
-      </div>
+      <NewPassword label="New password" />
       <div className="field">
         <label htmlFor="confirm">Repeat new password</label>
         <input id="confirm" name="confirm" type="password" className="input" autoComplete="new-password" required minLength={8} />
@@ -279,10 +293,7 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
         </div>
       )}
       <div className="grid-2">
-        <div className="field">
-          <label htmlFor="new-password">New password</label>
-          <input id="new-password" name="password" type="password" className="input" autoComplete="new-password" required minLength={8} />
-        </div>
+        <NewPassword id="new-password" label="New password" />
         <div className="field">
           <label htmlFor="confirm-password">Repeat new password</label>
           <input id="confirm-password" name="confirm" type="password" className="input" autoComplete="new-password" required minLength={8} />

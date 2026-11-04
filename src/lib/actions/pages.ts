@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "../auth";
 import { canView, isPublic } from "../visibility";
+import { guardContent } from "../guard";
+import { externalLinks } from "../content-rules";
+import { getPersonPageOf } from "../pages";
 import { notify, notifyFollowers } from "../notifications";
 import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
 import { saveImage, UploadError } from "../storage";
@@ -104,6 +107,19 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     }))
     .filter((e) => slugify(e.schoolTitle));
 
+  const sources = parseSources(fd.get("sources"));
+  const tags = parseTags(fd.get("tags"));
+  const summary = str(fd.get("summary"), 400);
+  const website = httpUrl(fd.get("website"));
+  const prev = await getPersonPageOf(user.id);
+  const before = new Set(prev ? externalLinks(prev.body, prev.infobox.website, ...prev.sources.map((x) => x.url)) : []);
+  const guardError = await guardContent(user, {
+    texts: [title, occupation, summary, body, tags.join(" "), ...experiences.map((e) => `${e.role} ${e.description}`)],
+    newLinks: externalLinks(body, website, ...sources.map((x) => x.url)).filter((l) => !before.has(l)),
+    page: prev,
+  });
+  if (guardError) return { error: guardError };
+
   let image: StoredImage | null | undefined;
   try {
     image = await imageFrom(fd, "photo");
@@ -114,8 +130,8 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
 
   const page = await savePersonPage(user, {
     title,
-    summary: str(fd.get("summary"), 400),
-    tags: parseTags(fd.get("tags")),
+    summary,
+    tags,
     infobox: {
       occupation,
       sector: str(fd.get("sector"), 80),
@@ -126,7 +142,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
       location: str(fd.get("location"), 120),
       languages: str(fd.get("languages"), 200),
       skills: str(fd.get("skills"), 400),
-      website: httpUrl(fd.get("website")),
+      website,
       github: handle(fd.get("github")),
       linkedin: handle(fd.get("linkedin")),
       email: email(fd.get("email")),
@@ -135,7 +151,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     body,
     experiences,
     educations,
-    sources: parseSources(fd.get("sources")),
+    sources,
     noindex: bool(fd.get("noindex")),
     editSummary: str(fd.get("editSummary"), 300),
     image,
@@ -167,6 +183,17 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     }
   }
 
+  const orgBody = String(fd.get("body") ?? "").slice(0, MAX_BODY);
+  const orgSources = parseSources(fd.get("sources"));
+  const prevOrg = slug ? await getPageBySlug(slug) : null;
+  const orgBefore = new Set(prevOrg ? externalLinks(prevOrg.body, prevOrg.infobox.website, ...prevOrg.sources.map((x) => x.url)) : []);
+  const orgGuard = await guardContent(user, {
+    texts: [title, str(fd.get("summary"), 400), orgBody, String(fd.get("tags") ?? "")],
+    newLinks: externalLinks(orgBody, httpUrl(fd.get("website")), ...orgSources.map((x) => x.url)).filter((l) => !orgBefore.has(l)),
+    page: prevOrg,
+  });
+  if (orgGuard) return { error: orgGuard };
+
   let image: StoredImage | null | undefined;
   try {
     image = await imageFrom(fd, "logo");
@@ -191,11 +218,13 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
         employees: str(fd.get("employees"), 40),
         website: httpUrl(fd.get("website")),
       },
-      body: String(fd.get("body") ?? "").slice(0, MAX_BODY),
-      sources: parseSources(fd.get("sources")),
+      body: orgBody,
+      sources: orgSources,
       fundingRounds: parseFunding(fd.get("fundingRounds")),
       editSummary: str(fd.get("editSummary"), 300),
       image,
+      protectDays: fd.has("protectDays") ? Math.max(0, Math.min(365, Number(fd.get("protectDays")) || 0)) : undefined,
+      protectReason: str(fd.get("protectReason"), 200),
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,
     });
     pageSlug = page.slug;

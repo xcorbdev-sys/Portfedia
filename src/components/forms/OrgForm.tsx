@@ -190,6 +190,27 @@ export function OrgForm({
         </div>
         <SourcesEditor initial={page?.sources ?? []} />
         {moderator && (
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="protectDays">Protect page (moderators)</label>
+              <select id="protectDays" name="protectDays" className="select" defaultValue="-1">
+                <option value="-1" disabled>
+                  {page?.protectedUntil && new Date(page.protectedUntil) > new Date() ? `Protected until ${new Date(page.protectedUntil).toLocaleDateString("en-US")}` : "Not protected"}
+                </option>
+                <option value="0">Remove protection</option>
+                <option value="1">1 day</option>
+                <option value="7">7 days</option>
+                <option value="30">30 days</option>
+                <option value="365">1 year</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="protectReason">Reason</label>
+              <input id="protectReason" name="protectReason" className="input" maxLength={200} defaultValue={page?.protectedReason ?? ""} placeholder="e.g. Repeated vandalism" />
+            </div>
+          </div>
+        )}
+        {moderator && (
           <div className="field">
             <label htmlFor="claimDomain">Claim domain (moderators)</label>
             <input id="claimDomain" name="claimDomain" className="input" maxLength={120} defaultValue={page?.claimDomain ?? ""} placeholder="e.g. northwind.com" />

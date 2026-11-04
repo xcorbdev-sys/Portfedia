@@ -4,7 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditOrg, getInvestments, isOrgAdmin, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
+import { canEditOrg, getInvestments, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
@@ -100,6 +100,12 @@ export default async function OrgPage({ params }: Props) {
         </aside>
 
         <article className="profile__main">
+          {isProtected(page) && (
+            <div className="notice notice--info" style={{ marginBottom: 18 }}>
+              🔒 This page is protected until {formatDate(page.protectedUntil!)}
+              {page.protectedReason ? ` (${page.protectedReason})` : ""}. Only moderators and the organization can edit it.
+            </div>
+          )}
           {page.status === "draft" && !page.body.trim() && !page.summary && (
             <div className="notice notice--info" style={{ marginBottom: 18 }}>
               This is a <b>draft</b> page, created automatically when a member added {page.title} to their profile.{" "}

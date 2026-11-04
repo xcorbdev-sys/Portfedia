@@ -10,12 +10,15 @@ export interface ReviewInfo {
   reviewedAt: Date | null;
   reviewerName: string;
   note: string;
+  flags: string[];
 }
 export type Verification = "unverified" | "verified" | "rejected";
 
 export interface StoredImage {
   key: string;
   url: string;
+  /** SHA-256 of the processed image, used to spot the same photo on several profiles */
+  hash?: string;
 }
 
 export interface Experience {
@@ -102,6 +105,8 @@ export interface PageDoc {
   orgAdmins: string[];
   claimDomain: string | null;
   websiteChangedAt: Date | null;
+  protectedUntil: Date | null;
+  protectedReason: string;
   sources: SourceRef[];
   fundingRounds: FundingRound[];
   verified: boolean;

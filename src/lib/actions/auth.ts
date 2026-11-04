@@ -17,6 +17,8 @@ import { isOldEnough, MIN_AGE } from "../age";
 import { looksLikeBot } from "../bot";
 import { bool, email as cleanEmail, str } from "../validate";
 import { rateLimit } from "../rate-limit";
+import { isPwnedPassword, PWNED_MESSAGE } from "../pwned";
+import { passwordStrength } from "../content-rules";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -30,7 +32,14 @@ async function clientIp(): Promise<string> {
 }
 
 function passwordError(pw: string): string | null {
-  return pw.length < 8 || pw.length > 200 ? "Password must be at least 8 characters." : null;
+  if (pw.length < 8 || pw.length > 200) return "Password must be at least 8 characters.";
+  if (passwordStrength(pw).score === 0) return "This password is too easy to guess. Please choose a stronger one.";
+  return null;
+}
+
+/** Strength + data-breach check for new passwords. */
+async function newPasswordError(pw: string): Promise<string | null> {
+  return passwordError(pw) ?? ((await isPwnedPassword(pw)) ? PWNED_MESSAGE : null);
 }
 
 /* ───────────── Sign up / log in ───────────── */
@@ -42,7 +51,7 @@ export async function registerAction(_: FormState, fd: FormData): Promise<FormSt
   const password = String(fd.get("password") ?? "");
   if (name.length < 2) return { error: "Please enter your full name." };
   if (!email) return { error: "Please enter a valid email address." };
-  const pwErr = passwordError(password);
+  const pwErr = await newPasswordError(password);
   if (pwErr) return { error: pwErr };
   if (!isOldEnough(fd.get("birthYear"))) return { error: AGE_ERROR };
   if (fd.get("consent") !== "on") return { error: "Please accept the Terms and Privacy Policy to continue." };
@@ -135,7 +144,7 @@ export async function forgotPasswordAction(_: FormState, fd: FormData): Promise<
 
 export async function resetPasswordAction(_: FormState, fd: FormData): Promise<FormState> {
   const password = String(fd.get("password") ?? "");
-  const pwErr = passwordError(password);
+  const pwErr = await newPasswordError(password);
   if (pwErr) return { error: pwErr };
   if (password !== String(fd.get("confirm") ?? "")) return { error: "The passwords don't match." };
   const userId = await resetPassword(String(fd.get("token") ?? ""), password);
@@ -155,7 +164,7 @@ async function me() {
 export async function changePasswordAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await me();
   const next = String(fd.get("password") ?? "");
-  const pwErr = passwordError(next);
+  const pwErr = await newPasswordError(next);
   if (pwErr) return { error: pwErr };
   if (next !== String(fd.get("confirm") ?? "")) return { error: "The new passwords don't match." };
   if (!rateLimit(`chpw:${user.id}`, 5, 15 * 60_000)) return { error: "Too many attempts. Please try again later." };

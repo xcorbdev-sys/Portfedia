@@ -23,7 +23,7 @@ function toPage(d: any): PageDoc {
     summary: d.summary ?? "",
     ownerId: d.ownerId ? String(d.ownerId) : null,
     status: d.status,
-    image: d.image?.url ? { key: d.image.key, url: d.image.url } : null,
+    image: d.image?.url ? { key: d.image.key, url: d.image.url, hash: d.image.hash } : null,
     infobox: d.infobox ?? {},
     body: d.body ?? "",
     experiences: d.experiences ?? [],
@@ -33,6 +33,8 @@ function toPage(d: any): PageDoc {
     orgAdmins: (d.orgAdmins ?? []).map(String),
     claimDomain: d.claimDomain ?? null,
     websiteChangedAt: d.websiteChangedAt ?? null,
+    protectedUntil: d.protectedUntil ?? null,
+    protectedReason: d.protectedReason ?? "",
     sources: d.sources ?? [],
     fundingRounds: d.fundingRounds ?? [],
     verified: Boolean(d.verified),
@@ -41,6 +43,7 @@ function toPage(d: any): PageDoc {
       reviewedAt: d.review?.reviewedAt ?? null,
       reviewerName: d.review?.reviewerName ?? "",
       note: d.review?.note ?? "",
+      flags: d.review?.flags ?? [],
     },
     followerCount: d.followerCount ?? 0,
     noindex: Boolean(d.noindex),
@@ -328,6 +331,7 @@ export interface ApplicationRow extends PageCard {
   reviewedAt: Date | null;
   reviewerName: string;
   note: string;
+  flags: string[];
   email: string;
 }
 
@@ -347,6 +351,7 @@ export async function listApplications(status: "pending" | "rejected" | "publish
     reviewedAt: r.review?.reviewedAt ?? null,
     reviewerName: r.review?.reviewerName ?? "",
     note: r.review?.note ?? "",
+    flags: r.review?.flags ?? [],
     email: emailOf.get(String(r.ownerId)) ?? "",
   }));
 }
@@ -566,6 +571,18 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     });
   }
 
+  if (page.status === "pending") {
+    // Warn moderators about possible impersonation: same name or same photo as another profile
+    const flags: string[] = [];
+    const sameName = await Page.find({ type: "person", titleKey: page.titleKey, _id: { $ne: page._id } }, { slug: 1 }).limit(5).lean<{ slug: string }[]>();
+    for (const o of sameName) flags.push(`Same name as /${o.slug}`);
+    if (page.image?.hash) {
+      const samePhoto = await Page.find({ "image.hash": page.image.hash, _id: { $ne: page._id } }, { slug: 1 }).limit(5).lean<{ slug: string }[]>();
+      for (const o of samePhoto) flags.push(`Same photo as /${o.slug}`);
+    }
+    await Page.updateOne({ _id: page._id }, { $set: { "review.flags": flags } });
+  }
+
   await Revision.create({
     pageId: page._id,
     authorId: user.id,
@@ -593,11 +610,20 @@ export interface OrgInput {
   image?: StoredImage | null;
   /** Moderators only */
   claimDomain?: string;
+  /** Moderators only: 0 removes protection */
+  protectDays?: number;
+  protectReason?: string;
 }
 
-export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type" | "orgAdmins">): boolean {
+export function isProtected(page: Pick<PageDoc, "protectedUntil">): boolean {
+  return Boolean(page.protectedUntil && new Date(page.protectedUntil).getTime() > Date.now());
+}
+
+export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type" | "orgAdmins" | "protectedUntil">): boolean {
   if (!user || page.type === "person") return false;
   if (user.role === "admin" || user.role === "moderator") return true;
+  // Protected pages (after vandalism) can only be edited by moderators and the organization's admins
+  if (isProtected(page)) return page.orgAdmins.includes(user.id);
   // Claimed pages are edited only by the organization's admins (verified with a work email);
   // unclaimed pages are maintained by the community.
   if (page.status === "claimed") return page.orgAdmins.includes(user.id);
@@ -648,6 +674,10 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     page.image = input.image;
   }
   if (isMod && input.claimDomain !== undefined) page.claimDomain = input.claimDomain || null;
+  if (isMod && input.protectDays !== undefined) {
+    page.protectedUntil = input.protectDays > 0 ? new Date(Date.now() + input.protectDays * 86400_000) : null;
+    page.protectedReason = input.protectDays > 0 ? (input.protectReason ?? "") : "";
+  }
   page.set({ ...content, type: input.type, status: page.status === "claimed" ? "claimed" : input.body ? "published" : page.status });
   page.revisionCount = (page.revisionCount ?? 0) + 1;
   await page.save();

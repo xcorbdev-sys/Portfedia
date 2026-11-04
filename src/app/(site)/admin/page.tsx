@@ -75,6 +75,21 @@ async function Applications({ tab: raw, pendingCount }: { tab?: string; pendingC
                   {a.status === "pending" ? "Pending" : a.status === "rejected" ? "Rejected" : "Approved"}
                 </span>
               </div>
+              {a.flags.length > 0 && (
+                <div className="notice notice--error small">
+                  <b>Possible impersonation:</b>{" "}
+                  {a.flags.map((f, i) => {
+                    const slug = f.split("/")[1];
+                    return (
+                      <span key={f}>
+                        {i > 0 && " · "}
+                        {f.split("/")[0]}
+                        <Link href={`/${slug}`}>/{slug}</Link>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               {a.summary && <p className="small" style={{ margin: 0, color: "var(--text-2)" }}>{a.summary}</p>}
               {a.status === "rejected" && a.note && (
                 <p className="small" style={{ margin: 0 }}>

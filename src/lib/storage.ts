@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -62,6 +62,7 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
     throw new UploadError("This image could not be read. Please try another file.");
   }
   const kindInfo = { mime: "image/webp", ext: "webp" };
+  const hash = createHash("sha256").update(buf).digest("hex");
   const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kindInfo.ext}`;
 
   if (r2Configured()) {
@@ -74,13 +75,13 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
         CacheControl: "public, max-age=31536000, immutable",
       }),
     );
-    return { key, url: `${process.env.R2_PUBLIC_URL!.replace(/\/$/, "")}/${key}` };
+    return { key, url: `${process.env.R2_PUBLIC_URL!.replace(/\/$/, "")}/${key}`, hash };
   }
 
   const target = path.join(LOCAL_DIR, key);
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, buf);
-  return { key, url: `/media/${key}` };
+  return { key, url: `/media/${key}`, hash };
 }
 
 export async function deleteImage(img: StoredImage | null | undefined): Promise<void> {

@@ -103,12 +103,14 @@ const PageSchema = new Schema<any>(
           reviewerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
           reviewerName: { type: String, default: "" },
           note: { type: String, default: "", maxlength: 1000 },
+          // Automatic warnings for moderators (same name / same photo as another profile, …)
+          flags: { type: [String], default: [] },
         },
         { _id: false },
       ),
       default: () => ({}),
     },
-    image: { type: new Schema<any>({ key: String, url: String }, { _id: false }), default: null },
+    image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null },
     infobox: { type: Schema.Types.Mixed, default: {} },
     body: { type: String, default: "", maxlength: 100_000 },
     experiences: { type: [ExperienceSchema], default: [] },
@@ -119,6 +121,9 @@ const PageSchema = new Schema<any>(
     orgAdmins: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
     claimDomain: { type: String, default: null }, // set by moderators; overrides the website domain
     websiteChangedAt: { type: Date, default: null },
+    // Page protection against vandalism (set by moderators)
+    protectedUntil: { type: Date, default: null },
+    protectedReason: { type: String, default: "" },
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
     // Organizations: funding rounds; investors are linked to their pages by slug
     fundingRounds: {
@@ -151,6 +156,7 @@ PageSchema.index({ "experiences.orgSlug": 1 }); // "Burada çalışanlar"
 PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
 PageSchema.index({ oldSlugs: 1 });
 PageSchema.index({ orgAdmins: 1 });
+PageSchema.index({ "image.hash": 1 }, { sparse: true });
 PageSchema.index({ "fundingRounds.investors.slug": 1 }); // "Investments" of an investor
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });

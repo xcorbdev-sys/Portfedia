@@ -474,3 +474,8 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .collection-card:hover { text-decoration: none; border-color: var(--primary-soft-2); box-shadow: var(--shadow); }
 .collection-card__thumbs { display: flex; margin-bottom: 6px; }
 .collection-card__thumbs .thumb { width: 40px; height: 40px; margin-right: -8px; border: 2px solid var(--surface); font-size: 0.8rem; }
+.pw-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 2px; }
+.pw-meter span { height: 4px; border-radius: 2px; background: var(--border); }
+.pw-meter span.on.s1 { background: var(--err); }
+.pw-meter span.on.s2 { background: var(--warn); }
+.pw-meter span.on.s3, .pw-meter span.on.s4 { background: var(--ok); }
