@@ -83,9 +83,9 @@ export default async function PrivacyPage() {
 
       <h2>3. Data we did not get from you</h2>
       <p>
+        All content on Portfedia is added by registered users; we don&apos;t copy or import data from other websites or platforms.
         Organization pages are written by the community and may mention people in public roles (for example a founder or chief
-        executive). Company facts may be taken from Wikidata, a public-domain database; no personal data is imported from it. If you are
-        mentioned on Portfedia and object, use the <Link href="/report">report form</Link> or email us and we will review it promptly.
+        executive). If you are mentioned on Portfedia and object, use the <Link href="/report">report form</Link> or email us and we will review it promptly.
       </p>
 
       <h2>4. What is public</h2>

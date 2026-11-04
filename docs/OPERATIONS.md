@@ -66,18 +66,3 @@ Süre dolunca plan kendiliğinden Free'ye düşer. Fiyatlandırma sayfası (`/pr
 2. Ana sayfa stilli açılıyor mu? (HTTP üzerinde açıyorsanız CSS'in yüklendiğini kontrol edin; HTTPS önerilir.)
 3. Giriş yapıp bir profil düzenleyin.
 4. Admin → Overview ekranında iş kuyruğunda hata birikmediğini kontrol edin.
-
-## 6. Wikidata'dan şirket ekleme
-
-Admin → **Import & collections** → **Add a company from Wikidata**.
-
-1. Şirket adını, Q kodunu (ör. `Q689141`) veya Wikidata linkini yazıp **Search**'e basın.
-2. Doğru sonucun yanındaki **Add**'e basın. Şirket sayfası açılır.
-3. Bilgileri kontrol edin; **About** bölümünü kendi cümlelerinizle yazın.
-
-Ne alınır: ad, kısa açıklama, kuruluş yılı, merkez, sektör, çalışan sayısı, web sitesi.
-Ne alınmaz: kişiler (kurucu, CEO, yönetim), fotoğraf ve logolar. Kişi olan bir kaydı eklemeye çalışırsanız araç reddeder.
-
-Yasal durum: Wikidata verisi CC0 (kamu malı) lisanslıdır; kaynak gösterme zorunlu değildir ama her sayfaya
-yine de Wikidata kaynak linki eklenir. Şirket bilgisi kişisel veri değildir (KVKK/GDPR sadece gerçek kişileri korur).
-Wikipedia makale metni ve görselleri bu araçla alınmaz.

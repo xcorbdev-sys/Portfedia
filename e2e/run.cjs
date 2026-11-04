@@ -52,6 +52,23 @@ function photo(color) {
   return file;
 }
 
+/** Creates an organization page through the regular four-step form. */
+async function createOrg(page, o) {
+  await page.goto(`${BASE}/create?type=org&title=${encodeURIComponent(o.name)}`);
+  await page.fill("#sector", o.sector);
+  await page.fill("#tags", o.tags);
+  await page.fill("#summary", o.summary);
+  await page.click('button:has-text("Continue")');
+  await page.fill("#founded", o.founded);
+  await page.fill("#headquarters", o.hq);
+  await page.selectOption("#employees", o.employees);
+  await page.fill("#website", o.website);
+  await page.click('button:has-text("Continue")');
+  await page.click('button:has-text("Continue")');
+  await page.click('button:has-text("Create page")');
+  await page.waitForURL(/\/org\/[a-z0-9-]+$/);
+}
+
 async function signup(browser, name, email) {
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await page.goto(`${BASE}/signup`);
@@ -148,16 +165,11 @@ async function createProfile(p, opts) {
   await weak.waitForSelector(".notice--error");
   check("weak password refused", /too easy/.test(await weak.locator(".notice--error").innerText()));
 
-  // ── Admin + CSV import
+  // ── Admin account; organization pages are created by users through the normal form
   const admin = await signup(browser, "Portfedia Admin", "admin@example.com");
-  await admin.goto(`${BASE}/admin?section=import`);
-  await admin.fill(
-    "#csv",
-    'name,type,sector,founded,headquarters,employees,website,summary,tags\nNorthwind Robotics,company,Robotics & Automation,2015,"Istanbul, Türkiye",201–500,https://northwind.example,Autonomous warehouse robots,Robotics;Logistics\nBluefin Bank,company,Banking,1990,Izmir,"1,001–5,000",https://bluefin.example,A retail bank,Banking',
-  );
-  await admin.click('button:has-text("Import companies")');
-  await admin.waitForSelector(".notice--ok");
-  check("CSV import", /2<\/b> created|2 created/.test(await admin.locator(".notice--ok").innerHTML()), await admin.locator(".notice--ok").innerText());
+  await createOrg(admin, { name: "Northwind Robotics", sector: "Robotics & Automation", tags: "Robotics, Logistics", summary: "Autonomous warehouse robots", founded: "2015", hq: "Istanbul, Türkiye", employees: "201–500", website: "https://northwind.example" });
+  await createOrg(admin, { name: "Bluefin Bank", sector: "Banking", tags: "Banking", summary: "A retail bank", founded: "1990", hq: "Izmir", employees: "1,001–5,000", website: "https://bluefin.example" });
+  check("organization pages created by a user", (await anon.goto(`${BASE}/org/bluefin-bank`)).status() === 200 && (await anon.locator("text=A retail bank").count()) > 0);
 
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
@@ -294,7 +306,7 @@ async function createProfile(p, opts) {
   await ayse.click('button:has-text("Save changes")');
   await ayse.waitForURL(`${BASE}/org/bluefin-bank`);
   await admin.goto(`${BASE}/org/bluefin-bank/history`);
-  await admin.locator(".history li a").nth(1).click(); // the import revision
+  await admin.locator(".history li a").nth(1).click(); // the version before the vandalism
   await admin.waitForURL(/history\/[a-f0-9]{24}/);
   check("revision diff page", (await admin.locator("text=Restore this version").count()) === 1);
   await admin.click('button:has-text("Restore this version")');

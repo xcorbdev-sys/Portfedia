@@ -808,7 +808,9 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   if (prevWebsite && input.infobox.website !== prevWebsite && !isMod && !page.orgAdmins?.map(String).includes(user.id)) {
     throw new PermissionError("The website can only be changed by the organization or a moderator. Use Report if it is wrong.");
   }
-  if (input.infobox.website !== prevWebsite) page.websiteChangedAt = new Date();
+  // A new website starts a 72-hour wait before anyone can claim with its domain (against hijacking).
+  // A website entered by a moderator is trusted, so the page can be claimed right away.
+  if (input.infobox.website !== prevWebsite) page.websiteChangedAt = isMod ? null : new Date();
   let oldImage: StoredImage | null = null;
   if (input.image !== undefined) {
     oldImage = page.image?.url ? { key: page.image.key, url: page.image.url } : null;

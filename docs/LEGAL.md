@@ -20,7 +20,7 @@ Bu bir hukuki görüş değildir; yayına çıkmadan önce metinleri bir avukata
 | İtiraz sistemi (DSA m.20) | `/appeal` |
 | 5651 trafik kaydı: giriş kayıtları (IP, tarayıcı, saat) 1 yıl saklanır, sonra otomatik silinir | Veritabanı `loginlogs` |
 | 16 yaş sınırı; doğum yılı saklanmaz | Kayıt |
-| Kişi verisi içe aktarılmaz; Wikidata'dan sadece şirket bilgisi alınır (CC0) | Admin aracı |
+| Tüm içerik kayıtlı kullanıcılar tarafından eklenir; başka site veya platformdan veri kopyalanmaz ya da içe aktarılmaz | Tüm site |
 | Reklam, takip çerezi, üçüncü taraf script yok | Tüm site |
 
 ## 2. Senin yapman gerekenler (kod bunları çözemez)
@@ -67,4 +67,5 @@ Cloudflare (görseller), Resend (e-posta), Google/LinkedIn (giriş) ABD'de.
 - Profil reddederken ve hesap askıya alırken **sebebi mutlaka yaz**; e-postada kullanıcıya gider (DSA gerekçeli karar).
 - Bir kişi kendisinin geçtiği bir kurum sayfasından adının kaldırılmasını isterse makul sürede kaldır (KVKK m.11, GDPR m.21).
 - Telif şikâyetinde içeriği kaldır ve yükleyene bildir; tekrar eden ihlalcinin hesabını kapat.
-- Wikipedia **metni ve görseli kopyalama**; şirket bilgisi için sadece Wikidata aracını kullan.
+- Siteye kendin içerik ekleme ve başka sitelerden kopyalama; içerik kullanıcılardan gelsin. Kullanıcı başka bir siteden
+  kopyalanmış metin veya görsel eklerse ve şikâyet gelirse kaldır.

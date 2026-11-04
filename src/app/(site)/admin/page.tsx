@@ -13,7 +13,7 @@ import { AdminImport } from "@/components/AdminImport";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
-type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string; wd?: string };
+type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
@@ -30,14 +30,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin" aria-current={section === "applications" ? "page" : undefined}>Applications ({pendingApps})</Link>
         <Link href="/admin?section=reports" aria-current={section === "reports" ? "page" : undefined}>Reports ({openReports})</Link>
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
-        <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Import & collections</Link>
+        <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
       </nav>
       {sp.error && <div className="notice notice--error" style={{ marginBottom: 14 }}>{sp.error}</div>}
       {section === "overview" && <Overview />}
       {section === "applications" && <Applications tab={sp.tab} pendingCount={pendingApps} />}
       {section === "reports" && <Reports tab={sp.tab} reason={sp.reason} />}
       {section === "users" && <Users q={sp.q ?? ""} />}
-      {section === "import" && <AdminImport wd={sp.wd ?? ""} />}
+      {section === "import" && <AdminImport />}
     </div>
   );
 }

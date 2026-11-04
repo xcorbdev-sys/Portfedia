@@ -28,8 +28,6 @@ services:
       PAID_PLANS: ${PAID_PLANS:-}
       # Virus scanning of uploads: start with `docker compose --profile security up` and set CLAMAV_HOST=clamav
       CLAMAV_HOST: ${CLAMAV_HOST:-}
-      # Only for tests: a stand-in for the Wikidata API
-      WIKIDATA_API: ${WIKIDATA_API:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
-import { getCurrentUser, isModerator } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrgSpans, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { slugify } from "@/lib/slug";
 import { pageHref, renderArticle, stripWikiLinks } from "@/lib/wikitext";
@@ -23,7 +23,7 @@ import { countView } from "@/lib/views";
 import { featureUnlocked, talksAtEvent } from "@/lib/pages";
 import { ORG_CATEGORIES } from "@/lib/types";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ imported?: string }> };
+type Props = { params: Promise<{ slug: string }> };
 
 const PREVIEW = 24;
 
@@ -53,9 +53,8 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function OrgPage({ params, searchParams }: Props) {
+export default async function OrgPage({ params }: Props) {
   const { slug } = await params;
-  const { imported } = await searchParams;
   const page = await load(slug);
   if (!page) {
     const moved = await findRenamedPage(slug); // former names and old addresses
@@ -117,11 +116,6 @@ export default async function OrgPage({ params, searchParams }: Props) {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: isSchool ? "Institutions" : "Companies", href: "/companies" }, { label: page.title }]}
       />
-      {imported && isModerator(user) && (
-        <div className="notice notice--ok" style={{ margin: "8px 0 16px" }}>
-          {imported === "created" ? "Added from Wikidata. Check the facts and write an About section in your own words." : imported === "updated" ? "Empty fields were filled in from Wikidata." : "This page already had all of these facts; nothing was changed."}
-        </div>
-      )}
       <div className="profile profile--org">
         <aside className="side-nav" aria-label="Sections">
           <SectionNav title={page.title} items={nav} />

@@ -621,12 +621,6 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 }
 /* Very small phones: the admin panel stays reachable from the ☰ menu */
 @media (max-width: 350px) { .admin-btn { display: none; } }
-
-/* Wikidata import (admin) */
-.wd-search { display: flex; gap: 8px; }
-.wd-hits { list-style: none; padding: 0; margin: 14px 0 0; }
-.wd-hits li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
-.wd-hits__desc { display: block; }
 /* Between tablet and desktop the logo, menu, search and buttons must share the row */
 @media (max-width: 960px) and (min-width: 861px) {
   .header-search { width: 160px; }

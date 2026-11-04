@@ -79,8 +79,8 @@ export default async function KvkkPage() {
       <p>
         Kişisel veriler; üyelik ve profil formları, Google/LinkedIn ile giriş, şikâyet ve itiraz formları, e-posta yazışmaları ve
         sitenin kullanımı sırasında otomatik yollarla (giriş kayıtları, güvenlik amaçlı sayaçlar, zorunlu çerezler) elektronik ortamda
-        toplanır. Kurum sayfaları topluluk tarafından yazılır; şirket bilgileri kamu malı olan Wikidata&apos;dan alınabilir, buradan
-        kişisel veri alınmaz.
+        toplanır. Sitedeki tüm içerik kayıtlı kullanıcılar tarafından eklenir; başka web sitelerinden veya platformlardan veri
+        kopyalanmaz ya da aktarılmaz. Kurum sayfaları topluluk tarafından yazılır.
       </p>
 
       <h2>4. Aktarım</h2>
