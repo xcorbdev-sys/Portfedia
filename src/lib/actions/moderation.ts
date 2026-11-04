@@ -117,6 +117,23 @@ export async function confirmEmailAction(fd: FormData): Promise<void> {
   redirect(err ? withParam(back, "error", err) : withParam(back, "done", "Email confirmed."));
 }
 
+export async function setUpgradedAction(fd: FormData): Promise<void> {
+  await moderator();
+  const { setUpgraded, PAGE_LIMITS } = await import("../quotas");
+  const upgrade = fd.get("upgrade") === "1";
+  await setUpgraded(str(fd.get("userId"), 40), upgrade);
+  const back = safeNext(fd.get("back"), "/admin?section=users");
+  redirect(
+    withParam(
+      back,
+      "done",
+      upgrade
+        ? `Account upgraded: up to ${PAGE_LIMITS.company.upgraded} company pages and ${PAGE_LIMITS.saas.upgraded} SaaS projects.`
+        : `Upgrade removed: back to ${PAGE_LIMITS.company.standard} company page and ${PAGE_LIMITS.saas.standard} SaaS project.`,
+    ),
+  );
+}
+
 export async function setVerifiedAction(fd: FormData): Promise<void> {
   await moderator();
   const verified = fd.get("verified") === "1";

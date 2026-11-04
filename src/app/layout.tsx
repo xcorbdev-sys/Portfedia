@@ -40,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav aria-label="Footer">
               <Link href="/people">People</Link>
               <Link href="/companies">Companies</Link>
+              <Link href="/saas">SaaS Projects</Link>
               <Link href="/sectors">Sectors</Link>
               <Link href="/collections">Collections</Link>
               <Link href="/jobs">Jobs</Link>

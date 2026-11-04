@@ -20,6 +20,8 @@ const UserSchema = new Schema<any>(
     googleId: { type: String, default: null },
     linkedinId: { type: String, default: null },
     bannedAt: { type: Date, default: null },
+    // Upgraded by an admin: may create more company pages and SaaS projects
+    upgradedAt: { type: Date, default: null },
     // #96: plan for people (set by admins until payments exist)
     plan: { type: new Schema<any>({ name: { type: String, enum: ["free", "pro"], default: "free" }, until: { type: Date, default: null } }, { _id: false }), default: () => ({}) },
     banReason: { type: String, default: "" },
@@ -151,7 +153,10 @@ const PageSchema = new Schema<any>(
     languageLevels: { type: [new Schema<any>({ name: String, level: String }, { _id: false })], default: [] },
     openTo: { type: [String], default: [] },
     // #89: what kind of organization page this is, with category-specific facts
-    category: { type: String, enum: ["company", "investor", "event", "nonprofit", "public"], default: "company" },
+    category: { type: String, enum: ["company", "investor", "event", "nonprofit", "public", "saas"], default: "company" },
+    saas: { type: new Schema<any>({ pricing: String, platforms: [String] }, { _id: false }), default: null },
+    // Who created the page with the create form (counts toward their page limit)
+    createdById: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
     investor: { type: new Schema<any>({ fundSize: String, stages: [String], focus: [String] }, { _id: false }), default: null },
     event: {
       type: new Schema<any>(

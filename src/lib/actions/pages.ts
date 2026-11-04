@@ -19,7 +19,7 @@ import { findSimilarOrgs } from "../org-tools";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, SessionUser, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
-import { OPEN_TO, ORG_CATEGORIES, type OrgCategory } from "../types";
+import { OPEN_TO, ORG_CATEGORIES, SAAS_PRICING, type OrgCategory, type SaasInfo } from "../types";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 
 const MAX_BODY = 100_000;
@@ -156,6 +156,13 @@ function parseCategory(fd: FormData) {
             format: ["In person", "Online", "Hybrid"].includes(String(fd.get("eventFormat"))) ? String(fd.get("eventFormat")) : "In person",
             speakers: named("speakers").map((x) => ({ name: x.title, slug: x.slug })),
             sponsors: named("sponsors"),
+          }
+        : null,
+    saas:
+      category === "saas"
+        ? {
+            pricing: (String(fd.get("saasPricing") ?? "") in SAAS_PRICING ? String(fd.get("saasPricing")) : "") as SaasInfo["pricing"],
+            platforms: list("saasPlatforms", 8),
           }
         : null,
   };

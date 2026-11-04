@@ -195,10 +195,10 @@ export async function findUsers(q: string) {
     const rx = { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
     filter.$or = [{ email: rx }, { name: rx }];
   }
-  const users = await User.find(filter, { name: 1, email: 1, role: 1, bannedAt: 1, banReason: 1, emailVerifiedAt: 1, createdAt: 1, plan: 1 })
+  const users = await User.find(filter, { name: 1, email: 1, role: 1, bannedAt: 1, banReason: 1, emailVerifiedAt: 1, createdAt: 1, plan: 1, upgradedAt: 1 })
     .sort({ createdAt: -1 })
     .limit(50)
-    .lean<{ _id: unknown; name: string; email: string; role: string; bannedAt?: Date | null; banReason?: string; emailVerifiedAt?: Date | null; createdAt: Date; plan?: { name?: string; until?: Date | null } }[]>();
+    .lean<{ _id: unknown; name: string; email: string; role: string; bannedAt?: Date | null; banReason?: string; emailVerifiedAt?: Date | null; createdAt: Date; plan?: { name?: string; until?: Date | null }; upgradedAt?: Date | null }[]>();
   const pages = await Page.find({ type: "person", ownerId: { $in: users.map((u) => u._id) } }, { slug: 1, ownerId: 1, verified: 1 }).lean<{ slug: string; ownerId: unknown; verified?: boolean }[]>();
   const pageOf = new Map(pages.map((p) => [String(p.ownerId), p]));
   return users.map((u) => ({ ...u, id: String(u._id), profileSlug: pageOf.get(String(u._id))?.slug ?? null, profileVerified: Boolean(pageOf.get(String(u._id))?.verified) }));

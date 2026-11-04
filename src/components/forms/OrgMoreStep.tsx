@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PageDoc } from "@/lib/types";
 import { ListEditor, ProjectsEditor } from "./Achievements";
 import { OrgInput } from "./shared";
+import { SAAS_PRICING } from "@/lib/types";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
 export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean }) {
@@ -29,6 +30,27 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
             </div>
           </div>
           <span className="hint">The portfolio is built automatically from funding rounds that list this investor.</span>
+        </fieldset>
+      )}
+      {category === "saas" && (
+        <fieldset className="repeat-item" style={{ border: "1px solid var(--border)" }}>
+          <legend className="small" style={{ fontWeight: 700, padding: "0 6px" }}>SaaS details</legend>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="saasPricing">Pricing</label>
+              <select id="saasPricing" name="saasPricing" className="select" defaultValue={page?.saas?.pricing ?? ""}>
+                <option value="">Not specified</option>
+                {Object.entries(SAAS_PRICING).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="saasPlatforms">Platforms</label>
+              <input id="saasPlatforms" name="saasPlatforms" className="input" defaultValue={page?.saas?.platforms.join(", ")} placeholder="Web, iOS, Android, API" />
+            </div>
+          </div>
+          <span className="hint">Put the launch year in &ldquo;Founded&rdquo; and your product&apos;s address in &ldquo;Website&rdquo;. Add screenshots as products below.</span>
         </fieldset>
       )}
       {category === "event" && (

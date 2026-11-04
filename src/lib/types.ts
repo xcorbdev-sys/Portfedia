@@ -127,9 +127,12 @@ export const ORG_CATEGORIES = {
   event: "Event",
   nonprofit: "Non-profit",
   public: "Public institution",
+  saas: "SaaS product",
 } as const;
 export type OrgCategory = keyof typeof ORG_CATEGORIES;
 export interface InvestorInfo { fundSize: string; stages: string[]; focus: string[] }
+export const SAAS_PRICING = { free: "Free", freemium: "Freemium", paid: "Paid", "open-source": "Open source" } as const;
+export interface SaasInfo { pricing: keyof typeof SAAS_PRICING | ""; platforms: string[] }
 export interface EventInfo {
   start: Date | null;
   end: Date | null;
@@ -189,6 +192,9 @@ export interface PageDoc {
   category: OrgCategory;
   investor: InvestorInfo | null;
   event: EventInfo | null;
+  saas: SaasInfo | null;
+  /** Who created the page with the create form (pages made automatically have none) */
+  createdById: string | null;
   plan: Plan;
   brandColor: string;
   verified: boolean;

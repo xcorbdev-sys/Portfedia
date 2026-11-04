@@ -54,7 +54,7 @@ function photo(color) {
 
 /** Creates an organization page through the regular four-step form. */
 async function createOrg(page, o) {
-  await page.goto(`${BASE}/create?type=org&title=${encodeURIComponent(o.name)}`);
+  await page.goto(`${BASE}/create?type=${o.type || "org"}&title=${encodeURIComponent(o.name)}`);
   await page.fill("#sector", o.sector);
   await page.fill("#tags", o.tags);
   await page.fill("#summary", o.summary);
@@ -202,6 +202,25 @@ async function createProfile(p, opts) {
   await admin.goto(`${BASE}/admin`);
   check("draft is not in the review queue", (await admin.locator('.app-card a[href="/elif-sahin"]').count()) === 0);
 
+  // ── Limits: one company page and one SaaS project per account; admins can upgrade an account
+  await createOrg(elif, { type: "saas", name: "Elif Analytics", sector: "Analytics", tags: "SaaS, Analytics", summary: "Dashboards for small shops", founded: "2024", hq: "Ankara", employees: "1–10", website: "https://elif-analytics.example" });
+  check("SaaS project created and managed by its maker", (await elif.locator('a[href="/org/elif-analytics/manage"]').count()) > 0 && (await elif.locator("text=Pricing").count()) > 0);
+  await anon.goto(`${BASE}/saas`);
+  check("SaaS projects have their own section", (await anon.locator('a[href="/org/elif-analytics"]').count()) === 1);
+  await anon.goto(`${BASE}/companies`);
+  check("SaaS projects are not listed as companies", (await anon.locator('a[href="/org/elif-analytics"]').count()) === 0);
+  await elif.goto(`${BASE}/create?type=saas&title=${encodeURIComponent("Elif Forms")}`);
+  check("second SaaS project is blocked", (await elif.locator("text=Limit reached").count()) === 1 && (await elif.locator('button:has-text("Continue")').isDisabled()));
+  await createOrg(elif, { name: "Sahin Consulting", sector: "Consulting", tags: "Consulting", summary: "A small consultancy", founded: "2020", hq: "Ankara", employees: "1–10", website: "https://sahin.example" });
+  await elif.goto(`${BASE}/create?type=org&title=${encodeURIComponent("Another Company")}`);
+  check("second company page is blocked", (await elif.locator('label.choice:has(input[value="org"]) .quota--full').count()) === 1 && (await elif.locator('button:has-text("Continue")').isDisabled()));
+  await admin.goto(`${BASE}/admin?section=users&q=elif`);
+  await admin.click('button:has-text("Upgrade account")');
+  await admin.waitForSelector(".notice--ok");
+  check("admin upgrades an account", /Account upgraded/.test(await admin.locator(".notice--ok").first().innerText()));
+  await createOrg(elif, { type: "saas", name: "Elif Forms", sector: "Productivity", tags: "SaaS", summary: "Forms for teams", founded: "2025", hq: "Ankara", employees: "1–10", website: "https://elif-forms.example" });
+  check("upgraded account can add more SaaS projects", new URL(elif.url()).pathname === "/org/elif-forms");
+
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
   const aysePath = await createProfile(ayse, { occupation: "Robotics Engineer", summary: "Robotics engineer and CTO of [[Northwind Robotics]].", org: "Northwind Robotics", role: "CTO", rich: true });
@@ -228,7 +247,7 @@ async function createProfile(p, opts) {
       (await anon.locator('#awards a[href="/org/northwind-robotics"]').count()) === 1 &&
       (await anon.locator("#volunteering").count()) === 1,
   );
-  check("timeline, open-to badge and language level", (await anon.locator("#timeline .tl__bar").count()) >= 2 && (await anon.locator(".open-badges").count()) === 1 && (await anon.locator("text=(C1)").count()) === 1);
+  check("timeline, open-to photo frame and language level", (await anon.locator("#timeline .tl__bar").count()) >= 2 && (await anon.locator(".p-head .p-photo--open .open-ribbon").count()) === 1 && (await anon.locator("text=(C1)").count()) === 1);
   await ayse.goto(`${BASE}${aysePath}`);
   check("profile strength card for the owner", (await ayse.locator(".completeness").count()) === 1 && (await anon.locator(".completeness").count()) === 0);
   const short = await anon.request.get(`${BASE}/@ayse-demir`, { maxRedirects: 0 });

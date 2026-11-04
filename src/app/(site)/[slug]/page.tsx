@@ -9,7 +9,7 @@ import { canView, isMembersOnly, isPublic } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getInvestments, getPageBySlug, isFollowing } from "@/lib/pages";
 import { InvestmentsList } from "@/components/Funding";
-import { AchievementSections, CompletenessCard, LanguagesFact, OpenToBadges, ProjectsSection, TimelineSection } from "@/components/ProfileSections";
+import { AchievementSections, CompletenessCard, LanguagesFact, OpenToPhoto, ProjectsSection, TimelineSection } from "@/components/ProfileSections";
 import { slugify } from "@/lib/slug";
 import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
@@ -161,10 +161,10 @@ export default async function PersonPage({ params }: Props) {
             <div className="notice notice--info small" style={{ marginBottom: 12 }}>🔒 Members-only profile: visible to signed-in members only.</div>
           )}
           <header className="p-head" id="overview">
-            <div className="p-photo">
+            <OpenToPhoto page={page}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {page.image ? <img src={page.image.url} alt={page.title} width={128} height={128} /> : initials(page.title)}
-            </div>
+            </OpenToPhoto>
             <div className="p-head__title">
               <h1 className="p-name">
                 {page.title} {page.verified && <VerifiedBadge size={24} label="Verified identity" />}
@@ -180,7 +180,6 @@ export default async function PersonPage({ params }: Props) {
                 </div>
               )}
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
-              <OpenToBadges page={page} />
               {mutual.length > 0 && (
                 <p className="mutual">
                   <UsersIcon size={16} />

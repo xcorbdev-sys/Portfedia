@@ -8,7 +8,8 @@ export const metadata: Metadata = { title: "Companies", description: "Companies,
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ page?: string; sector?: string }> }) {
   const sp = await searchParams;
   const sector = sp.sector?.slice(0, 80);
-  const data = await listPages({ types: ["org", "school"], sector, page: parseInt(sp.page ?? "1", 10) || 1 });
+  // SaaS projects have their own section (/saas)
+  const data = await listPages({ types: ["org", "school"], sector, excludeCategory: "saas", page: parseInt(sp.page ?? "1", 10) || 1 });
   return (
     <Listing
       title={sector ? `Companies in ${sector}` : "Companies"}

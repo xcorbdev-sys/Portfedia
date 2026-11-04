@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
 import { countPendingApplications, listApplications, paidPlansEnabled, planActive } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
-import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, confirmEmailAction, setUserPlanAction, setVerifiedAction } from "@/lib/actions/moderation";
+import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, confirmEmailAction, setUpgradedAction, setUserPlanAction, setVerifiedAction } from "@/lib/actions/moderation";
 import { adminStats } from "@/lib/stats";
 import { formatDate, formatDateTime } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
@@ -235,6 +235,7 @@ async function Users({ q }: { q: string }) {
                 {u.role !== "user" && <span className="status-pill status-pill--published">{u.role}</span>}{" "}
                 {!u.emailVerifiedAt && <span className="status-pill status-pill--pending">email not confirmed</span>}{" "}
                 {u.profileVerified && <span className="status-pill status-pill--published">✓ verified</span>}{" "}
+                {u.upgradedAt && <span className="badge-featured">Upgraded</span>}{" "}
                 {u.bannedAt && <span className="status-pill status-pill--rejected">banned</span>}{" "}
                 {planActive(u.plan as never, "pro") && <span className="badge-featured">Pro{u.plan?.until ? ` until ${formatDate(u.plan.until)}` : ""}</span>}
                 <div className="app-card__meta">
@@ -244,6 +245,14 @@ async function Users({ q }: { q: string }) {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <form action={setUpgradedAction}>
+                <input type="hidden" name="userId" value={u.id} />
+                <input type="hidden" name="back" value={back} />
+                <input type="hidden" name="upgrade" value={u.upgradedAt ? "0" : "1"} />
+                <button className="btn btn--sm" type="submit" title="Upgraded accounts can add 5 company pages and 10 SaaS projects">
+                  {u.upgradedAt ? "Remove upgrade" : "Upgrade account"}
+                </button>
+              </form>
               {!u.emailVerifiedAt && (
                 <form action={confirmEmailAction}>
                   <input type="hidden" name="userId" value={u.id} />

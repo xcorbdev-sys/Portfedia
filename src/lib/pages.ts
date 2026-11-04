@@ -10,7 +10,7 @@ import { trashImage } from "./image-trash";
 import { readSnapshot } from "./snapshots";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  EventInfo, InvestorInfo, OrgCategory, Plan,
+  EventInfo, InvestorInfo, OrgCategory, Plan, SaasInfo,
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 
@@ -61,6 +61,8 @@ function toPage(d: any): PageDoc {
     ticker: d.ticker?.symbol ? { exchange: d.ticker.exchange ?? "", symbol: d.ticker.symbol } : null,
     category: d.category ?? "company",
     investor: d.investor ? { fundSize: d.investor.fundSize ?? "", stages: d.investor.stages ?? [], focus: d.investor.focus ?? [] } : null,
+    saas: d.saas ? { pricing: d.saas.pricing ?? "", platforms: d.saas.platforms ?? [] } : null,
+    createdById: d.createdById ? String(d.createdById) : null,
     event: d.event
       ? { start: d.event.start ?? null, end: d.event.end ?? null, city: d.event.city ?? "", format: d.event.format ?? "", speakers: d.event.speakers ?? [], sponsors: d.event.sponsors ?? [] }
       : null,
@@ -313,12 +315,14 @@ export async function searchPages({ q, types, sectors, limit = 40, page = 1 }: S
   };
 }
 
-export async function listPages(opts: { types: PageType[]; sector?: string; page?: number; perPage?: number }) {
+export async function listPages(opts: { types: PageType[]; sector?: string; page?: number; perPage?: number; category?: OrgCategory; excludeCategory?: OrgCategory }) {
   await connectDB();
   const perPage = opts.perPage ?? 24;
   const page = Math.max(1, opts.page ?? 1);
   const filter: Record<string, unknown> = { type: { $in: opts.types }, ...PUBLIC_FILTER };
   if (opts.sector) filter["infobox.sector"] = opts.sector;
+  if (opts.category) filter.category = opts.category;
+  else if (opts.excludeCategory) filter.category = { $ne: opts.excludeCategory };
   const [rows, total] = await Promise.all([
     Page.find(filter, { ...CARD_FIELDS, status: 1 })
       .sort({ followerCount: -1, updatedAt: -1 })
@@ -763,6 +767,7 @@ export interface OrgInput {
   category: OrgCategory;
   investor: InvestorInfo | null;
   event: EventInfo | null;
+  saas: SaasInfo | null;
   /** undefined = keep (Business plan only) */
   brandColor?: string;
   ticker: Ticker | null;
@@ -819,6 +824,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     category: input.category,
     investor: input.category === "investor" ? input.investor : null,
     event: input.category === "event" ? input.event : null,
+    saas: input.category === "saas" ? input.saas : null,
     ...(input.brandColor !== undefined ? { brandColor: input.brandColor } : {}),
     ...(input.jobs !== undefined ? { jobs: input.jobs } : {}),
     outLinks: extractWikiLinks(input.body),
@@ -833,6 +839,24 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     page = await Page.findOne({ slug: ref.slug });
   }
   if (!canEditOrg(user, page)) throw new PermissionError("You don't have permission to edit this page");
+
+  // A page created with the form (not an existing page being edited) counts toward the member's limit
+  const createdNow = !slug && page.status === "draft" && !page.body && !page.createdById;
+  if (createdNow) {
+    const { pageQuota, quotaKind, quotaMessage } = await import("./quotas");
+    const quota = await pageQuota(user);
+    const kind = quotaKind(input.category);
+    if (quota[kind].used >= quota[kind].limit) throw new PermissionError(quotaMessage(kind, quota));
+    page.createdById = user.id;
+  }
+  // Only moderators and the page's own admins may turn a page into a SaaS project or back
+  const prevCategory: string = page.category ?? "company";
+  const ownsPage = user.role === "admin" || user.role === "moderator" || page.orgAdmins?.map(String).includes(user.id) || createdNow;
+  if (!ownsPage && prevCategory !== input.category && (prevCategory === "saas" || input.category === "saas")) {
+    input = { ...input, category: prevCategory as OrgCategory, saas: page.saas ?? null };
+    content.category = input.category;
+    content.saas = input.saas;
+  }
 
   const prevSize = page.body?.length ?? 0;
   const prevProductImages = ((page.products ?? []) as Project[]).map((x) => x.image).filter((x): x is StoredImage => Boolean(x?.key));
@@ -861,6 +885,11 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     page.protectedReason = input.protectDays > 0 ? (input.protectReason ?? "") : "";
   }
   page.set({ ...content, type: input.type, status: page.status === "claimed" ? "claimed" : input.body ? "published" : page.status });
+  // Whoever adds their SaaS project manages it (no work email needed, unlike companies)
+  if (createdNow && input.category === "saas") {
+    page.orgAdmins = [...(page.orgAdmins ?? []), new Types.ObjectId(user.id)];
+    page.status = "claimed";
+  }
   // Former names keep working as addresses (/org/old-name redirects here) when they are free
   for (const name of input.formerNames) {
     const old = slugify(name);

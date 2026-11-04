@@ -21,6 +21,7 @@ const MOBILE_EXTRA = [
 const NAV = [
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
+  { href: "/saas", label: "SaaS" },
   { href: "/sectors", label: "Sectors" },
   { href: "/collections", label: "Collections" },
 ];
@@ -73,6 +74,11 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
           ))}
         </nav>
         <div className="header-right">
+          {showSearch && (
+            <Link href="/search" className="btn btn--icon btn--ghost header-search-btn" aria-label="Search">
+              <Search size={19} />
+            </Link>
+          )}
           {showSearch && (
             <form action="/search" className="header-search" role="search">
               <Search className="icon" aria-hidden="true" />

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 import Link from "next/link";
-import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
+import { BadgeDollarSign, Building2, CalendarDays, ExternalLink, Laptop, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrgSpans, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { slugify } from "@/lib/slug";
@@ -21,7 +21,7 @@ import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
 import { featureUnlocked, talksAtEvent } from "@/lib/pages";
-import { ORG_CATEGORIES } from "@/lib/types";
+import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -75,6 +75,7 @@ export default async function OrgPage({ params }: Props) {
   await countView(page._id, isOrgAdmin(user, page) || Boolean(user && (user.role === "admin" || user.role === "moderator")));
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
+  const isSaas = page.category === "saas";
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
@@ -85,7 +86,8 @@ export default async function OrgPage({ params }: Props) {
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
   const isSchool = page.type === "school";
-  const verified = page.verified || page.status === "claimed";
+  // A claimed company was verified with a work email; a SaaS project is managed by its maker, so only a moderator's badge counts
+  const verified = page.verified || (page.status === "claimed" && page.category !== "saas");
   const website = ib.website ? ib.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : "";
   const keyPeople = people.current.slice(0, 6);
 
@@ -114,7 +116,7 @@ export default async function OrgPage({ params }: Props) {
   return (
     <div className="container" style={brand ? ({ "--primary": brand, "--primary-hover": brand } as React.CSSProperties) : undefined}>
       <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: isSchool ? "Institutions" : "Companies", href: "/companies" }, { label: page.title }]}
+        items={[{ label: "Home", href: "/" }, isSaas ? { label: "SaaS Projects", href: "/saas" } : { label: isSchool ? "Institutions" : "Companies", href: "/companies" }, { label: page.title }]}
       />
       <div className="profile profile--org">
         <aside className="side-nav" aria-label="Sections">
@@ -125,7 +127,7 @@ export default async function OrgPage({ params }: Props) {
             {isOrgAdmin(user, page) || (user && (user.role === "admin" || user.role === "moderator")) ? (
               <Link href={`/org/${page.slug}/manage`}>Manage page</Link>
             ) : (
-              <Link href={`/org/${page.slug}/claim`}>{page.status === "claimed" ? "Join as admin" : "Claim this page"}</Link>
+              !isSaas && <Link href={`/org/${page.slug}/claim`}>{page.status === "claimed" ? "Join as admin" : "Claim this page"}</Link>
             )}
           </div>
         </aside>
@@ -201,6 +203,19 @@ export default async function OrgPage({ params }: Props) {
               <div className="fact"><Building2 /><span><small>Format</small><b>{page.event!.format || "—"}</b></span></div>
             </div>
           )}
+          {isSaas && (
+            <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
+              <div className="fact"><BadgeDollarSign /><span><small>Pricing</small><b>{page.saas?.pricing ? SAAS_PRICING[page.saas.pricing] : "—"}</b></span></div>
+              <div className="fact"><Laptop /><span><small>Platforms</small><b>{page.saas?.platforms.join(", ") || "—"}</b></span></div>
+              <div className="fact">
+                <ExternalLink />
+                <span>
+                  <small>Try it</small>
+                  <b>{page.infobox.website ? <a href={page.infobox.website} rel="nofollow noopener" target="_blank">{page.infobox.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a> : "—"}</b>
+                </span>
+              </div>
+            </div>
+          )}
           {isInvestor && page.investor && (page.investor.fundSize || page.investor.stages.length || page.investor.focus.length) ? (
             <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
               <div className="fact"><Building2 /><span><small>Fund size</small><b>{page.investor.fundSize || "—"}</b></span></div>
@@ -234,7 +249,7 @@ export default async function OrgPage({ params }: Props) {
                 <div className="card__title">Key Facts</div>
                 <table className="kv">
                   <tbody>
-                    <Fact label="Type">{ib.kind || (isSchool ? "Educational institution" : "Company")}</Fact>
+                    <Fact label="Type">{ib.kind || (isSchool ? "Educational institution" : isSaas ? "SaaS product" : "Company")}</Fact>
                     <Fact label="Founded">{ib.founded ? String(ib.founded) : ""}</Fact>
                     <Fact label="Founders">{ib.founders}</Fact>
                     <Fact label="Headquarters">{ib.headquarters}</Fact>
@@ -246,7 +261,9 @@ export default async function OrgPage({ params }: Props) {
                       {website && <a href={ib.website} rel="nofollow ugc noopener" className="external">{website}</a>}
                     </Fact>
                     <Fact label="Status">
-                      {verified ? (
+                      {isSaas && page.status === "claimed" ? (
+                        <span style={{ color: "var(--ok)" }}>Managed by its maker</span>
+                      ) : verified ? (
                         <span style={{ color: "var(--ok)" }}>Managed by the organization</span>
                       ) : (
                         <>

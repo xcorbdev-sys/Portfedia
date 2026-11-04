@@ -30,6 +30,7 @@ export function OrgForm({
   canManageJobs = false,
   business = false,
   featuredJobs = false,
+  initialCategory = "company",
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -42,13 +43,15 @@ export function OrgForm({
   business?: boolean;
   /** Featured job listings (Business plan, only while paid plans are on) */
   featuredJobs?: boolean;
+  /** Category of a new page, e.g. "saas" when adding a SaaS project */
+  initialCategory?: string;
 }) {
   const [state, formAction, pending] = useActionState(saveSafely, undefined);
   const [step, setStep] = useState(0);
   const [name, setName] = useState(page?.title ?? defaultTitle);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ib = page?.infobox ?? {};
-  const [category, setCategory] = useState<string>(page?.category ?? "company");
+  const [category, setCategory] = useState<string>(page?.category ?? initialCategory);
   // #25: show existing pages that look like the same organization while typing a new name
   const [similar, setSimilar] = useState<{ slug: string; title: string }[]>([]);
   useEffect(() => {

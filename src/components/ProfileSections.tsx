@@ -16,6 +16,28 @@ const Ext = ({ url, children }: { url: string; children: React.ReactNode }) =>
     <>{children}</>
   );
 
+/**
+ * "Open to …" as a green frame around the profile photo with a ribbon at the bottom
+ * (like an "open to work" frame). The ribbon names the first item; all of them are in the tooltip.
+ */
+export function OpenToPhoto({ page, children }: { page: PageDoc; children: React.ReactNode }) {
+  if (page.openTo.length === 0) return <div className="p-photo">{children}</div>;
+  const all = page.openTo.map((k) => OPEN_TO[k]);
+  const label = `Open to ${all.join(", ")}`;
+  return (
+    <div className="p-photo p-photo--open" title={label}>
+      {children}
+      <span className="open-ribbon" aria-label={label}>
+        <span className="open-ribbon__top">#OPENTO</span>
+        <span className="open-ribbon__what">
+          {all[0]}
+          {all.length > 1 && <> +{all.length - 1}</>}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function OpenToBadges({ page }: { page: PageDoc }) {
   if (page.openTo.length === 0) return null;
   return (
