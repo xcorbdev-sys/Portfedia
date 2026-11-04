@@ -7,7 +7,7 @@ import { featureUnlocked, getPageBySlug, paidPlansEnabled, planActive } from "@/
 import { claimDomainOf, listOrgAdmins, listPositions } from "@/lib/org-admin";
 import { formatDate, siteUrl } from "@/lib/site";
 import { decidePositionAction, decidePositionsBulkAction, removeOrgAdminAction } from "@/lib/actions/org";
-import { mergeOrgAction, renameOrgAction, setOrgPlanAction } from "@/lib/actions/moderation";
+import { mergeOrgAction, renameOrgAction, setOrgPlanAction, setVerifiedAction } from "@/lib/actions/moderation";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { InviteAdminForm } from "@/components/forms/OrgAdminForms";
 import { StatsCard } from "@/components/StatsCard";
@@ -49,6 +49,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
       <Breadcrumbs items={[{ label: "Companies", href: "/companies" }, { label: page.title, href: `/org/${slug}` }, { label: "Manage" }]} />
       {claimed && <div className="notice notice--ok" style={{ margin: "8px 0 16px" }}>You now manage {page.title} on Portfedia. 🎉</div>}
       {done === "renamed" && <div className="notice notice--ok" style={{ margin: "8px 0 16px" }}>Renamed. The old address now redirects here.</div>}
+      {done && done !== "renamed" && <div className="notice notice--ok" style={{ margin: "8px 0 16px" }}>{done}</div>}
       {error && <div className="notice notice--error" style={{ margin: "8px 0 16px" }}>{error}</div>}
       <div className="section__head" style={{ marginTop: 8 }}>
         <div>
@@ -154,6 +155,15 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
         <section className="card" id="moderator" style={{ marginTop: 16, borderColor: "var(--warn)" }}>
           <div className="card__body">
             <div className="card__title">Moderator tools</div>
+            <form action={setVerifiedAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="back" value={`/org/${slug}/manage#moderator`} />
+              <input type="hidden" name="verified" value={page.verified ? "0" : "1"} />
+              <span className="small" style={{ fontWeight: 600 }}>Verified badge: {page.verified ? "✓ Verified" : "Not verified"}</span>
+              <div>
+                <button className={`btn btn--sm${page.verified ? "" : " btn--primary"}`} type="submit">{page.verified ? "Remove verified badge" : "Mark as verified"}</button>
+              </div>
+            </form>
             {paidPlansEnabled() && (
             <form action={setOrgPlanAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
               <input type="hidden" name="slug" value={slug} />

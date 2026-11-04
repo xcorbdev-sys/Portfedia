@@ -5,7 +5,7 @@ import { revalidatePath } from "../revalidate";
 import { headers } from "next/headers";
 import { getCurrentUser, isModerator, safeNext } from "../auth";
 import { getPageBySlug } from "../pages";
-import { closeReport, createReport, REPORT_REASONS, restoreRevision, setBan, unpublishPage } from "../moderation";
+import { closeReport, confirmEmailManually, createReport, REPORT_REASONS, restoreRevision, setBan, setPageVerified, unpublishPage } from "../moderation";
 import { pageHref } from "../wikitext";
 import { looksLikeBot } from "../bot";
 import { bool, email as cleanEmail, str } from "../validate";
@@ -106,6 +106,25 @@ export async function banAction(fd: FormData): Promise<void> {
   await expireOrgsOfOwner(str(fd.get("userId"), 40));
   const back = safeNext(fd.get("back"), "/admin?section=users");
   redirect(err ? `${back}${back.includes("?") ? "&" : "?"}error=${encodeURIComponent(err)}` : back);
+}
+
+const withParam = (back: string, key: string, value: string) => `${back.split("#")[0]}${back.includes("?") ? "&" : "?"}${key}=${encodeURIComponent(value)}`;
+
+export async function confirmEmailAction(fd: FormData): Promise<void> {
+  await moderator();
+  const err = await confirmEmailManually(str(fd.get("userId"), 40));
+  const back = safeNext(fd.get("back"), "/admin?section=users");
+  redirect(err ? withParam(back, "error", err) : withParam(back, "done", "Email confirmed."));
+}
+
+export async function setVerifiedAction(fd: FormData): Promise<void> {
+  await moderator();
+  const verified = fd.get("verified") === "1";
+  const page = await setPageVerified(str(fd.get("slug"), 100), verified);
+  const back = safeNext(fd.get("back"), "/admin?section=users");
+  if (!page) redirect(withParam(back, "error", "Page not found."));
+  revalidatePath(pageHref(page.type as never, page.slug));
+  redirect(withParam(back, "done", verified ? "Marked as verified." : "Verified badge removed."));
 }
 
 /* ───────────── Bulk actions (#37) and organization tools (#23, #24) ───────────── */

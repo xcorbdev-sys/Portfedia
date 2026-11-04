@@ -199,9 +199,24 @@ export async function findUsers(q: string) {
     .sort({ createdAt: -1 })
     .limit(50)
     .lean<{ _id: unknown; name: string; email: string; role: string; bannedAt?: Date | null; banReason?: string; emailVerifiedAt?: Date | null; createdAt: Date; plan?: { name?: string; until?: Date | null } }[]>();
-  const pages = await Page.find({ type: "person", ownerId: { $in: users.map((u) => u._id) } }, { slug: 1, ownerId: 1 }).lean<{ slug: string; ownerId: unknown }[]>();
-  const slugOf = new Map(pages.map((p) => [String(p.ownerId), p.slug]));
-  return users.map((u) => ({ ...u, id: String(u._id), profileSlug: slugOf.get(String(u._id)) ?? null }));
+  const pages = await Page.find({ type: "person", ownerId: { $in: users.map((u) => u._id) } }, { slug: 1, ownerId: 1, verified: 1 }).lean<{ slug: string; ownerId: unknown; verified?: boolean }[]>();
+  const pageOf = new Map(pages.map((p) => [String(p.ownerId), p]));
+  return users.map((u) => ({ ...u, id: String(u._id), profileSlug: pageOf.get(String(u._id))?.slug ?? null, profileVerified: Boolean(pageOf.get(String(u._id))?.verified) }));
+}
+
+/** A moderator confirms a user's email address by hand (for example when the confirmation email didn't arrive). */
+export async function confirmEmailManually(userId: string): Promise<string | null> {
+  if (!Types.ObjectId.isValid(userId)) return "User not found.";
+  await connectDB();
+  const res = await User.updateOne({ _id: userId, emailVerifiedAt: null }, { $set: { emailVerifiedAt: new Date() } });
+  return res.matchedCount ? null : "This email address is already confirmed.";
+}
+
+/** Gives or removes the blue "verified" badge on a profile or organization page. */
+export async function setPageVerified(slug: string, verified: boolean): Promise<{ type: string; slug: string } | null> {
+  await connectDB();
+  const page = await Page.findOneAndUpdate({ slug }, { $set: { verified } }, { new: true, projection: { type: 1, slug: 1 } }).lean<{ type: string; slug: string }>();
+  return page ?? null;
 }
 
 export async function setBan(moderator: SessionUser, userId: string, banned: boolean, reason: string): Promise<string | null> {

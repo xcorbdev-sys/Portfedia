@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
 import { countPendingApplications, listApplications, paidPlansEnabled, planActive } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
-import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, setUserPlanAction } from "@/lib/actions/moderation";
+import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, confirmEmailAction, setUserPlanAction, setVerifiedAction } from "@/lib/actions/moderation";
 import { adminStats } from "@/lib/stats";
 import { formatDate, formatDateTime } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
@@ -13,7 +13,7 @@ import { AdminImport } from "@/components/AdminImport";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
-type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string };
+type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string; done?: string };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
@@ -33,6 +33,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
       </nav>
       {sp.error && <div className="notice notice--error" style={{ marginBottom: 14 }}>{sp.error}</div>}
+      {sp.done && <div className="notice notice--ok" style={{ marginBottom: 14 }}>{sp.done}</div>}
       {section === "overview" && <Overview />}
       {section === "applications" && <Applications tab={sp.tab} pendingCount={pendingApps} />}
       {section === "reports" && <Reports tab={sp.tab} reason={sp.reason} />}
@@ -232,7 +233,8 @@ async function Users({ q }: { q: string }) {
               <div>
                 <b>{u.name}</b> <span className="muted small">{u.email}</span>{" "}
                 {u.role !== "user" && <span className="status-pill status-pill--published">{u.role}</span>}{" "}
-                {!u.emailVerifiedAt && <span className="status-pill status-pill--pending">unverified</span>}{" "}
+                {!u.emailVerifiedAt && <span className="status-pill status-pill--pending">email not confirmed</span>}{" "}
+                {u.profileVerified && <span className="status-pill status-pill--published">✓ verified</span>}{" "}
                 {u.bannedAt && <span className="status-pill status-pill--rejected">banned</span>}{" "}
                 {planActive(u.plan as never, "pro") && <span className="badge-featured">Pro{u.plan?.until ? ` until ${formatDate(u.plan.until)}` : ""}</span>}
                 <div className="app-card__meta">
@@ -242,6 +244,21 @@ async function Users({ q }: { q: string }) {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {!u.emailVerifiedAt && (
+                <form action={confirmEmailAction}>
+                  <input type="hidden" name="userId" value={u.id} />
+                  <input type="hidden" name="back" value={back} />
+                  <button className="btn btn--sm" type="submit">Confirm email</button>
+                </form>
+              )}
+              {u.profileSlug && (
+                <form action={setVerifiedAction}>
+                  <input type="hidden" name="slug" value={u.profileSlug} />
+                  <input type="hidden" name="back" value={back} />
+                  <input type="hidden" name="verified" value={u.profileVerified ? "0" : "1"} />
+                  <button className={`btn btn--sm${u.profileVerified ? "" : " btn--primary"}`} type="submit">{u.profileVerified ? "Remove verified" : "Mark verified"}</button>
+                </form>
+              )}
               {paidPlansEnabled() && (
               <form action={setUserPlanAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input type="hidden" name="userId" value={u.id} />
