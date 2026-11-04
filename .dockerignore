@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+uploads
+tests
+docs
+*.md
+.env
+.env.*
+!.env.example
+Dockerfile
+docker-compose*.yml
+.dockerignore
+*.tsbuildinfo

@@ -1,0 +1,558 @@
+import "server-only";
+import { Types } from "mongoose";
+import { connectDB } from "./db";
+import { Follow, Page, Revision, Session, User } from "./models";
+import { isReservedSlug, searchKey, slugify } from "./slug";
+import { extractWikiLinks } from "./wikitext";
+import { deleteImage } from "./storage";
+import type {
+  Education, Experience, OrgInfobox, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
+} from "./types";
+
+/* ───────────── Mapping ───────────── */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toPage(d: any): PageDoc {
+  return {
+    _id: String(d._id),
+    type: d.type,
+    slug: d.slug,
+    title: d.title,
+    titleKey: d.titleKey,
+    summary: d.summary ?? "",
+    ownerId: d.ownerId ? String(d.ownerId) : null,
+    status: d.status,
+    image: d.image?.url ? { key: d.image.key, url: d.image.url } : null,
+    infobox: d.infobox ?? {},
+    body: d.body ?? "",
+    experiences: d.experiences ?? [],
+    educations: d.educations ?? [],
+    outLinks: d.outLinks ?? [],
+    tags: d.tags ?? [],
+    sources: d.sources ?? [],
+    verified: Boolean(d.verified),
+    followerCount: d.followerCount ?? 0,
+    noindex: Boolean(d.noindex),
+    revisionCount: d.revisionCount ?? 0,
+    createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
+  };
+}
+
+/** Lightweight shape used by cards, lists and search results. */
+export interface PageCard {
+  slug: string;
+  title: string;
+  type: PageType;
+  summary: string;
+  image: StoredImage | null;
+  verified: boolean;
+  /** e.g. "Acme · Senior Engineer" for people, sector for organisations */
+  subtitle: string;
+  detail?: string;
+}
+
+const CARD_FIELDS = { slug: 1, title: 1, type: 1, summary: 1, image: 1, verified: 1, infobox: 1, experiences: 1 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toCard(d: any, detail?: string): PageCard {
+  let subtitle = "";
+  if (d.type === "person") {
+    const cur = (d.experiences as Experience[] | undefined)?.find((e) => e.current && e.verification !== "rejected");
+    subtitle = cur ? [cur.orgTitle, cur.role].filter(Boolean).join(" · ") : (d.infobox?.occupation ?? "");
+  } else {
+    subtitle = d.infobox?.sector || (d.type === "school" ? "Education" : "");
+  }
+  return {
+    slug: d.slug,
+    title: d.title,
+    type: d.type,
+    summary: d.summary ?? "",
+    image: d.image?.url ? { key: d.image.key, url: d.image.url } : null,
+    verified: Boolean(d.verified) || d.status === "claimed",
+    subtitle,
+    detail,
+  };
+}
+
+export function currentRole(page: Pick<PageDoc, "experiences" | "infobox">): string {
+  const cur = page.experiences.find((e) => e.current && e.verification !== "rejected");
+  return cur ? [cur.orgTitle, cur.role].filter(Boolean).join(" · ") : (page.infobox.occupation ?? "");
+}
+
+/* ───────────── Reads ───────────── */
+
+export async function getPageBySlug(slug: string, type?: PageType | PageType[]): Promise<PageDoc | null> {
+  await connectDB();
+  const filter: Record<string, unknown> = { slug };
+  if (type) filter.type = Array.isArray(type) ? { $in: type } : type;
+  const d = await Page.findOne(filter).lean();
+  return d ? toPage(d) : null;
+}
+
+export async function getPersonPageOf(userId: string): Promise<PageDoc | null> {
+  await connectDB();
+  const d = await Page.findOne({ type: "person", ownerId: new Types.ObjectId(userId) }).lean();
+  return d ? toPage(d) : null;
+}
+
+/** Which of these slugs exist? (blue vs. red link) */
+export async function existingPages(slugs: string[]): Promise<Map<string, PageType>> {
+  if (slugs.length === 0) return new Map();
+  await connectDB();
+  const rows = await Page.find({ slug: { $in: slugs } }, { slug: 1, type: 1 }).lean<{ slug: string; type: PageType }[]>();
+  return new Map(rows.map((r) => [r.slug, r.type]));
+}
+
+export async function getCards(slugs: string[]): Promise<PageCard[]> {
+  if (slugs.length === 0) return [];
+  await connectDB();
+  const rows = await Page.find({ slug: { $in: slugs } }, { ...CARD_FIELDS, status: 1 }).lean();
+  const bySlug = new Map(rows.map((r) => [r.slug as string, toCard(r)]));
+  return slugs.map((s) => bySlug.get(s)).filter((c): c is PageCard => Boolean(c));
+}
+
+const yearRange = (a?: number | null, b?: number | null, current?: boolean) =>
+  a || b || current ? `${a ?? "?"}–${current ? "Present" : (b ?? "?")}` : "";
+
+/** People who work / worked at an organisation (derived from their career entries). */
+export async function getPeopleOfOrg(orgSlug: string) {
+  await connectDB();
+  const docs = await Page.find({ type: "person", "experiences.orgSlug": orgSlug }, CARD_FIELDS)
+    .sort({ title: 1 })
+    .limit(500)
+    .lean();
+  const current: PageCard[] = [];
+  const former: PageCard[] = [];
+  for (const d of docs) {
+    const exps = (d.experiences as Experience[]).filter((e) => e.orgSlug === orgSlug && e.verification !== "rejected");
+    if (exps.length === 0) continue;
+    const now = exps.find((e) => e.current);
+    const e = now ?? exps[0];
+    const c = toCard(d, [e.role, yearRange(e.startYear, e.endYear, e.current)].filter(Boolean).join(" · "));
+    c.subtitle = e.role || c.subtitle;
+    (now ? current : former).push(c);
+  }
+  return { current, former };
+}
+
+export async function getAlumni(schoolSlug: string): Promise<PageCard[]> {
+  await connectDB();
+  const docs = await Page.find({ type: "person", "educations.schoolSlug": schoolSlug }, { ...CARD_FIELDS, educations: 1 })
+    .sort({ title: 1 })
+    .limit(500)
+    .lean();
+  return docs.map((d) => {
+    const e = (d.educations as Education[]).find((x) => x.schoolSlug === schoolSlug)!;
+    return toCard(d, [e.field, e.degree, e.endYear].filter(Boolean).join(", "));
+  });
+}
+
+/** "What links here" */
+export async function getBacklinks(slug: string) {
+  await connectDB();
+  return Page.find({ "outLinks.slug": slug }, { slug: 1, title: 1, type: 1 })
+    .sort({ title: 1 })
+    .limit(200)
+    .lean<{ slug: string; title: string; type: PageType }[]>();
+}
+
+export async function listRevisions(pageId: string): Promise<RevisionDoc[]> {
+  await connectDB();
+  const rows = await Revision.find({ pageId }, { snapshot: 0 }).sort({ createdAt: -1 }).limit(200).lean();
+  return rows.map((r) => ({
+    _id: String(r._id),
+    pageId: String(r.pageId),
+    authorId: String(r.authorId),
+    authorName: r.authorName,
+    editSummary: r.editSummary,
+    size: r.size,
+    delta: r.delta,
+    createdAt: r.createdAt,
+  }));
+}
+
+/* ───────────── Search & listings ───────────── */
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export interface SearchParams {
+  q: string;
+  types?: PageType[];
+  sectors?: string[];
+  limit?: number;
+}
+
+export async function searchPages({ q, types, sectors, limit = 40 }: SearchParams) {
+  const key = searchKey(q);
+  await connectDB();
+  const base: Record<string, unknown> = {};
+  if (key) {
+    const rx = { $regex: `(^| )${escapeRegex(key)}` };
+    base.$or = [{ titleKey: rx }, { tags: { $regex: escapeRegex(q.trim()), $options: "i" } }];
+  }
+  const filter: Record<string, unknown> = { ...base };
+  if (types?.length) filter.type = { $in: types };
+  if (sectors?.length) filter["infobox.sector"] = { $in: sectors };
+
+  const [rows, total, typeFacet, sectorFacet] = await Promise.all([
+    Page.find(filter, { ...CARD_FIELDS, status: 1 }).sort({ type: 1, followerCount: -1, title: 1 }).limit(limit).lean(),
+    Page.countDocuments(filter),
+    // Facet counts ignore their own filter so users can switch between options
+    Page.aggregate([
+      { $match: { ...base, ...(sectors?.length ? { "infobox.sector": { $in: sectors } } : {}) } },
+      { $group: { _id: "$type", n: { $sum: 1 } } },
+    ]),
+    Page.aggregate([
+      { $match: { ...base, ...(types?.length ? { type: { $in: types } } : {}), "infobox.sector": { $nin: [null, ""] } } },
+      { $group: { _id: "$infobox.sector", n: { $sum: 1 } } },
+      { $sort: { n: -1, _id: 1 } },
+      { $limit: 12 },
+    ]),
+  ]);
+  return {
+    results: rows.map((r) => toCard(r)),
+    total,
+    typeCounts: Object.fromEntries(typeFacet.map((f) => [f._id, f.n])) as Partial<Record<PageType, number>>,
+    sectorCounts: sectorFacet.map((f) => ({ sector: f._id as string, count: f.n as number })),
+  };
+}
+
+export async function listPages(opts: { types: PageType[]; sector?: string; page?: number; perPage?: number }) {
+  await connectDB();
+  const perPage = opts.perPage ?? 24;
+  const page = Math.max(1, opts.page ?? 1);
+  const filter: Record<string, unknown> = { type: { $in: opts.types } };
+  if (opts.sector) filter["infobox.sector"] = opts.sector;
+  const [rows, total] = await Promise.all([
+    Page.find(filter, { ...CARD_FIELDS, status: 1 })
+      .sort({ followerCount: -1, updatedAt: -1 })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean(),
+    Page.countDocuments(filter),
+  ]);
+  return { items: rows.map((r) => toCard(r)), total, page, pages: Math.max(1, Math.ceil(total / perPage)) };
+}
+
+export async function listSectors() {
+  await connectDB();
+  const rows = await Page.aggregate([
+    { $match: { "infobox.sector": { $nin: [null, ""] } } },
+    { $group: { _id: "$infobox.sector", orgs: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 0, 1] } }, people: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 1, 0] } } } },
+    { $sort: { orgs: -1, people: -1, _id: 1 } },
+    { $limit: 300 },
+  ]);
+  return rows.map((r) => ({ sector: r._id as string, orgs: r.orgs as number, people: r.people as number }));
+}
+
+export async function homeData() {
+  await connectDB();
+  const [people, orgs, sectors, featuredPeople, featuredOrgs] = await Promise.all([
+    Page.countDocuments({ type: "person" }),
+    Page.countDocuments({ type: { $in: ["org", "school"] } }),
+    Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] } }),
+    Page.find({ type: "person" }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
+    Page.find({ type: { $in: ["org", "school"] }, body: { $ne: "" } }, { ...CARD_FIELDS, status: 1 })
+      .sort({ followerCount: -1, updatedAt: -1 })
+      .limit(8)
+      .lean(),
+  ]);
+  return {
+    stats: { people, orgs, sectors: sectors.length },
+    featuredPeople: featuredPeople.map((d) => toCard(d)),
+    featuredOrgs: featuredOrgs.map((d) => toCard(d)),
+  };
+}
+
+export async function randomSlug(): Promise<{ slug: string; type: PageType } | null> {
+  await connectDB();
+  const [r] = await Page.aggregate([{ $sample: { size: 1 } }, { $project: { slug: 1, type: 1 } }]);
+  return r ?? null;
+}
+
+export async function allSlugsForSitemap() {
+  await connectDB();
+  return Page.find({ noindex: { $ne: true }, $or: [{ type: "person" }, { body: { $ne: "" } }] }, { slug: 1, type: 1, updatedAt: 1 })
+    .limit(50_000)
+    .lean<{ slug: string; type: PageType; updatedAt: Date }[]>();
+}
+
+/** For the organisation autocomplete in the editor. */
+export async function suggestOrgs(q: string) {
+  const key = searchKey(q);
+  if (!key) return [];
+  await connectDB();
+  return Page.find({ type: { $in: ["org", "school"] }, titleKey: { $regex: `(^| )${escapeRegex(key)}` } }, { slug: 1, title: 1, type: 1 })
+    .sort({ followerCount: -1 })
+    .limit(8)
+    .lean<{ slug: string; title: string; type: PageType }[]>();
+}
+
+/* ───────────── Follow ───────────── */
+
+export async function isFollowing(userId: string, pageId: string): Promise<boolean> {
+  await connectDB();
+  return Boolean(await Follow.exists({ userId, pageId }));
+}
+
+export async function toggleFollow(userId: string, pageId: string): Promise<boolean> {
+  await connectDB();
+  const removed = await Follow.deleteOne({ userId, pageId });
+  if (removed.deletedCount) {
+    await Page.updateOne({ _id: pageId, followerCount: { $gt: 0 } }, { $inc: { followerCount: -1 } });
+    return false;
+  }
+  try {
+    await Follow.create({ userId, pageId });
+    await Page.updateOne({ _id: pageId }, { $inc: { followerCount: 1 } });
+  } catch (err) {
+    if ((err as { code?: number }).code !== 11000) throw err; // double click: already following
+  }
+  return true;
+}
+
+/* ───────────── Writes ───────────── */
+
+export type OrgRef = { title: string; type: "org" | "school" };
+
+/**
+ * Resolves the organisation named in a career/education entry; creates a draft page if
+ * it does not exist yet. (The "red link loop": the encyclopedia grows by itself.)
+ */
+export async function ensureOrgPage(ref: OrgRef, authorId: string): Promise<{ slug: string; title: string }> {
+  await connectDB();
+  const title = ref.title.trim().slice(0, 160);
+  const base = slugify(title);
+  if (!base) throw new Error("Invalid organization name");
+
+  for (const slug of [base, `${base}-${ref.type === "school" ? "school" : "company"}`, `${base}-org`]) {
+    if (isReservedSlug(slug)) continue;
+    const existing = await Page.findOne({ slug }, { type: 1, title: 1 }).lean<{ type: PageType; title: string }>();
+    if (existing) {
+      if (existing.type !== "person") return { slug, title: existing.title };
+      continue; // a person already uses this slug, try the next candidate
+    }
+    try {
+      const page = await Page.create({
+        type: ref.type,
+        slug,
+        title,
+        titleKey: searchKey(title),
+        status: "draft",
+        infobox: {},
+        body: "",
+        revisionCount: 1,
+      });
+      await Revision.create({
+        pageId: page._id,
+        authorId,
+        authorName: "Portfedia",
+        editSummary: "Draft page created automatically",
+        snapshot: { title, infobox: {}, body: "" },
+        size: 0,
+        delta: 0,
+      });
+      return { slug, title };
+    } catch (err) {
+      // Someone created it concurrently (unique index): use theirs
+      if ((err as { code?: number }).code === 11000) {
+        const again = await Page.findOne({ slug }, { type: 1, title: 1 }).lean<{ type: PageType; title: string }>();
+        if (again && again.type !== "person") return { slug, title: again.title };
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Could not find a free address for this organization");
+}
+
+async function uniquePersonSlug(name: string, occupation: string): Promise<string> {
+  const base = slugify(name) || "person";
+  const candidates = [base, slugify(`${name} ${occupation}`)];
+  for (let i = 2; i < 50; i++) candidates.push(`${base}-${i}`);
+  for (const c of candidates) {
+    if (!c || isReservedSlug(c)) continue;
+    if (!(await Page.exists({ slug: c }))) return c;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+export interface PersonInput {
+  title: string;
+  summary: string;
+  tags: string[];
+  infobox: PersonInfobox;
+  body: string;
+  experiences: (Omit<Experience, "orgSlug" | "orgTitle" | "verification"> & { orgTitle: string })[];
+  educations: (Omit<Education, "schoolSlug" | "schoolTitle"> & { schoolTitle: string })[];
+  sources: SourceRef[];
+  noindex: boolean;
+  editSummary: string;
+  image?: StoredImage | null; // undefined = keep, null = remove
+}
+
+export async function savePersonPage(user: SessionUser, input: PersonInput): Promise<PageDoc> {
+  await connectDB();
+  const existing = await Page.findOne({ type: "person", ownerId: new Types.ObjectId(user.id) });
+
+  // Link organisations/schools to pages (creating drafts when missing)
+  const prevExps: Experience[] = existing?.experiences?.map((e: { toObject: () => Experience }) => e.toObject()) ?? [];
+  const experiences: Experience[] = [];
+  for (const e of input.experiences) {
+    const org = await ensureOrgPage({ title: e.orgTitle, type: "org" }, user.id);
+    // An unchanged entry keeps its verification; an edited entry must be verified again
+    const same = prevExps.find(
+      (p) => p.orgSlug === org.slug && p.role === e.role && p.startYear === e.startYear && p.endYear === e.endYear && p.current === e.current,
+    );
+    experiences.push({ ...e, orgSlug: org.slug, orgTitle: org.title, verification: same?.verification ?? "unverified" });
+  }
+  const educations: Education[] = [];
+  for (const e of input.educations) {
+    const school = await ensureOrgPage({ title: e.schoolTitle, type: "school" }, user.id);
+    educations.push({ ...e, schoolSlug: school.slug, schoolTitle: school.title });
+  }
+
+  const content = {
+    title: input.title,
+    titleKey: searchKey(input.title),
+    summary: input.summary,
+    tags: input.tags,
+    infobox: input.infobox,
+    body: input.body,
+    experiences,
+    educations,
+    sources: input.sources,
+    outLinks: extractWikiLinks(input.body),
+    noindex: input.noindex,
+  };
+
+  let page;
+  let oldImage: StoredImage | null = null;
+  const prevSize = existing?.body?.length ?? 0;
+  if (existing) {
+    if (input.image !== undefined) {
+      oldImage = existing.image?.url ? { key: existing.image.key, url: existing.image.url } : null;
+      existing.image = input.image;
+    }
+    existing.set(content);
+    existing.revisionCount = (existing.revisionCount ?? 0) + 1;
+    page = await existing.save();
+  } else {
+    const slug = await uniquePersonSlug(input.title, input.infobox.occupation ?? "");
+    page = await Page.create({
+      ...content,
+      type: "person",
+      slug,
+      ownerId: user.id,
+      status: "published",
+      image: input.image ?? null,
+      revisionCount: 1,
+    });
+  }
+
+  await Revision.create({
+    pageId: page._id,
+    authorId: user.id,
+    authorName: user.name,
+    editSummary: input.editSummary || (existing ? "" : "Profile created"),
+    snapshot: { ...content, image: page.image ?? null },
+    size: input.body.length,
+    delta: input.body.length - prevSize,
+  });
+
+  if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
+  return toPage(page.toObject());
+}
+
+export interface OrgInput {
+  title: string;
+  type: "org" | "school";
+  summary: string;
+  tags: string[];
+  infobox: OrgInfobox;
+  body: string;
+  sources: SourceRef[];
+  editSummary: string;
+  image?: StoredImage | null;
+}
+
+export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type">): boolean {
+  if (!user || page.type === "person") return false;
+  if (user.role === "admin" || user.role === "moderator") return true;
+  // Unclaimed organisation pages are community-editable.
+  // Once claimed (phase 2) only the organisation's admins can edit.
+  return page.status !== "claimed";
+}
+
+export class PermissionError extends Error {}
+
+/** Creates a new organisation/school page or updates an existing one. */
+export async function saveOrgPage(user: SessionUser, slug: string | null, input: OrgInput): Promise<PageDoc> {
+  await connectDB();
+  const content = {
+    summary: input.summary,
+    tags: input.tags,
+    infobox: input.infobox,
+    body: input.body,
+    sources: input.sources,
+    outLinks: extractWikiLinks(input.body),
+  };
+
+  let page;
+  if (slug) {
+    page = await Page.findOne({ slug, type: { $in: ["org", "school"] } });
+    if (!page) throw new PermissionError("Page not found");
+  } else {
+    const ref = await ensureOrgPage({ title: input.title, type: input.type }, user.id);
+    page = await Page.findOne({ slug: ref.slug });
+  }
+  if (!canEditOrg(user, page)) throw new PermissionError("You don't have permission to edit this page");
+
+  const prevSize = page.body?.length ?? 0;
+  let oldImage: StoredImage | null = null;
+  if (input.image !== undefined) {
+    oldImage = page.image?.url ? { key: page.image.key, url: page.image.url } : null;
+    page.image = input.image;
+  }
+  page.set({ ...content, type: input.type, status: page.status === "claimed" ? "claimed" : input.body ? "published" : page.status });
+  page.revisionCount = (page.revisionCount ?? 0) + 1;
+  await page.save();
+
+  await Revision.create({
+    pageId: page._id,
+    authorId: user.id,
+    authorName: user.name,
+    editSummary: input.editSummary,
+    snapshot: { title: page.title, ...content, image: page.image ?? null },
+    size: input.body.length,
+    delta: input.body.length - prevSize,
+  });
+  if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
+  return toPage(page.toObject());
+}
+
+/** GDPR / KVKK "right to be forgotten": user, profile, all revisions, follows and sessions are deleted. */
+export async function deleteAccount(userId: string): Promise<void> {
+  await connectDB();
+  const oid = new Types.ObjectId(userId);
+  const page = await Page.findOne({ type: "person", ownerId: oid });
+  if (page) {
+    const revs = await Revision.find({ pageId: page._id }, { "snapshot.image": 1 }).lean<{ snapshot?: { image?: StoredImage | null } }[]>();
+    const keys = new Set<string>();
+    if (page.image?.key) keys.add(page.image.key);
+    for (const r of revs) if (r.snapshot?.image?.key) keys.add(r.snapshot.image.key);
+    for (const key of keys) await deleteImage({ key, url: "" });
+    await Revision.deleteMany({ pageId: page._id });
+    await Follow.deleteMany({ pageId: page._id });
+    await Page.deleteOne({ _id: page._id });
+  }
+  // Undo this user's follows so counters stay correct
+  const follows = await Follow.find({ userId: oid }, { pageId: 1 }).lean();
+  for (const f of follows) await Page.updateOne({ _id: f.pageId, followerCount: { $gt: 0 } }, { $inc: { followerCount: -1 } });
+  await Follow.deleteMany({ userId: oid });
+  // Contributions to organisation pages stay, but are anonymised
+  await Revision.updateMany({ authorId: oid }, { $set: { authorName: "Deleted user" } });
+  await Session.deleteMany({ userId: oid });
+  await User.deleteOne({ _id: oid });
+}

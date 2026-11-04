@@ -1,0 +1,89 @@
+import Link from "next/link";
+import { LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { getPersonPageOf } from "@/lib/pages";
+import { logoutAction } from "@/lib/actions/auth";
+import { Thumb } from "./ui";
+import { MenuCloser } from "./client";
+
+const NAV = [
+  { href: "/people", label: "People" },
+  { href: "/companies", label: "Companies" },
+  { href: "/sectors", label: "Sectors" },
+];
+
+export function Brand() {
+  return (
+    <Link href="/" className="brand" aria-label="Portfedia home">
+      <span className="brand__mark" aria-hidden="true">P</span>
+      Portfedia
+    </Link>
+  );
+}
+
+export async function Header({ showSearch = true }: { showSearch?: boolean }) {
+  const user = await getCurrentUser();
+  const myPage = user ? await getPersonPageOf(user.id) : null;
+  return (
+    <header className="site-header">
+      <MenuCloser />
+      <div className="container site-header__inner">
+        <Brand />
+        <nav className="main-nav" aria-label="Main">
+          {NAV.map((n) => (
+            <Link key={n.href} href={n.href}>{n.label}</Link>
+          ))}
+        </nav>
+        <div className="header-right">
+          {showSearch && (
+            <form action="/search" className="header-search" role="search">
+              <Search className="icon" aria-hidden="true" />
+              <label htmlFor="hq" className="visually-hidden">Search Portfedia</label>
+              <input id="hq" name="q" type="search" placeholder="Search Portfedia..." autoComplete="off" />
+              <input type="hidden" name="go" value="1" />
+            </form>
+          )}
+          {user ? (
+            <details className="menu">
+              <summary className="avatar-btn" aria-label="Account menu">
+                <Thumb image={myPage?.image ?? null} name={user.name} variant="round" className="avatar-inner" />
+              </summary>
+              <div className="menu__panel">
+                <div className="menu__head">
+                  <b>{user.name}</b>
+                  <div className="muted small">{user.email}</div>
+                </div>
+                {myPage ? (
+                  <Link href={`/${myPage.slug}`}><User size={16} /> My profile</Link>
+                ) : (
+                  <Link href="/create"><User size={16} /> Create my profile</Link>
+                )}
+                <Link href="/create"><Plus size={16} /> New profile</Link>
+                <Link href="/account"><Settings size={16} /> Account</Link>
+                <form action={logoutAction}>
+                  <button type="submit"><LogOut size={16} /> Log out</button>
+                </form>
+              </div>
+            </details>
+          ) : (
+            <>
+              <Link href="/login" className="btn btn--sm">Log in</Link>
+              <Link href="/signup" className="btn btn--sm btn--primary">Sign up</Link>
+            </>
+          )}
+          <details className="menu menu-toggle">
+            <summary className="btn btn--icon btn--ghost" aria-label="Menu" style={{ listStyle: "none" }}>
+              <Menu size={20} />
+            </summary>
+            <div className="menu__panel">
+              <Link href="/search"><Search size={16} /> Search</Link>
+              {NAV.map((n) => (
+                <Link key={n.href} href={n.href}>{n.label}</Link>
+              ))}
+            </div>
+          </details>
+        </div>
+      </div>
+    </header>
+  );
+}

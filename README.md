@@ -4,6 +4,26 @@
 
 Bu doküman projenin ne olduğunu, neden var olduğunu, nasıl görüneceğini ve nasıl inşa edileceğini anlatır. Baştan sona okunacak şekilde yazıldı; en sonda kararlaştırılması gereken açık sorular var.
 
+> **Dil:** Bu doküman Türkçedir; **sitenin kendisi (arayüz, URL'ler, hata mesajları) tamamen İngilizcedir.**
+
+## Hızlı başlangıç
+
+```bash
+docker compose up -d --build      # uygulama + MongoDB → http://localhost:3000
+```
+
+Docker olmadan geliştirme (yerelde çalışan bir MongoDB gerekir):
+
+```bash
+cp .env.example .env.local        # MONGODB_URI'yi düzenle
+npm install
+npm run dev                       # http://localhost:3000
+npm test                          # birim testleri
+npm run typecheck
+```
+
+Canlıya alma (Coolify + MongoDB + Cloudflare R2): **[docs/DEPLOY.md](docs/DEPLOY.md)**
+
 ---
 
 ## İçindekiler
@@ -14,7 +34,7 @@ Bu doküman projenin ne olduğunu, neden var olduğunu, nasıl görüneceğini v
 4. [Temel fikir: Wikipedia'dan ne alıyoruz, neyi değiştiriyoruz?](#4-temel-fikir-wikipediadan-ne-alıyoruz-neyi-değiştiriyoruz)
 5. [Sayfa türleri](#5-sayfa-türleri)
 6. [Sayfa anatomisi (tasarım)](#6-sayfa-anatomisi-tasarım)
-7. [Bilgi kutusu (sol panel) alanları](#7-bilgi-kutusu-sol-panel-alanları)
+7. [Bilgi kutusu (Key Facts) alanları](#7-bilgi-kutusu-key-facts-alanları)
 8. [Bağlantı sistemi: platformu ansiklopedi yapan şey](#8-bağlantı-sistemi-platformu-ansiklopedi-yapan-şey)
 9. [Düzenleme ve sahiplik modeli](#9-düzenleme-ve-sahiplik-modeli)
 10. [Güven ve doğrulama](#10-güven-ve-doğrulama)
@@ -73,7 +93,7 @@ Bu doküman projenin ne olduğunu, neden var olduğunu, nasıl görüneceğini v
 ## 4. Temel fikir: Wikipedia'dan ne alıyoruz, neyi değiştiriyoruz?
 
 ### Aldıklarımız ✅
-- **Görsel dil:** Beyaz zemin, serif başlıklar, mavi linkler, bol boşluk, makale formatı, içindekiler kutusu.
+- **Bilgi düzeni:** Makale formatı, bölüm bölüm okunan sayfa, bölüm menüsü (içindekiler), kaynakça.
 - **Bilgi kutusu (infobox):** Kişinin/şirketin özet bilgileri tek bakışta.
 - **İç bağlantılar:** `[[Şirket Adı]]` yazınca o şirketin sayfasına link.
 - **Kırmızı link:** Henüz var olmayan sayfaya verilen link kırmızı görünür ve "oluştur" daveti olur. Platform kendiliğinden büyür.
@@ -89,7 +109,7 @@ Bu doküman projenin ne olduğunu, neden var olduğunu, nasıl görüneceğini v
 | Kendi sayfanı yazamazsın | **Kendi sayfanı sen yazarsın** | Platformun varlık sebebi |
 | Güven = kaynak + topluluk denetimi | Güven = **çapraz doğrulama** (şirket onayı, okul onayı, e-posta/alan adı doğrulaması) | Kişi kendini yazdığı için güveni başka yoldan kurmalıyız |
 | Kayda değerlik şartı | Herkes sayfa açabilir | Sıradan profesyoneller hedef kitle |
-| Bilgi kutusu **sağda** | Bilgi kutusu **solda** (fotoğraf/logo en üstte) | Portfolyoda "kim" sorusu ilk okunmalı; bilinçli bir fark |
+| Bilgi kutusu sağda, makale tek sütun | **Solda bölüm menüsü, ortada fotoğraflı başlık + makale, sağda "Key Facts" kartı** | Modern, kart tabanlı bir arayüz; fotoğraf/logo başlıkta ilk bakışta görünür |
 | Wikitext sözdizimi | **Markdown + `[[ ]]` linkler**, görsel editör | Öğrenme eşiği düşük olmalı |
 
 > ⚠️ **Not:** Wikipedia'nın "hissini" alıyoruz, kimliğini değil. Wikipedia logosu, adı, yapboz küre vb. **kullanılmaz**; Portfedia'nın kendi logosu ve renk kimliği olur.
@@ -115,81 +135,52 @@ Wikipedia'daki "ad alanı" (namespace) mantığıyla her sayfanın bir türü va
 
 ## 6. Sayfa anatomisi (tasarım)
 
-### 6.1 Masaüstü — Kişi sayfası
+Tasarım, verilen ekran tasarımlarına göre uygulandı: **beyaz zemin, mavi vurgu rengi (`#1f5af2`), kartlar, etiket çipleri, onay rozeti**. Ana sayfa başlığı serif, geri kalan her şey sans-serif. Koyu mod otomatik.
+
+### 6.1 Kişi sayfası (masaüstü: 3 sütun)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ◧ Portfedia         [ Portfedia'da ara...                          🔍 ]  Giriş │
+│ [P] Portfedia   People  Companies  Sectors      [🔍 Search Portfedia...] (AD)│
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Kişi    Geçmiş    Öneriler (2)                         Oku   Düzenle  ⋯     │
-├────────────────────────┬─────────────────────────────────────────────────────┤
-│ ┌────────────────────┐ │  Ayşe Demir                                         │
-│ │                    │ │  ─────────────────────────────────────────────────  │
-│ │      [ FOTO ]      │ │  Portfedia, özgür portfolyo ansiklopedisi           │
-│ │                    │ │                                                     │
-│ └────────────────────┘ │  Ayşe Demir (d. 1992, İzmir), Türk yazılım          │
-│      Ayşe Demir        │  mühendisi. 2019'dan bu yana [[Acme Yazılım]]'da    │
-│   Yazılım Mühendisi    │  kıdemli backend geliştirici olarak çalışmaktadır.  │
-│ ────────────────────── │  Daha önce [[Örnek Bank]] dijital dönüşüm          │
-│ Doğum     1992, İzmir  │  ekibinde yer almıştır.                             │
-│ Konum     İstanbul     │                                                     │
-│ Meslek    Yazılım Müh. │  ┌ İçindekiler ─────────┐                           │
-│ Şu an     Acme Yazılım✓│  │ 1 Kariyer             │                           │
-│ Eğitim    ODTÜ ✓       │  │ 2 Eğitim              │                           │
-│           Bilg. Müh.   │  │ 3 Projeler            │                           │
-│ Diller    TR, EN, DE   │  │ 4 Ödüller             │                           │
-│ ────────────────────── │  │ 5 Kaynaklar           │                           │
-│ Web       aysedemir.dev│  └───────────────────────┘                           │
-│ GitHub    @aysedemir   │                                                     │
-│ E-posta   [Göster]     │  Kariyer                                            │
-│ ────────────────────── │  ─────────────────────────────────────────────────  │
-│ ✓ Kimlik doğrulandı    │  Acme Yazılım (2019 – günümüz) ✓                    │
-│ ✓ 2/3 deneyim onaylı   │  Ödeme altyapısının mikroservis mimarisine ...     │
-│                        │                                                     │
-│ [⤓ PDF CV olarak indir]│  Örnek Bank (2016 – 2019)                           │
-│                        │  ...                                                │
-├────────────────────────┴─────────────────────────────────────────────────────┤
-│ Kategoriler: Yazılım mühendisleri · İzmir doğumlular · ODTÜ mezunları        │
-│ Bu sayfa en son 12 Ekim 2026'da düzenlendi.                                  │
+│ Home › People › Ayşe Demir                                                   │
+│                                                                              │
+│ Ayşe Demir      ┌──────┐ Ayşe Demir ✔         [Follow][⇪][⋯] ┌ Key Facts ──┐ │
+│ ▌Overview       │ FOTO │ Northwind Robotics · CTO            │ Born   1988 │ │
+│  Biography      └──────┘ [Engineer] [Entrepreneur]           │ Nationality │ │
+│  Career                  Kısa özet...                        │ Education   │ │
+│  Education                                                   │ Role        │ │
+│  Related Comp.  Biography                                    │ Sector      │ │
+│  Connections    Metin... [Read more ⌄]                       └─────────────┘ │
+│  Sources                                                     ┌ Links ──────┐ │
+│                 Career                                       │ [in] [GH]   │ │
+│                 ● 2019 – Present   Northwind Robotics · CTO  └─────────────┘ │
+│                 ● 2012 – 2019      Bluefin Bank · Engineer                   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Sol sütun (bilgi kutusu):** ~280px sabit genişlik, sayfa kaydırılırken üst kısmı yapışkan (sticky) kalabilir.
-**Sağ sütun (makale):** Okunabilirlik için en fazla ~75 karakter satır genişliği.
-**✓ işareti:** O bilginin karşı tarafça (şirket/okul) onaylandığını gösterir.
+- **Sol:** Bölüm menüsü; kaydırdıkça aktif bölüm vurgulanır. Makaledeki `## Başlık`lar menüye otomatik eklenir.
+- **Orta:** Fotoğraf, isim + doğrulama rozeti, "Şirket · Rol", etiketler, kısa özet; altında Biography ("Read more" ile açılır), Career zaman çizelgesi, Education, Related Companies, Connections (bu sayfadan bahsedenler) ve Sources.
+- **Sağ:** "Key Facts" ve "Links" kartları.
+- **Aksiyonlar:** Follow (takip), Share (paylaş / linki kopyala), ⋯ menüsü (Edit, View history, Save as PDF).
 
-### 6.2 Kuruluş sayfası farkları
+### 6.2 Şirket sayfası (2 sütun)
 
-- Sol üstte **fotoğraf yerine logo**.
-- Bilgi kutusunda: kuruluş yılı, merkez, sektör, çalışan sayısı, web sitesi, vergi/sicil bilgisi (opsiyonel).
-- Makalenin sonunda **otomatik oluşan** bölümler:
-  - **"Burada çalışan kişiler"** (şu an) ve **"Burada çalışmış kişiler"** (geçmiş). Kişilerin kariyer kayıtlarından otomatik üretilir.
-  - **"Bu sayfaya bağlantılar"**.
+Logo + isim + sektör + etiketler + özet; altında **4'lü bilgi şeridi** (Founded · Headquarters · Employees · Sector), About, makale bölümleri (History, Products…), yan yana **Key People** ve **Key Facts** kartları, sonra tüm çalışanlar / eski çalışanlar / mezunlar. "Key People" listesi, kişilerin kariyer kayıtlarından **otomatik** oluşur.
 
-### 6.3 Mobil
+### 6.3 Diğer ekranlar
 
-Sol sütun **makalenin üstüne** iner; bilgi kutusu varsayılan olarak kısa gösterilir (foto + isim + unvan + 3 satır), "Tümünü göster" ile açılır. İçindekiler açılır menü olur.
+- **Ana sayfa:** "The living encyclopedia of the business world." başlığı, büyük arama kutusu, dünya illüstrasyonu üzerinde öne çıkan profiller, istatistik şeridi, People/Companies sekmeli "Featured" listesi.
+- **Arama:** Solda "Refine results" filtreleri (tür ve sektör, sayılarıyla), sekmeler (All / Companies / People / Institutions), sağda tür etiketli sonuç kartları.
+- **Create a New Profile:** 4 adımlı sihirbaz: *Profile Type → Basic Info → Details → Sources & Submit*. Kişi ve şirket için iki seçim kartı.
 
-### 6.4 Görsel dil (tasarım belirteçleri)
+### 6.4 Mobil
 
-| Öğe | Değer |
-|---|---|
-| Arka plan | `#FFFFFF` (koyu mod: `#101418`) |
-| Metin | `#202122` |
-| Link | `#3366CC` |
-| Kırmızı link (olmayan sayfa) | `#D73333` |
-| Ziyaret edilmiş link | `#795CB2` |
-| Kenarlıklar | `#A2A9B1` |
-| Bilgi kutusu zemini | `#F8F9FA` |
-| Başlık fontu | Serif (ör. *Source Serif*, *Libre Caslon*) |
-| Gövde fontu | Sans-serif (ör. *Inter*, sistem fontu) |
-| Doğrulama rengi | Yeşil `#14866D` |
-
-Animasyon yok denecek kadar az. Gölge yok. Yuvarlatılmış köşe minimum. **Sade = güvenilir.**
+Bölüm menüsü gizlenir; sıra: başlık → Key Facts → makale. Yatay kaydırma yok (testle doğrulandı).
 
 ---
 
-## 7. Bilgi kutusu (sol panel) alanları
+## 7. Bilgi kutusu (Key Facts) alanları
 
 Bilgi kutusu **yapılandırılmış veridir**, serbest metin değildir. Bu sayede aranabilir, filtrelenebilir ve sayfalar arasında bağlantı kurulabilir.
 
@@ -365,126 +356,102 @@ Kuruluş sayfası → "Bu kuruluşu temsil ediyor musun? Sahiplen"
 
 ## 12. URL yapısı
 
-Temiz, okunabilir, kalıcı URL'ler SEO için kritik.
+Site İngilizce olduğu için URL'ler de İngilizcedir. İsimlerdeki Türkçe karakterler sadeleştirilir (Ayşe → `ayse`), başlıkta korunur.
 
 | Sayfa | URL |
 |---|---|
-| Kişi | `portfedia.com/ayse-demir` |
-| Aynı isimde ikinci kişi | `portfedia.com/ayse-demir-yazilimci` (anlam ayrımı) |
-| Anlam ayrımı | `portfedia.com/ayse-demir` → liste (ilk sahibin sayfası taşınır) |
-| Kuruluş | `portfedia.com/k/acme-yazilim` |
-| Okul | `portfedia.com/k/odtu` |
-| Kategori | `portfedia.com/kategori/yazilim-muhendisleri` |
-| Geçmiş | `portfedia.com/ayse-demir/gecmis` |
-| Diff | `portfedia.com/ayse-demir/gecmis/1042...1057` |
-| Belirli sürüm | `portfedia.com/ayse-demir?rev=1042` |
+| Kişi | `/ayse-demir` |
+| Aynı isimde ikinci kişi | `/ayse-demir-robotics-engineer`, sonra `/ayse-demir-2` |
+| Şirket / okul | `/org/northwind-robotics` |
+| Geçmiş | `/ayse-demir/history`, `/org/northwind-robotics/history` |
+| Düzenleme | `/edit` (kendi profilin), `/org/northwind-robotics/edit` |
+| Yeni profil | `/create`, kırmızı linkten gelince `/create?title=OpenFleet` |
+| Listeler | `/people`, `/companies`, `/companies?sector=...`, `/sectors` |
+| Arama | `/search?q=...&type=org&sector=...` |
+| Diğer | `/login`, `/signup`, `/account`, `/privacy`, `/random`, `/sitemap.xml` |
 
-**Kurallar:**
-- Kişi URL'si değişirse eskisi **kalıcı yönlendirme (301)** yapar; dışarıda paylaşılmış linkler asla kırılmaz.
-- Türkçe karakterler URL'de sadeleştirilir (`ş→s`, `ı→i`), sayfa başlığında korunur.
+Kök dizindeki sistem yolları (`search`, `org`, `edit` …) kişi adresi olarak kullanılamaz (`src/lib/slug.ts`).
 
 ---
 
-## 13. Veri modeli
-
-İlk sürüm için yeterli, sade bir ilişkisel model:
+## 13. Veri modeli (MongoDB)
 
 ```
-users               Hesaplar
-  id, email, password_hash / oauth, created_at, role
+users       { email (unique), passwordHash (bcrypt), name, role: user|moderator|admin }
+sessions    { tokenHash (sha256, unique), userId, expiresAt (TTL index → otomatik silinir) }
 
-pages               Her sayfa (kişi, kuruluş, okul, kategori…)
-  id, type (person|org|school|category|disambiguation),
-  slug, title, owner_user_id (nullable),
-  status (draft|published|claimed|hidden),
-  current_revision_id, redirect_to_page_id (nullable),
-  created_at, updated_at
+pages       Her sayfa (kişi, şirket, okul)
+  { type: person|org|school, slug (unique), title, titleKey (arama anahtarı),
+    summary, tags[], ownerId, status: draft|published|claimed, verified,
+    image { key, url }, infobox { ... }, body (Markdown),
+    experiences[ { orgSlug, orgTitle, role, startYear, endYear, current, description,
+                   verification: unverified|verified|rejected } ],
+    educations[ { schoolSlug, schoolTitle, degree, field, startYear, endYear } ],
+    sources[ { title, url } ], outLinks[ { slug, title } ],
+    followerCount, noindex, revisionCount, createdAt, updatedAt }
 
-revisions           Sayfa içeriğinin her sürümü (değişmez, sadece eklenir)
-  id, page_id, author_user_id, parent_revision_id,
-  body_markdown, infobox_json, edit_summary, created_at
+revisions   Yalnızca eklenir, değişmez
+  { pageId, authorId, authorName, editSummary, snapshot { ...içeriğin tamamı }, size, delta }
 
-experiences         Kariyer kayıtları (yapısal bağlantı)
-  id, person_page_id, org_page_id, title, employment_type,
-  start_date, end_date (nullable = günümüz), description,
-  verification_status (unverified|pending|verified|rejected),
-  verified_by_user_id, verified_at
-
-educations          Eğitim kayıtları (aynı mantık, school_page_id ile)
-
-links               Metin içi bağlantılar (kaydederken yeniden hesaplanır)
-  from_page_id, to_page_id (nullable), to_title
-  -- to_page_id NULL ise → kırmızı link
-
-org_admins          Kuruluş yöneticileri
-  org_page_id, user_id, role, verified_via (email|dns)
-
-edit_suggestions    Düzenleme önerileri
-  id, page_id, author_user_id, base_revision_id,
-  proposed_body, proposed_infobox, message,
-  status (open|accepted|rejected), decided_at
-
-categories, page_categories
-media               Fotoğraf ve logolar (depolama anahtarı, boyutlar)
-reports             Şikâyetler (sayfa, sebep, durum, moderatör notu)
-notifications
+follows     { userId, pageId }  (unique)
 ```
 
-**Önemli tasarım kararları:**
-- **Revizyonlar değişmez (append-only).** Geçmiş, diff ve geri alma bedava gelir.
-- **Deneyimler metinden ayrı, yapısal tablodadır.** Bu sayede şirket sayfası "burada çalışanlar" listesini sorguyla üretebilir ve onay mekanizması mümkün olur.
-- **Kırmızı linkler `to_title` ile saklanır.** O isimde sayfa oluşturulduğu an tüm kırmızı linkler maviye döner.
+**Neden bu şekil?**
+- **Kariyer ve eğitim, kişi belgesinin içine gömülü** ve `experiences.orgSlug` üzerinde indeks var. "Bu şirkette çalışanlar" tek sorgu: `pages.find({ "experiences.orgSlug": "northwind-robotics" })`.
+- **Bağlantılar da gömülü** (`outLinks`) ve indeksli: "bu sayfaya bağlantı verenler" tek sorgu.
+- **Kırmızı link:** `outLinks` içindeki slug'lardan var olmayanlar kırmızı çizilir; o sayfa açıldığı an hepsi kendiliğinden normal linke döner.
+- **Transaction gerekmez:** Tek MongoDB sunucusu (replica set olmadan) yeterlidir; Coolify'daki varsayılan Mongo kurulumu ile çalışır.
 
 ---
 
 ## 14. Teknik mimari
 
-### 14.1 Önerilen yığın
+### 14.1 Yığın (uygulandı)
 
-| Katman | Seçim | Neden |
+| Katman | Seçim | Not |
 |---|---|---|
-| Ön yüz + sunucu | **Next.js (App Router) + TypeScript** | Sunucu tarafı render → SEO. Profil sayfaları Google'da bulunmalı; bu ürün için hayati. |
-| Stil | **Tailwind CSS** + kendi tasarım belirteçleri | Wikipedia sadeliğini tutarlı uygulamak kolay |
-| Veritabanı | **PostgreSQL** | İlişkisel veri, JSONB (infobox), tam metin arama |
-| ORM | **Drizzle** veya **Prisma** | Tip güvenliği |
-| Kimlik doğrulama | **Auth.js** (e-posta, Google, GitHub, LinkedIn) | Hazır, güvenli |
-| Arama | Başta **PostgreSQL FTS + pg_trgm**; ölçek gelince **Meilisearch** | Türkçe, yazım hatası toleransı, otomatik tamamlama |
-| Dosya depolama | **S3 uyumlu** (Cloudflare R2) + görsel CDN | Foto/logo, ucuz çıkış trafiği |
-| Markdown | **remark/rehype** + özel `[[link]]` eklentisi | Güvenli HTML üretimi (XSS temizliği şart) |
-| Diff | **jsdiff** | Revizyon karşılaştırma |
-| PDF CV | Sunucuda başsız tarayıcı (Playwright) ile sayfanın yazdırma görünümü | Tek tasarım, iki çıktı |
-| CV ayrıştırma | Bir LLM API'si (PDF → yapılandırılmış JSON) | Onboarding'in en kritik hızlandırıcısı |
-| Barındırma | Vercel / Fly.io + yönetilen Postgres (Neon / Supabase) | Hızlı başlangıç, düşük operasyon yükü |
+| Uygulama | **Next.js 16 (App Router) + React 19 + TypeScript**, Node.js 22 | Sunucu tarafı render (SEO), Server Actions |
+| Veritabanı | **MongoDB 7** + Mongoose 9 | Tek bağlantı havuzu, indeksler şemada |
+| Dosya depolama | **Cloudflare R2** (S3 API, `@aws-sdk/client-s3`) | R2 ayarı yoksa `./uploads` klasörüne yazar (geliştirme) |
+| Kimlik doğrulama | Kendi oturum sistemi: bcrypt + httpOnly cookie + veritabanında hash'lenmiş token | Ek servis gerekmez |
+| Markdown | unified / remark / rehype + `[[wiki link]]` eklentisi + rehype-sanitize | Ham HTML yok, XSS testle doğrulandı |
+| İkonlar | lucide-react | |
+| Paketleme | **Docker** (multi-stage, Next.js standalone, root olmayan kullanıcı, healthcheck) | |
+| Yayın | **Coolify** | Bkz. [docs/DEPLOY.md](docs/DEPLOY.md) |
 
-### 14.2 Performans ve SEO
+### 14.2 Güvenlik önlemleri
 
-- Kişi/kuruluş sayfaları **statik üretilir ve önbelleklenir** (ISR); düzenleme olunca yeniden üretilir. Okuma, yazmadan yüzlerce kat fazla olacak.
-- Her sayfada `schema.org/Person` ve `schema.org/Organization` yapılandırılmış verisi (Google bilgi panelleri için).
-- `sitemap.xml`, kanonik URL'ler, Open Graph görselleri (paylaşınca şık önizleme kartı).
-- Hedef: sayfa yüklemesi < 1 sn, JavaScript minimum (okuma sayfası neredeyse saf HTML).
+- Şifreler bcrypt (cost 12); oturum token'ı veritabanında yalnızca SHA-256 hash olarak tutulur.
+- Giriş/kayıt için hız sınırlama (tek konteyner için bellek içi).
+- Server Actions Next.js'in origin kontrolüyle CSRF'e karşı korunur.
+- Yüklenen görsellerin türü dosyanın ilk baytlarından tespit edilir (JPEG/PNG/WebP, en fazla 2 MB); SVG kabul edilmez.
+- Dış linkler `rel="nofollow ugc noopener"`; açık yönlendirme (open redirect) engellenir.
+- KVKK/GDPR: hesap silinince profil, tüm revizyonlar, görseller, takipler ve oturumlar silinir; şirket sayfalarındaki katkılar anonimleşir.
 
-### 14.3 Klasör yapısı (öneri)
+### 14.3 Klasör yapısı
 
 ```
-portfedia/
+src/
 ├── app/
-│   ├── (okuma)/[slug]/            Kişi sayfası
-│   ├── (okuma)/k/[slug]/          Kuruluş sayfası
-│   ├── (okuma)/kategori/[slug]/
-│   ├── [slug]/gecmis/             Revizyon geçmişi + diff
-│   ├── duzenle/[slug]/            Editör
-│   ├── panel/                     Kullanıcı ve kuruluş paneli
-│   └── api/
-├── components/
-│   ├── infobox/                   Sol panel bileşenleri
-│   ├── article/                   Makale, içindekiler, kaynaklar
-│   └── editor/
-├── lib/
-│   ├── markdown/                  [[link]] eklentisi, temizleme
-│   ├── links/                     Bağlantı tablosu güncelleme
-│   ├── verification/
-│   └── db/
-└── docs/
+│   ├── (home)/              Ana sayfa (kendi header'ı: arama kutusu hero'da)
+│   ├── (site)/
+│   │   ├── [slug]/          Kişi sayfası + /history
+│   │   ├── org/[slug]/      Şirket/okul sayfası + /history + /edit
+│   │   ├── create/ edit/    Sihirbaz ve profil düzenleme
+│   │   ├── search/ people/ companies/ sectors/
+│   │   └── login/ signup/ account/ privacy/
+│   ├── api/health           Docker/Coolify sağlık kontrolü
+│   ├── api/orgs             Şirket adı otomatik tamamlama
+│   ├── media/[...key]       Yerel geliştirmede görsel sunumu
+│   └── random/ sitemap.ts robots.ts
+├── components/              Arayüz bileşenleri, formlar (forms/)
+└── lib/
+    ├── models/              Mongoose şemaları
+    ├── pages.ts             Sayfa okuma/yazma, arama, takip, hesap silme
+    ├── wikitext.ts          Markdown + [[link]] + kırmızı link
+    ├── storage.ts           Cloudflare R2 / yerel disk
+    ├── auth.ts              Oturumlar
+    └── actions/             Server Actions
 ```
 
 ---
@@ -524,18 +491,18 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [ ] 10–15 potansiyel kullanıcıyla görüşme: "Bunu kullanır mıydın, linkini paylaşır mıydın?"
 - [ ] Alan adı, logo, marka
 
-### Faz 1 — MVP (6–8 hafta)
+### Faz 1 — MVP ✅ (ilk sürüm kodlandı)
 **Amaç:** Bir kişi 5 dakikada güzel bir sayfa yayınlayıp linkini paylaşabilsin.
-- [ ] Kayıt / giriş (e-posta, Google, GitHub)
-- [ ] Kişi sayfası: bilgi kutusu formu + Markdown makale + `[[link]]`
-- [ ] Kariyer ve eğitim kayıtları (yapısal)
-- [ ] Taslak kuruluş/okul sayfalarının otomatik oluşması + kırmızı link
-- [ ] Kuruluş sayfasında "burada çalışanlar" listesi
-- [ ] Revizyon geçmişi (diff'siz liste yeterli)
-- [ ] Basit arama (isim + kuruluş)
-- [ ] SEO temelleri (SSR, sitemap, schema.org, OG görseli)
-- [ ] Alan bazında gizlilik + hesap silme
-- [ ] Mobil uyum
+- [x] Kayıt / giriş (e-posta + şifre; Google/GitHub girişi sonraki adım)
+- [x] Kişi sayfası: bilgi kutusu formu + Markdown makale + `[[link]]`
+- [x] Kariyer ve eğitim kayıtları (yapısal)
+- [x] Taslak kuruluş/okul sayfalarının otomatik oluşması + kırmızı link
+- [x] Kuruluş sayfasında "burada çalışanlar" listesi
+- [x] Revizyon geçmişi (diff'siz liste yeterli)
+- [x] Basit arama (isim + kuruluş)
+- [x] SEO temelleri (SSR, sitemap, schema.org, OG görseli)
+- [x] Alan bazında gizlilik + hesap silme
+- [x] Mobil uyum
 
 ### Faz 2 — Güven ve kuruluşlar (6 hafta)
 - [ ] Kuruluş sahiplenme (alan adı / iş e-postası)
@@ -544,18 +511,19 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [ ] Düzenleme önerileri (PR modeli)
 - [ ] Diff görünümü, geri alma
 - [ ] CV (PDF) içe aktarma
-- [ ] PDF CV olarak dışa aktarma
+- [x] PDF olarak kaydet (tarayıcı yazdırma görünümü)
 - [ ] Şikâyet + moderatör paneli
 
 ### Faz 3 — Ansiklopedi hissi (sürekli)
+- [x] Takip et (Follow), sektörler sayfası, filtreli arama
 - [ ] Kategoriler ve kategori sayfaları
 - [ ] Ana sayfa: günün portfolyosu, biliyor muydunuz, rastgele sayfa
 - [ ] Anlam ayrımı sayfaları, yönlendirmeler, sayfa birleştirme
 - [ ] Proje sayfa türü (birden çok kişinin bağlandığı)
 - [ ] Gelişmiş arama ve filtreler (Meilisearch)
 - [ ] Kimlik doğrulama (e-Devlet vb.)
-- [ ] Çoklu dil (sayfanın İngilizce sürümü)
-- [ ] Koyu mod
+- [ ] Çoklu dil (arayüz şu an yalnızca İngilizce)
+- [x] Koyu mod (sistem ayarına göre)
 
 ### Faz 4 — Gelir ve ekosistem
 - [ ] Portfedia Pro, kuruluş planları (bkz. §17)
@@ -609,17 +577,17 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 
 Faz 0'da karar verilmesi gerekenler (önerilerimle birlikte):
 
-1. **Başkası adına sayfa açılabilir mi?** (Ör. tanınmış bir kişi için topluluk sayfası.)
-   → *Öneri: Hayır.* Kişi sayfaları yalnızca kişinin kendisine ait. Hukuki risk ve ürün kimliği açısından en temizi.
+1. **Başkası adına kişi sayfası açılabilir mi?** (Ör. tanınmış bir iş insanı için topluluk sayfası.)
+   → *Şu anki uygulama: Hayır.* Kişi sayfasını yalnızca kişinin kendisi açar. Tasarımdaki "Create a New Profile" ekranı, başkaları hakkında da profil açılabileceğini ima ediyor; bu açılacaksa kaynak zorunluluğu + moderasyon onayı ile yapılmalı. **Karar senin.**
 
 2. **Taslak kuruluş sayfalarını sahiplenilmeden kim düzenler?**
    → *Öneri:* Herhangi bir üye nesnel alanları (logo hariç) doldurabilir, değişiklikler revizyonlu; moderatör denetimli.
 
 3. **Hedef pazar önce Türkiye mi, global mi?**
-   → *Öneri:* Arayüz baştan **çok dilli altyapıyla** yazılsın, ama lansman Türkiye + Türkçe. Niş: önce yazılım/teknoloji profesyonelleri.
+   → *Karar:* Site **İngilizce**. Niş olarak önce Türkiye iş dünyası ve teknoloji profesyonelleri hedeflenebilir.
 
-4. **Kişi URL'leri kökte mi (`/ayse-demir`) yoksa önekli mi (`/kisi/ayse-demir`)?**
-   → *Öneri:* Kökte. Kısa link paylaşılabilirlik için çok değerli; kuruluşlar `/k/` önekiyle ayrışır.
+4. **Kişi URL'leri kökte mi (`/ayse-demir`) yoksa önekli mi?**
+   → *Karar:* Kökte. Kuruluşlar `/org/` önekiyle ayrışır.
 
 5. **Bir kişi aynı anda birden fazla sayfa sahibi olabilir mi?** (Ör. hem kişi sayfası hem kendi şirketinin yöneticisi.)
    → *Öneri:* Evet. Bir hesap = bir kişi sayfası + N kuruluş yöneticiliği.

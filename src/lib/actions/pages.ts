@@ -1,0 +1,193 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "../auth";
+import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
+import { saveImage, UploadError } from "../storage";
+import { bool, email, handle, httpUrl, str, year } from "../validate";
+import { slugify } from "../slug";
+import { pageHref } from "../wikitext";
+import type { FormState } from "./auth";
+import type { SourceRef, StoredImage } from "../types";
+
+const MAX_BODY = 100_000;
+
+async function imageFrom(fd: FormData): Promise<StoredImage | null | undefined> {
+  if (bool(fd.get("removeImage"))) return null;
+  const f = fd.get("image");
+  if (f instanceof File && f.size > 0) return saveImage(f);
+  return undefined;
+}
+
+function parseJsonArray(v: FormDataEntryValue | null, max: number): Record<string, unknown>[] {
+  try {
+    const arr = JSON.parse(String(v ?? "[]"));
+    return Array.isArray(arr) ? arr.filter((x) => x && typeof x === "object").slice(0, max) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseTags(v: FormDataEntryValue | null): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of String(v ?? "").split(",")) {
+    const t = str(raw, 30);
+    const k = t.toLocaleLowerCase("en-US");
+    if (t && !seen.has(k)) {
+      seen.add(k);
+      out.push(t);
+    }
+  }
+  return out.slice(0, 8);
+}
+
+function parseSources(v: FormDataEntryValue | null): SourceRef[] {
+  return parseJsonArray(v, 30)
+    .map((s) => ({ title: str(s.title, 200), url: httpUrl(s.url) }))
+    .filter((s) => s.url)
+    .map((s) => ({ ...s, title: s.title || s.url }));
+}
+
+export async function savePersonAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/edit");
+
+  const title = str(fd.get("title"), 120);
+  const occupation = str(fd.get("occupation"), 120);
+  if (title.length < 2) return { error: "Full name is required." };
+  if (!occupation) return { error: "Occupation is required." };
+  const body = String(fd.get("body") ?? "").slice(0, MAX_BODY);
+
+  const experiences: PersonInput["experiences"] = parseJsonArray(fd.get("experiences"), 30)
+    .map((e) => {
+      const current = bool(e.current);
+      return {
+        orgTitle: str(e.orgTitle, 160),
+        role: str(e.role, 120),
+        startYear: year(e.startYear),
+        endYear: current ? null : year(e.endYear),
+        current,
+        description: str(e.description, 2000),
+      };
+    })
+    .filter((e) => slugify(e.orgTitle));
+
+  const educations: PersonInput["educations"] = parseJsonArray(fd.get("educations"), 15)
+    .map((e) => ({
+      schoolTitle: str(e.schoolTitle, 160),
+      degree: str(e.degree, 80),
+      field: str(e.field, 120),
+      startYear: year(e.startYear),
+      endYear: year(e.endYear),
+    }))
+    .filter((e) => slugify(e.schoolTitle));
+
+  let image: StoredImage | null | undefined;
+  try {
+    image = await imageFrom(fd);
+  } catch (err) {
+    if (err instanceof UploadError) return { error: err.message };
+    throw err;
+  }
+
+  const page = await savePersonPage(user, {
+    title,
+    summary: str(fd.get("summary"), 400),
+    tags: parseTags(fd.get("tags")),
+    infobox: {
+      occupation,
+      sector: str(fd.get("sector"), 80),
+      nationality: str(fd.get("nationality"), 80),
+      birthYear: year(fd.get("birthYear")),
+      birthYearPublic: bool(fd.get("birthYearPublic")),
+      birthPlace: str(fd.get("birthPlace"), 120),
+      location: str(fd.get("location"), 120),
+      languages: str(fd.get("languages"), 200),
+      skills: str(fd.get("skills"), 400),
+      website: httpUrl(fd.get("website")),
+      github: handle(fd.get("github")),
+      linkedin: handle(fd.get("linkedin")),
+      email: email(fd.get("email")),
+      emailPublic: bool(fd.get("emailPublic")),
+    },
+    body,
+    experiences,
+    educations,
+    sources: parseSources(fd.get("sources")),
+    noindex: bool(fd.get("noindex")),
+    editSummary: str(fd.get("editSummary"), 300),
+    image,
+  });
+
+  revalidatePath(`/${page.slug}`);
+  for (const e of page.experiences) revalidatePath(`/org/${e.orgSlug}`);
+  for (const e of page.educations) revalidatePath(`/org/${e.schoolSlug}`);
+  redirect(`/${page.slug}`);
+}
+
+export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  const slug = str(fd.get("slug"), 100) || null;
+  if (!user) redirect(`/login?next=${encodeURIComponent(slug ? `/org/${slug}/edit` : "/create")}`);
+
+  const title = str(fd.get("title"), 160);
+  if (!slug && !slugify(title)) return { error: "Organization name is required." };
+  const type = fd.get("type") === "school" ? "school" : "org";
+
+  if (!slug) {
+    const existing = await getPageBySlug(slugify(title));
+    if (existing && existing.type !== "person" && existing.body) {
+      return { error: `A page called "${existing.title}" already exists. You can edit it instead.` };
+    }
+  }
+
+  let image: StoredImage | null | undefined;
+  try {
+    image = await imageFrom(fd);
+  } catch (err) {
+    if (err instanceof UploadError) return { error: err.message };
+    throw err;
+  }
+
+  let pageSlug: string;
+  try {
+    const page = await saveOrgPage(user, slug, {
+      title,
+      type,
+      summary: str(fd.get("summary"), 400),
+      tags: parseTags(fd.get("tags")),
+      infobox: {
+        kind: str(fd.get("kind"), 60),
+        founded: year(fd.get("founded")),
+        founders: str(fd.get("founders"), 300),
+        headquarters: str(fd.get("headquarters"), 120),
+        sector: str(fd.get("sector"), 80),
+        employees: str(fd.get("employees"), 40),
+        website: httpUrl(fd.get("website")),
+      },
+      body: String(fd.get("body") ?? "").slice(0, MAX_BODY),
+      sources: parseSources(fd.get("sources")),
+      editSummary: str(fd.get("editSummary"), 300),
+      image,
+    });
+    pageSlug = page.slug;
+  } catch (err) {
+    if (err instanceof PermissionError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath(`/org/${pageSlug}`);
+  redirect(`/org/${pageSlug}`);
+}
+
+export async function toggleFollowAction(fd: FormData): Promise<void> {
+  const slug = str(fd.get("slug"), 100);
+  const page = await getPageBySlug(slug);
+  if (!page) return;
+  const href = pageHref(page.type, page.slug);
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(href)}`);
+  await toggleFollow(user.id, page._id);
+  revalidatePath(href);
+}
