@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
   },
+  async redirects() {
+    // Short profile links: portfedia.com/@ayse-demir → /ayse-demir
+    return [{ source: "/@:slug", destination: "/:slug", permanent: true }];
+  },
   async headers() {
     return [
       {

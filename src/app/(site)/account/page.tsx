@@ -54,7 +54,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               <span className={`status-pill status-pill--${page.status}`}>
                 {page.status === "pending" ? "In review" : page.status === "rejected" ? "Not approved" : "Live"}
               </span>{" "}
-              <Link href={`/${page.slug}`}>{host}/{page.slug}</Link> · <Link href="/edit">Edit</Link> · <Link href={`/${page.slug}/history`}>History</Link>
+              <Link href={`/${page.slug}`}>{host}/{page.slug}</Link> · short link <code>{host}/@{page.slug}</code> · <Link href="/edit">Edit</Link> · <Link href={`/${page.slug}/qr`}>QR code</Link> · <Link href={`/${page.slug}/history`}>History</Link>
             </p>
             {page.status === "rejected" && page.review.note && (
               <p className="small" style={{ margin: "0 0 12px" }}>

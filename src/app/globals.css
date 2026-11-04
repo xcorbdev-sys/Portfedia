@@ -516,3 +516,7 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .progress span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
 .reco-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .person-row small { display: block; color: var(--text-3); font-size: 0.78rem; font-weight: 400; }
+.qr { width: 260px; margin: 0 auto; background: #fff; padding: 8px; border-radius: 12px; }
+.qr svg { display: block; width: 100%; height: auto; }
+.mutual { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--primary-soft); color: var(--text-2); font-size: 0.86rem; }
+.mutual svg { color: var(--primary); flex-shrink: 0; }

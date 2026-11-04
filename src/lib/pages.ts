@@ -1,7 +1,7 @@
 import "server-only";
 import { Types } from "mongoose";
 import { connectDB } from "./db";
-import { Follow, Page, Revision, Session, Suggestion, Testimonial, Token, User } from "./models";
+import { Follow, Page, Revision, Session, Suggestion, Testimonial, Thank, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
@@ -54,6 +54,7 @@ function toPage(d: any): PageDoc {
       flags: d.review?.flags ?? [],
     },
     followerCount: d.followerCount ?? 0,
+    thanksCount: d.thanksCount ?? 0,
     noindex: Boolean(d.noindex),
     revisionCount: d.revisionCount ?? 0,
     createdAt: d.createdAt,
@@ -738,6 +739,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     await Follow.deleteMany({ pageId: page._id });
     await Suggestion.deleteMany({ pageId: page._id });
     await Testimonial.deleteMany({ pageId: page._id });
+    await Thank.deleteMany({ pageId: page._id });
     for (const pr of (page.projects ?? []) as Project[]) if (pr.image) await deleteImage(pr.image);
     await Page.deleteOne({ _id: page._id });
   }
@@ -752,6 +754,7 @@ export async function deleteAccount(userId: string): Promise<void> {
   await Revision.updateMany({ authorId: oid }, { $set: { authorName: "Deleted user" } });
   // Recommendations and suggestions this person wrote for others
   await Testimonial.deleteMany({ authorId: oid });
+  await Thank.deleteMany({ userId: oid });
   await Suggestion.deleteMany({ authorId: oid });
   await Session.deleteMany({ userId: oid });
   await Token.deleteMany({ userId: oid });

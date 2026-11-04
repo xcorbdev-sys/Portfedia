@@ -154,6 +154,7 @@ const PageSchema = new Schema<any>(
     },
     verified: { type: Boolean, default: false }, // kimlik/kuruluş doğrulandı (yönetici işaretler)
     followerCount: { type: Number, default: 0 },
+    thanksCount: { type: Number, default: 0 },
     noindex: { type: Boolean, default: false },
     revisionCount: { type: Number, default: 0 },
   },
@@ -280,6 +281,16 @@ const TestimonialSchema = new Schema<any>(
 TestimonialSchema.index({ pageId: 1, status: 1, createdAt: -1 });
 TestimonialSchema.index({ pageId: 1, authorId: 1 }, { unique: true });
 
+/* ───────────── "Thanks" (a light, spam-free appreciation) ───────────── */
+const ThankSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+ThankSchema.index({ pageId: 1, userId: 1 }, { unique: true });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -295,3 +306,4 @@ export const Notification = getModel("Notification", NotificationSchema);
 export const Collection = getModel("Collection", CollectionSchema);
 export const Suggestion = getModel("Suggestion", SuggestionSchema);
 export const Testimonial = getModel("Testimonial", TestimonialSchema);
+export const Thank = getModel("Thank", ThankSchema);

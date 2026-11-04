@@ -13,6 +13,9 @@ import { AchievementSections, CompletenessCard, LanguagesFact, OpenToBadges, Pro
 import { slugify } from "@/lib/slug";
 import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
+import { hasThanked, mutualConnections } from "@/lib/social";
+import { getPersonPageOf } from "@/lib/pages";
+import { Users as UsersIcon } from "lucide-react";
 import { Thumb } from "@/components/ui";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, plainExcerpt, initials } from "@/lib/site";
@@ -75,14 +78,17 @@ export default async function PersonPage({ params }: Props) {
   // Profiles awaiting review are visible only to their owner and moderators
   if (!canView(page, user)) notFound();
   const orgSlugs = [...new Set([...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)])];
-  const [existing, backlinks, related, following, investments, recommendations] = await Promise.all([
+  const [existing, backlinks, related, following, investments, recommendations, viewerPage, thanked] = await Promise.all([
     existingPages([...page.outLinks.map((l) => l.slug), ...page.awards.map((a) => slugify(a.issuer)), ...page.volunteering.map((v) => slugify(v.org))].filter(Boolean)),
     getBacklinks(page.slug),
     getCards(orgSlugs),
     user ? isFollowing(user.id, page._id) : Promise.resolve(false),
     getInvestments(page.slug),
     listTestimonials(page._id, ["published"]),
+    user ? getPersonPageOf(user.id) : Promise.resolve(null),
+    user ? hasThanked(user.id, page._id) : Promise.resolve(false),
   ]);
+  const mutual = mutualConnections(viewerPage, page);
   const isOwner = Boolean(user && (user.id === page.ownerId || user.role === "admin"));
   const reserved = [
     "overview", "biography", "timeline", "career", "education", "projects", "publications", "awards", "talks", "patents", "volunteering",
@@ -149,6 +155,20 @@ export default async function PersonPage({ params }: Props) {
               )}
               {page.summary && <p className="p-summary">{page.summary}</p>}
               <OpenToBadges page={page} />
+              {mutual.length > 0 && (
+                <p className="mutual">
+                  <UsersIcon size={16} />
+                  <span>
+                    You both {mutual.some((m) => m.kind === "work") ? "worked at " : "studied at "}
+                    {mutual.map((m, i) => (
+                      <span key={m.slug}>
+                        {i > 0 && (i === mutual.length - 1 ? " and " : ", ")}
+                        <Link href={`/org/${m.slug}`}>{m.title}</Link>
+                      </span>
+                    ))}
+                  </span>
+                </p>
+              )}
             </div>
             {isPublic(page) ? (
               <PageActions
@@ -159,6 +179,8 @@ export default async function PersonPage({ params }: Props) {
                 followers={page.followerCount}
                 editHref={isOwner ? "/edit" : null}
                 personLinks={!isOwner}
+                thanks={user?.id === page.ownerId ? null : { given: thanked, count: page.thanksCount }}
+                qr
               />
             ) : (
               // Not public yet: following/sharing make no sense
@@ -290,6 +312,7 @@ export default async function PersonPage({ params }: Props) {
             <span>Last edited on {formatDate(page.updatedAt)}</span>
             <span>{page.revisionCount} revision{page.revisionCount === 1 ? "" : "s"}</span>
             <span>{page.followerCount.toLocaleString("en-US")} follower{page.followerCount === 1 ? "" : "s"}</span>
+            {page.thanksCount > 0 && <span>💙 {page.thanksCount.toLocaleString("en-US")} thanks</span>}
           </footer>
         </article>
 

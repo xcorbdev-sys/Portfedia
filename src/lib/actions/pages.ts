@@ -8,10 +8,12 @@ import { guardContent } from "../guard";
 import { externalLinks } from "../content-rules";
 import { getPersonPageOf } from "../pages";
 import { notify, notifyFollowers } from "../notifications";
+import { giveThanks, notifyMentions } from "../social";
 import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
 import { saveImage, UploadError } from "../storage";
 import { bool, email, handle, httpUrl, str, year } from "../validate";
 import { slugify } from "../slug";
+import { rateLimit } from "../rate-limit";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Award, FundingRound, LanguageLevel, OpenTo, PageDoc, Patent, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
@@ -223,6 +225,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
 
   if (isPublic(page)) {
     await notifyFollowers(page._id, user.id, { type: "page_update", text: `${page.title} updated their profile.`, href: `/${page.slug}` });
+    await notifyMentions(user, prev?.body ?? "", page.body, { title: `${page.title}'s profile`, href: `/${page.slug}` });
   }
   revalidatePath(`/${page.slug}`);
   for (const e of page.experiences) revalidatePath(`/org/${e.orgSlug}`);
@@ -293,6 +296,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     });
     pageSlug = page.slug;
     await notifyFollowers(page._id, user.id, { type: "page_update", text: `The ${page.title} page was updated.`, href: `/org/${page.slug}` });
+    await notifyMentions(user, prevOrg?.body ?? "", page.body, { title: page.title, href: `/org/${page.slug}` });
   } catch (err) {
     if (err instanceof PermissionError) return { error: err.message };
     throw err;
@@ -314,4 +318,15 @@ export async function toggleFollowAction(fd: FormData): Promise<void> {
     await notify([page.ownerId], { type: "follower", text: `${user.name} started following you.`, href: `/${page.slug}`, pageId: page._id });
   }
   revalidatePath(href);
+}
+
+export async function thankAction(fd: FormData): Promise<void> {
+  const slug = str(fd.get("slug"), 100);
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=/${slug}`);
+  const page = await getPageBySlug(slug, "person");
+  if (!page || !isPublic(page) || !user.emailVerified) return;
+  if (!rateLimit(`thanks:${user.id}`, 30, 3600_000)) return;
+  await giveThanks(user, page);
+  revalidatePath(`/${slug}`);
 }

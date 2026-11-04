@@ -145,6 +145,7 @@ export interface PageDoc {
   verified: boolean;
   review: ReviewInfo;
   followerCount: number;
+  thanksCount: number;
   noindex: boolean;
   revisionCount: number;
   createdAt: Date;
