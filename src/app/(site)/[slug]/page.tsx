@@ -4,6 +4,8 @@ import { cache } from "react";
 import Link from "next/link";
 import { Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { canView, isPublic } from "@/lib/visibility";
+import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getPageBySlug, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, plainExcerpt, siteUrl, initials } from "@/lib/site";
@@ -19,6 +21,10 @@ const load = cache(async (slug: string) => getPageBySlug(slug));
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = await load((await params).slug);
   if (!page || page.type !== "person") return { title: "Page not found" };
+  if (!isPublic(page)) {
+    // Profiles under review never reach search engines and don't leak details in previews
+    return { title: canView(page, await getCurrentUser()) ? page.title : "Page not found", robots: { index: false, follow: false } };
+  }
   const role = currentRole(page);
   const description = page.summary || plainExcerpt(page.body) || `${page.title}, ${role}`;
   return {
@@ -55,6 +61,8 @@ export default async function PersonPage({ params }: Props) {
   if (page.type !== "person") permanentRedirect(pageHref(page.type, page.slug));
 
   const user = await getCurrentUser();
+  // Profiles awaiting review are visible only to their owner and moderators
+  if (!canView(page, user)) notFound();
   const orgSlugs = [...new Set([...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)])];
   const [existing, backlinks, related, following] = await Promise.all([
     existingPages(page.outLinks.map((l) => l.slug)),
@@ -109,6 +117,7 @@ export default async function PersonPage({ params }: Props) {
         </aside>
 
         <article className="profile__main">
+          {user && !isPublic(page) && <ReviewBanner page={page} user={user} />}
           <header className="p-head" id="overview">
             <div className="p-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -130,14 +139,19 @@ export default async function PersonPage({ params }: Props) {
               )}
               {page.summary && <p className="p-summary">{page.summary}</p>}
             </div>
-            <PageActions
-              slug={page.slug}
-              title={page.title}
-              base={`/${page.slug}`}
-              following={following}
-              followers={page.followerCount}
-              editHref={isOwner ? "/edit" : null}
-            />
+            {isPublic(page) ? (
+              <PageActions
+                slug={page.slug}
+                title={page.title}
+                base={`/${page.slug}`}
+                following={following}
+                followers={page.followerCount}
+                editHref={isOwner ? "/edit" : null}
+              />
+            ) : (
+              // Not public yet: following/sharing make no sense
+              <div className="p-actions no-print">{isOwner && <Link className="btn" href="/edit">Edit profile</Link>}</div>
+            )}
           </header>
 
           {article.leadHtml.trim() && (

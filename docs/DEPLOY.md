@@ -55,6 +55,7 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 | Değişken | Örnek | Açıklama |
 |---|---|---|
 | `SITE_URL` | `https://portfedia.com` | Sitemap, canonical ve paylaşım linkleri için. Sonunda `/` olmasın. |
+| `ADMIN_EMAILS` | `sen@ornek.com,ekip@ornek.com` | Profil başvurularını onaylayacak hesaplar (virgülle ayrılmış). **İlk deploy'da boş bırak**, kayıt olduktan sonra ekle (bkz. 4. adım). |
 | `MONGODB_URI` | `mongodb://root:...@mongodb-abc123:27017/portfedia?authSource=admin` | 1. adımdaki adres |
 | `R2_ACCOUNT_ID` | `a1b2c3...` | Cloudflare hesap kimliği |
 | `R2_ACCESS_KEY_ID` | `...` | R2 API token |
@@ -70,14 +71,26 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 
 Coolify'da **Build Pack: Docker Compose** seçip repodaki `docker-compose.yml`'yi de kullanabilirsin; MongoDB aynı dosyada ayağa kalkar. Ancak yedekleme ve izleme açısından MongoDB'yi ayrı bir Coolify kaynağı olarak açmak (yukarıdaki yöntem) daha iyidir.
 
-## 4. İlk yönetici ve doğrulama rozeti
+## 4. Yöneticiler ve profil başvuruları
 
-Henüz bir yönetim paneli yok. İlk hesabını sitede oluşturduktan sonra Coolify'da MongoDB kaynağının **Terminal** sekmesinden `mongosh` aç:
+1. Önce sitede kendi e-postanla **Sign up** yap.
+2. **Sonra** Coolify'da `ADMIN_EMAILS` değişkenine bu e-postayı yaz ve yeniden deploy et. Sağ üstteki menüde **Review applications** bağlantısı görünür.
+
+> ⚠️ **Sıra önemli:** Sitede henüz e-posta doğrulaması yok. `ADMIN_EMAILS`'e henüz kayıt olunmamış bir adres yazarsan, o adresle ilk kayıt olan kişi yönetici olur. Listeye yalnızca **zaten kayıt olduğun** adresleri ekle.
+3. **`/admin`** panelinde bekleyen başvurular listelenir:
+   - **Approve & publish:** Profil yayına çıkar. "Also mark identity as verified" kutusunu işaretlersen mavi rozet de verilir.
+   - **Reject:** Yazdığın gerekçe başvuru sahibine profilinde gösterilir. Kişi profilini düzeltip kaydedince başvuru otomatik olarak yeniden **Pending**'e düşer.
+   - **Approved** sekmesinden yayındaki bir profili gerekçe yazarak **Unpublish** edebilirsin.
+4. Onay/ret kararları profilin **History** sayfasına kaydedilir (kim, ne zaman, hangi gerekçeyle).
+
+> Başvuru sahiplerine şu an e-posta gönderilmiyor; durumu sitede, profillerinde ve **Account** sayfasında görüyorlar.
+
+Gerekirse veritabanından da işlem yapılabilir (Coolify → MongoDB → **Terminal** → `mongosh`):
 
 ```js
 use portfedia
-// Hesabı yönetici yap (taslak/sahiplenilmiş tüm şirket sayfalarını düzenleyebilir)
-db.users.updateOne({ email: "sen@ornek.com" }, { $set: { role: "admin" } })
+// Kalıcı moderatör/yönetici rolü (ADMIN_EMAILS yerine)
+db.users.updateOne({ email: "sen@ornek.com" }, { $set: { role: "moderator" } })
 
 // Bir kişiye veya şirkete mavi doğrulama rozeti ver
 db.pages.updateOne({ slug: "ayse-demir" }, { $set: { verified: true } })

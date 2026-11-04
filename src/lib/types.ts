@@ -1,5 +1,16 @@
 export type PageType = "person" | "org" | "school";
-export type PageStatus = "draft" | "published" | "claimed";
+/**
+ * person: pending (application under review) → published | rejected
+ * org/school: draft (auto-created) → published → claimed (managed by the organization)
+ */
+export type PageStatus = "draft" | "published" | "claimed" | "pending" | "rejected";
+
+export interface ReviewInfo {
+  submittedAt: Date | null;
+  reviewedAt: Date | null;
+  reviewerName: string;
+  note: string;
+}
 export type Verification = "unverified" | "verified" | "rejected";
 
 export interface StoredImage {
@@ -82,6 +93,7 @@ export interface PageDoc {
   tags: string[];
   sources: SourceRef[];
   verified: boolean;
+  review: ReviewInfo;
   followerCount: number;
   noindex: boolean;
   revisionCount: number;

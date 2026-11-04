@@ -17,10 +17,22 @@ export default async function AccountPage() {
         <div className="card__body">
           <div className="card__title">Your profile</div>
           {page ? (
-            <p style={{ margin: 0 }}>
-              <Link href={`/${page.slug}`}>portfedia.com/{page.slug}</Link> · <Link href="/edit">Edit</Link> ·{" "}
-              <Link href={`/${page.slug}/history`}>History</Link>
-            </p>
+            <>
+              <p style={{ margin: "0 0 8px" }}>
+                <span className={`status-pill status-pill--${page.status}`}>
+                  {page.status === "pending" ? "In review" : page.status === "rejected" ? "Not approved" : "Live"}
+                </span>
+              </p>
+              {page.status === "rejected" && page.review.note && (
+                <p className="small" style={{ margin: "0 0 8px" }}>
+                  <b>Feedback:</b> {page.review.note}
+                </p>
+              )}
+              <p style={{ margin: 0 }}>
+                <Link href={`/${page.slug}`}>portfedia.com/{page.slug}</Link> · <Link href="/edit">Edit</Link> ·{" "}
+                <Link href={`/${page.slug}/history`}>History</Link>
+              </p>
+            </>
           ) : (
             <p style={{ margin: 0 }}>
               You haven&apos;t created your profile yet. <Link href="/create">Create it now</Link>.

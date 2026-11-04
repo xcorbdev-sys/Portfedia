@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
-import { getPersonPageOf } from "@/lib/pages";
+import { ClipboardCheck, LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
+import { getCurrentUser, isModerator } from "@/lib/auth";
+import { countPendingApplications, getPersonPageOf } from "@/lib/pages";
 import { logoutAction } from "@/lib/actions/auth";
 import { Thumb } from "./ui";
 import { MenuCloser } from "./client";
@@ -24,6 +24,7 @@ export function Brand() {
 export async function Header({ showSearch = true }: { showSearch?: boolean }) {
   const user = await getCurrentUser();
   const myPage = user ? await getPersonPageOf(user.id) : null;
+  const pending = isModerator(user) ? await countPendingApplications() : 0;
   return (
     <header className="site-header">
       <MenuCloser />
@@ -53,8 +54,18 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                   <b>{user.name}</b>
                   <div className="muted small">{user.email}</div>
                 </div>
+                {isModerator(user) && (
+                  <Link href="/admin">
+                    <ClipboardCheck size={16} /> Review applications
+                    {pending > 0 && <span className="menu__badge">{pending}</span>}
+                  </Link>
+                )}
                 {myPage ? (
-                  <Link href={`/${myPage.slug}`}><User size={16} /> My profile</Link>
+                  <Link href={`/${myPage.slug}`}>
+                    <User size={16} /> My profile
+                    {myPage.status === "pending" && <span className="status-pill status-pill--pending" style={{ marginLeft: "auto" }}>In review</span>}
+                    {myPage.status === "rejected" && <span className="status-pill status-pill--rejected" style={{ marginLeft: "auto" }}>Action needed</span>}
+                  </Link>
                 ) : (
                   <Link href="/create"><User size={16} /> Create my profile</Link>
                 )}

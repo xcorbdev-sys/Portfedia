@@ -15,6 +15,13 @@ const s = (n?: number | null) => (n ? String(n) : "");
 
 const STEPS = ["Basic Info", "Details", "Sources & Submit"];
 
+function submitLabel(page: PageDoc | null): string {
+  if (!page) return "Submit for review";
+  if (page.status === "pending") return "Update application";
+  if (page.status === "rejected") return "Resubmit for review";
+  return "Save changes";
+}
+
 export function PersonForm({
   page,
   defaultName,
@@ -200,8 +207,19 @@ export function PersonForm({
       <div className="step form" hidden={step !== 2} ref={(el) => { stepRefs.current[2] = el; }}>
         <div>
           <h2>Sources &amp; Submit</h2>
-          <p className="muted small">Add your links and sources, choose your privacy settings and publish.</p>
+          <p className="muted small">Add your links and sources, choose your privacy settings and submit.</p>
         </div>
+        {page?.status !== "published" && (
+          <div className="notice notice--info">
+            <b>Every new profile is reviewed by the Portfedia team before it goes live.</b> Until it is approved, only you can see it.
+            Sources and a clear photo help us approve it faster.
+          </div>
+        )}
+        {page?.status === "rejected" && page.review.note && (
+          <div className="notice notice--error">
+            <b>Feedback on your previous application:</b> {page.review.note}
+          </div>
+        )}
         <div className="grid-2">
           <div className="field">
             <label htmlFor="linkedin">LinkedIn username</label>
@@ -254,7 +272,7 @@ export function PersonForm({
           </button>
         ) : (
           <button key="submit" type="submit" className="btn btn--primary" disabled={pending}>
-            {pending ? "Saving…" : page ? "Save changes" : "Publish profile"} <ArrowRight size={16} />
+            {pending ? "Saving…" : submitLabel(page)} <ArrowRight size={16} />
           </button>
         )}
       </div>

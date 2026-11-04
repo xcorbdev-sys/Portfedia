@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "../auth";
+import { canView } from "../visibility";
 import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
 import { saveImage, UploadError } from "../storage";
 import { bool, email, handle, httpUrl, str, year } from "../validate";
@@ -188,6 +189,7 @@ export async function toggleFollowAction(fd: FormData): Promise<void> {
   const href = pageHref(page.type, page.slug);
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(href)}`);
+  if (!canView(page, user)) return;
   await toggleFollow(user.id, page._id);
   revalidatePath(href);
 }

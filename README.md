@@ -260,8 +260,26 @@ Her yeni kullanıcı, platforma birkaç yeni bağlantı ve bazen yeni sayfalar g
 | **Üye** | Kendi kişi sayfasını oluşturur. Başka sayfalara düzenleme önerisi gönderir. Taslak kuruluş sayfası açar. |
 | **Sayfa sahibi** | Kendi sayfasını doğrudan düzenler, gelen önerileri kabul/ret eder. |
 | **Kuruluş yöneticisi** | Sahiplenilmiş kuruluş sayfasını düzenler, çalışan deneyimlerini onaylar/reddeder. |
-| **Moderatör** | Şikâyetleri inceler, sayfa birleştirir, gizler, kullanıcı engeller. |
+| **Moderatör** | Profil başvurularını onaylar/reddeder (`/admin`), şikâyetleri inceler, sayfa birleştirir, gizler. |
 | **Yönetici** | Her şey. |
+
+### 9.1.1 Profil başvurusu ve onay (uygulandı)
+
+```
+Kayıt ol → Profil sihirbazı → "Submit for review"
+        │
+        ▼
+   [Pending]  ── yalnızca sahibi ve yöneticiler görür
+        │
+   /admin paneli
+     ├─ Approve & publish (+ isteğe bağlı mavi rozet) ──▶ [Published]  herkese açık
+     └─ Reject (gerekçe) ──▶ [Rejected] ── sahibi düzeltip kaydeder ──▶ [Pending]
+```
+
+- Yöneticiler `ADMIN_EMAILS` ortam değişkeniyle (veya veritabanında `role: moderator|admin`) belirlenir.
+- Her karar, kim/ne zaman/gerekçe bilgisiyle profilin **History** sayfasına yazılır.
+- Yayındaki profil gerekçeyle **Unpublish** edilebilir.
+- Şirket sayfaları bu akışa dahil değildir (topluluk tarafından düzenlenir, geçmişte saklanır).
 
 ### 9.2 Düzenleme önerileri ("Öneriler" sekmesi)
 
@@ -512,7 +530,9 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [ ] Diff görünümü, geri alma
 - [ ] CV (PDF) içe aktarma
 - [x] PDF olarak kaydet (tarayıcı yazdırma görünümü)
-- [ ] Şikâyet + moderatör paneli
+- [x] Moderatör paneli: profil başvurularını onaylama / reddetme / yayından kaldırma
+- [ ] Şikâyet (report) akışı
+- [ ] E-posta doğrulama ve başvuru sonucu e-postası
 
 ### Faz 3 — Ansiklopedi hissi (sürekli)
 - [x] Takip et (Follow), sektörler sayfası, filtreli arama
@@ -577,8 +597,8 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 
 Faz 0'da karar verilmesi gerekenler (önerilerimle birlikte):
 
-1. **Başkası adına kişi sayfası açılabilir mi?** (Ör. tanınmış bir iş insanı için topluluk sayfası.)
-   → *Şu anki uygulama: Hayır.* Kişi sayfasını yalnızca kişinin kendisi açar. Tasarımdaki "Create a New Profile" ekranı, başkaları hakkında da profil açılabileceğini ima ediyor; bu açılacaksa kaynak zorunluluğu + moderasyon onayı ile yapılmalı. **Karar senin.**
+1. **Kişi profilleri nasıl yayına çıkar?**
+   → *Karar (uygulandı):* Kişi **kendi profilini oluşturur, bu bir başvurudur; Portfedia ekibi onaylayınca yayına çıkar.** Onaya kadar profil yalnızca sahibine ve yöneticilere görünür; arama, listeler, şirket sayfaları ve sitemap'te yer almaz. Reddedilen başvuru gerekçesiyle sahibine gösterilir, düzeltilip kaydedilince yeniden incelemeye düşer. Onaylanmış profildeki sonraki düzenlemeler doğrudan yayına girer (geçmişte saklanır); gerekirse yönetici yayından kaldırabilir. Başkası adına kişi profili açılamaz.
 
 2. **Taslak kuruluş sayfalarını sahiplenilmeden kim düzenler?**
    → *Öneri:* Herhangi bir üye nesnel alanları (logo hariç) doldurabilir, değişiklikler revizyonlu; moderatör denetimli.

@@ -5,6 +5,7 @@ import { Follow, Page, Revision, Session, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
+import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
   Education, Experience, OrgInfobox, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
@@ -31,6 +32,12 @@ function toPage(d: any): PageDoc {
     tags: d.tags ?? [],
     sources: d.sources ?? [],
     verified: Boolean(d.verified),
+    review: {
+      submittedAt: d.review?.submittedAt ?? null,
+      reviewedAt: d.review?.reviewedAt ?? null,
+      reviewerName: d.review?.reviewerName ?? "",
+      note: d.review?.note ?? "",
+    },
     followerCount: d.followerCount ?? 0,
     noindex: Boolean(d.noindex),
     revisionCount: d.revisionCount ?? 0,
@@ -100,14 +107,14 @@ export async function getPersonPageOf(userId: string): Promise<PageDoc | null> {
 export async function existingPages(slugs: string[]): Promise<Map<string, PageType>> {
   if (slugs.length === 0) return new Map();
   await connectDB();
-  const rows = await Page.find({ slug: { $in: slugs } }, { slug: 1, type: 1 }).lean<{ slug: string; type: PageType }[]>();
+  const rows = await Page.find({ slug: { $in: slugs }, ...PUBLIC_FILTER }, { slug: 1, type: 1 }).lean<{ slug: string; type: PageType }[]>();
   return new Map(rows.map((r) => [r.slug, r.type]));
 }
 
 export async function getCards(slugs: string[]): Promise<PageCard[]> {
   if (slugs.length === 0) return [];
   await connectDB();
-  const rows = await Page.find({ slug: { $in: slugs } }, { ...CARD_FIELDS, status: 1 }).lean();
+  const rows = await Page.find({ slug: { $in: slugs }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).lean();
   const bySlug = new Map(rows.map((r) => [r.slug as string, toCard(r)]));
   return slugs.map((s) => bySlug.get(s)).filter((c): c is PageCard => Boolean(c));
 }
@@ -118,7 +125,7 @@ const yearRange = (a?: number | null, b?: number | null, current?: boolean) =>
 /** People who work / worked at an organisation (derived from their career entries). */
 export async function getPeopleOfOrg(orgSlug: string) {
   await connectDB();
-  const docs = await Page.find({ type: "person", "experiences.orgSlug": orgSlug }, CARD_FIELDS)
+  const docs = await Page.find({ type: "person", "experiences.orgSlug": orgSlug, ...PUBLIC_FILTER }, CARD_FIELDS)
     .sort({ title: 1 })
     .limit(500)
     .lean();
@@ -138,7 +145,7 @@ export async function getPeopleOfOrg(orgSlug: string) {
 
 export async function getAlumni(schoolSlug: string): Promise<PageCard[]> {
   await connectDB();
-  const docs = await Page.find({ type: "person", "educations.schoolSlug": schoolSlug }, { ...CARD_FIELDS, educations: 1 })
+  const docs = await Page.find({ type: "person", "educations.schoolSlug": schoolSlug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, educations: 1 })
     .sort({ title: 1 })
     .limit(500)
     .lean();
@@ -151,7 +158,7 @@ export async function getAlumni(schoolSlug: string): Promise<PageCard[]> {
 /** "What links here" */
 export async function getBacklinks(slug: string) {
   await connectDB();
-  return Page.find({ "outLinks.slug": slug }, { slug: 1, title: 1, type: 1 })
+  return Page.find({ "outLinks.slug": slug, ...PUBLIC_FILTER }, { slug: 1, title: 1, type: 1 })
     .sort({ title: 1 })
     .limit(200)
     .lean<{ slug: string; title: string; type: PageType }[]>();
@@ -186,7 +193,7 @@ export interface SearchParams {
 export async function searchPages({ q, types, sectors, limit = 40 }: SearchParams) {
   const key = searchKey(q);
   await connectDB();
-  const base: Record<string, unknown> = {};
+  const base: Record<string, unknown> = { ...PUBLIC_FILTER };
   if (key) {
     const rx = { $regex: `(^| )${escapeRegex(key)}` };
     base.$or = [{ titleKey: rx }, { tags: { $regex: escapeRegex(q.trim()), $options: "i" } }];
@@ -222,7 +229,7 @@ export async function listPages(opts: { types: PageType[]; sector?: string; page
   await connectDB();
   const perPage = opts.perPage ?? 24;
   const page = Math.max(1, opts.page ?? 1);
-  const filter: Record<string, unknown> = { type: { $in: opts.types } };
+  const filter: Record<string, unknown> = { type: { $in: opts.types }, ...PUBLIC_FILTER };
   if (opts.sector) filter["infobox.sector"] = opts.sector;
   const [rows, total] = await Promise.all([
     Page.find(filter, { ...CARD_FIELDS, status: 1 })
@@ -238,7 +245,7 @@ export async function listPages(opts: { types: PageType[]; sector?: string; page
 export async function listSectors() {
   await connectDB();
   const rows = await Page.aggregate([
-    { $match: { "infobox.sector": { $nin: [null, ""] } } },
+    { $match: { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER } },
     { $group: { _id: "$infobox.sector", orgs: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 0, 1] } }, people: { $sum: { $cond: [{ $eq: ["$type", "person"] }, 1, 0] } } } },
     { $sort: { orgs: -1, people: -1, _id: 1 } },
     { $limit: 300 },
@@ -249,10 +256,10 @@ export async function listSectors() {
 export async function homeData() {
   await connectDB();
   const [people, orgs, sectors, featuredPeople, featuredOrgs] = await Promise.all([
-    Page.countDocuments({ type: "person" }),
+    Page.countDocuments({ type: "person", ...PUBLIC_FILTER }),
     Page.countDocuments({ type: { $in: ["org", "school"] } }),
-    Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] } }),
-    Page.find({ type: "person" }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
+    Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER }),
+    Page.find({ type: "person", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
     Page.find({ type: { $in: ["org", "school"] }, body: { $ne: "" } }, { ...CARD_FIELDS, status: 1 })
       .sort({ followerCount: -1, updatedAt: -1 })
       .limit(8)
@@ -267,13 +274,13 @@ export async function homeData() {
 
 export async function randomSlug(): Promise<{ slug: string; type: PageType } | null> {
   await connectDB();
-  const [r] = await Page.aggregate([{ $sample: { size: 1 } }, { $project: { slug: 1, type: 1 } }]);
+  const [r] = await Page.aggregate([{ $match: { ...PUBLIC_FILTER } }, { $sample: { size: 1 } }, { $project: { slug: 1, type: 1 } }]);
   return r ?? null;
 }
 
 export async function allSlugsForSitemap() {
   await connectDB();
-  return Page.find({ noindex: { $ne: true }, $or: [{ type: "person" }, { body: { $ne: "" } }] }, { slug: 1, type: 1, updatedAt: 1 })
+  return Page.find({ noindex: { $ne: true }, ...PUBLIC_FILTER, $or: [{ type: "person" }, { body: { $ne: "" } }] }, { slug: 1, type: 1, updatedAt: 1 })
     .limit(50_000)
     .lean<{ slug: string; type: PageType; updatedAt: Date }[]>();
 }
@@ -287,6 +294,72 @@ export async function suggestOrgs(q: string) {
     .sort({ followerCount: -1 })
     .limit(8)
     .lean<{ slug: string; title: string; type: PageType }[]>();
+}
+
+/* ───────────── Review queue (profile applications) ───────────── */
+
+export interface ApplicationRow extends PageCard {
+  status: PageDoc["status"];
+  occupation: string;
+  submittedAt: Date | null;
+  reviewedAt: Date | null;
+  reviewerName: string;
+  note: string;
+  email: string;
+}
+
+export async function listApplications(status: "pending" | "rejected" | "published", limit = 100): Promise<ApplicationRow[]> {
+  await connectDB();
+  const sort: Record<string, 1 | -1> = status === "pending" ? { "review.submittedAt": 1 } : { "review.reviewedAt": -1 };
+  const filter: Record<string, unknown> = { type: "person", status };
+  if (status === "published") filter["review.reviewedAt"] = { $ne: null };
+  const rows = await Page.find(filter, { ...CARD_FIELDS, status: 1, review: 1, ownerId: 1 }).sort(sort).limit(limit).lean();
+  const owners = await User.find({ _id: { $in: rows.map((r) => r.ownerId).filter(Boolean) } }, { email: 1 }).lean<{ _id: unknown; email: string }[]>();
+  const emailOf = new Map(owners.map((o) => [String(o._id), o.email]));
+  return rows.map((r) => ({
+    ...toCard(r),
+    status: r.status,
+    occupation: r.infobox?.occupation ?? "",
+    submittedAt: r.review?.submittedAt ?? null,
+    reviewedAt: r.review?.reviewedAt ?? null,
+    reviewerName: r.review?.reviewerName ?? "",
+    note: r.review?.note ?? "",
+    email: emailOf.get(String(r.ownerId)) ?? "",
+  }));
+}
+
+export async function countPendingApplications(): Promise<number> {
+  await connectDB();
+  return Page.countDocuments({ type: "person", status: "pending" });
+}
+
+/** Approve or reject a person profile application. */
+export async function decideApplication(
+  reviewer: SessionUser,
+  slug: string,
+  decision: { approve: true; verified: boolean } | { approve: false; note: string },
+): Promise<PageDoc | null> {
+  await connectDB();
+  const page = await Page.findOne({ slug, type: "person" });
+  if (!page) return null;
+  page.status = decision.approve ? "published" : "rejected";
+  if (decision.approve && decision.verified) page.verified = true;
+  page.set("review.reviewedAt", new Date());
+  page.set("review.reviewerId", reviewer.id);
+  page.set("review.reviewerName", reviewer.name);
+  page.set("review.note", decision.approve ? "" : decision.note);
+  page.revisionCount = (page.revisionCount ?? 0) + 1;
+  await page.save();
+  await Revision.create({
+    pageId: page._id,
+    authorId: reviewer.id,
+    authorName: reviewer.name,
+    editSummary: decision.approve ? "Application approved" : `Application not approved: ${decision.note}`.slice(0, 300),
+    snapshot: { status: page.status },
+    size: page.body?.length ?? 0,
+    delta: 0,
+  });
+  return toPage(page.toObject());
 }
 
 /* ───────────── Follow ───────────── */
@@ -430,12 +503,17 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
   let page;
   let oldImage: StoredImage | null = null;
   const prevSize = existing?.body?.length ?? 0;
+  const status = statusAfterOwnerSave(existing ? existing.status : null);
+  // A new or resubmitted application goes (back) to the review queue
+  const resubmitted = status === "pending" && (!existing || existing.status !== "pending");
   if (existing) {
     if (input.image !== undefined) {
       oldImage = existing.image?.url ? { key: existing.image.key, url: existing.image.url } : null;
       existing.image = input.image;
     }
     existing.set(content);
+    existing.status = status;
+    if (resubmitted) existing.set("review.submittedAt", new Date());
     existing.revisionCount = (existing.revisionCount ?? 0) + 1;
     page = await existing.save();
   } else {
@@ -445,7 +523,8 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
       type: "person",
       slug,
       ownerId: user.id,
-      status: "published",
+      status,
+      review: { submittedAt: new Date() },
       image: input.image ?? null,
       revisionCount: 1,
     });
@@ -455,7 +534,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     pageId: page._id,
     authorId: user.id,
     authorName: user.name,
-    editSummary: input.editSummary || (existing ? "" : "Profile created"),
+    editSummary: input.editSummary || (existing ? (resubmitted ? "Resubmitted for review" : "") : "Profile created and submitted for review"),
     snapshot: { ...content, image: page.image ?? null },
     size: input.body.length,
     delta: input.body.length - prevSize,

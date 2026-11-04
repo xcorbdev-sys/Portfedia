@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getPageBySlug } from "@/lib/pages";
+import { getCurrentUser } from "@/lib/auth";
+import { canView } from "@/lib/visibility";
 import { HistoryPage } from "@/components/HistoryPage";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -10,5 +12,6 @@ export default async function PersonHistory({ params }: Props) {
   const page = await getPageBySlug((await params).slug);
   if (!page) notFound();
   if (page.type !== "person") permanentRedirect(`/org/${page.slug}/history`);
+  if (!canView(page, await getCurrentUser())) notFound();
   return <HistoryPage page={page} />;
 }

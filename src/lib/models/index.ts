@@ -60,7 +60,21 @@ const PageSchema = new Schema<any>(
     titleKey: { type: String, required: true, index: true },
     summary: { type: String, default: "", maxlength: 400 },
     ownerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
-    status: { type: String, enum: ["draft", "published", "claimed"], default: "published" },
+    status: { type: String, enum: ["draft", "published", "claimed", "pending", "rejected"], default: "published" },
+    // Moderation of person profiles (applications)
+    review: {
+      type: new Schema<any>(
+        {
+          submittedAt: { type: Date, default: null },
+          reviewedAt: { type: Date, default: null },
+          reviewerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+          reviewerName: { type: String, default: "" },
+          note: { type: String, default: "", maxlength: 1000 },
+        },
+        { _id: false },
+      ),
+      default: () => ({}),
+    },
     image: { type: new Schema<any>({ key: String, url: String }, { _id: false }), default: null },
     infobox: { type: Schema.Types.Mixed, default: {} },
     body: { type: String, default: "", maxlength: 100_000 },
@@ -86,6 +100,7 @@ PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });
+PageSchema.index({ type: 1, status: 1, "review.submittedAt": 1 }); // review queue
 PageSchema.index({ "infobox.sector": 1 });
 
 /* ───────────── Revizyon (yalnızca eklenir, değişmez) ───────────── */

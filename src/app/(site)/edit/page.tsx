@@ -14,10 +14,14 @@ export default async function EditMyProfile() {
       <div className="wizard-head">
         <h1>{page ? "Edit your profile" : "Create your profile"}</h1>
         <p className="muted">
-          {page ? (
-            <>Changes are saved as a new revision of <Link href={`/${page.slug}`}>your profile</Link>.</>
+          {!page ? (
+            "It takes about five minutes. Your profile is published after the Portfedia team approves it."
+          ) : page.status === "published" ? (
+            <>Changes go live immediately and are saved as a new revision of <Link href={`/${page.slug}`}>your profile</Link>.</>
+          ) : page.status === "pending" ? (
+            <>Your application is under review. You can still improve <Link href={`/${page.slug}`}>your profile</Link> while you wait.</>
           ) : (
-            "It takes about five minutes. You can always come back and add more."
+            <>Your application was not approved. Update <Link href={`/${page.slug}`}>your profile</Link> and resubmit it.</>
           )}
         </p>
       </div>

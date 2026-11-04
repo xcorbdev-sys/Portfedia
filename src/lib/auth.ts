@@ -53,8 +53,29 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     role: SessionUser["role"];
   }>();
   if (!user) return null;
-  return { id: String(user._id), name: user.name, email: user.email, role: user.role };
+  // Accounts listed in ADMIN_EMAILS are admins (set on Coolify; no database edit needed)
+  const role = adminEmails().has(user.email) ? "admin" : user.role;
+  return { id: String(user._id), name: user.name, email: user.email, role };
 });
+
+function adminEmails(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+export function isModerator(user: SessionUser | null): boolean {
+  return user?.role === "admin" || user?.role === "moderator";
+}
+
+export async function requireModerator(next = "/admin"): Promise<SessionUser> {
+  const user = await requireUser(next);
+  if (!isModerator(user)) redirect("/");
+  return user;
+}
 
 export async function requireUser(next = "/"): Promise<SessionUser> {
   const user = await getCurrentUser();

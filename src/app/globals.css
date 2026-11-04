@@ -409,3 +409,22 @@ a.chip:hover { text-decoration: none; background: var(--primary-soft-2); }
 .entity-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .entity-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 640px) { .entity-grid--2, .entity-grid--3 { grid-template-columns: 1fr; } }
+
+/* ───────────── Review / admin ───────────── */
+.review-banner { display: grid; gap: 12px; margin: 14px 0 6px; }
+.review-banner__text { display: flex; gap: 10px; align-items: flex-start; }
+.review-banner__text svg { flex-shrink: 0; margin-top: 2px; }
+.review-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.review-controls form { display: grid; gap: 8px; align-content: start; }
+.review-controls .btn { width: fit-content; }
+@media (max-width: 760px) { .review-controls { grid-template-columns: 1fr; } }
+.status-pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+.status-pill--pending { background: var(--warn-soft); color: var(--warn); }
+.status-pill--rejected { background: var(--err-soft); color: var(--err); }
+.status-pill--published { background: var(--ok-soft); color: var(--ok); }
+.app-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.app-card { padding: 18px 20px; display: grid; gap: 14px; }
+.app-card__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.app-card__head .thumb { width: 56px; height: 56px; }
+.app-card__meta { font-size: 0.8rem; color: var(--text-3); }
+.menu__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }

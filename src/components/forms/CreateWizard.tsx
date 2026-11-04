@@ -41,7 +41,7 @@ export function CreateWizard({
             <span>
               {myPage
                 ? "You already have a profile. Continue to edit it."
-                : "Create your own profile as an entrepreneur, executive, investor or industry professional."}
+                : "Apply for your own profile as an entrepreneur, executive, investor or industry professional. We review every profile before it goes live."}
             </span>
           </label>
           <label className="choice">
