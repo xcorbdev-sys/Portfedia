@@ -69,7 +69,7 @@ async function createOrg(page, o) {
   await page.waitForURL(/\/org\/[a-z0-9-]+$/);
 }
 
-async function signup(browser, name, email) {
+async function signup(browser, name, email, { confirm = true } = {}) {
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await page.goto(`${BASE}/signup`);
   await page.fill("#name", name);
@@ -80,6 +80,7 @@ async function signup(browser, name, email) {
   await page.waitForTimeout(2700); // the bot check rejects instant submits
   await page.click("button[type=submit]");
   await page.waitForURL(/\/create/);
+  if (!confirm) return page;
   await page.goto(await emailLink(email, "verify-email"));
   await page.click('button:has-text("Confirm email address")');
   await page.waitForURL(/done=1/);
@@ -170,6 +171,20 @@ async function createProfile(p, opts) {
   await createOrg(admin, { name: "Northwind Robotics", sector: "Robotics & Automation", tags: "Robotics, Logistics", summary: "Autonomous warehouse robots", founded: "2015", hq: "Istanbul, Türkiye", employees: "201–500", website: "https://northwind.example" });
   await createOrg(admin, { name: "Bluefin Bank", sector: "Banking", tags: "Banking", summary: "A retail bank", founded: "1990", hq: "Izmir", employees: "1,001–5,000", website: "https://bluefin.example" });
   check("organization pages created by a user", (await anon.goto(`${BASE}/org/bluefin-bank`)).status() === 200 && (await anon.locator("text=A retail bank").count()) > 0);
+
+  // ── A profile saved before the email is confirmed is kept and goes to review after confirming
+  const deniz = await signup(browser, "Deniz Aksoy", "deniz@example.com", { confirm: false });
+  const denizPath = await createProfile(deniz, { occupation: "Product Designer", summary: "Product designer at [[Bluefin Bank]].", org: "Bluefin Bank", role: "Designer" });
+  check("unconfirmed user can save the profile", denizPath === "/deniz-aksoy" && (await deniz.locator("text=Your profile is saved.").count()) === 1);
+  await admin.goto(`${BASE}/admin`);
+  check("not in the review queue before confirming", (await admin.locator('.app-card a[href="/deniz-aksoy"]').count()) === 0);
+  await deniz.goto(await emailLink("deniz@example.com", "verify-email"));
+  await deniz.click('button:has-text("Confirm email address")');
+  await deniz.waitForURL(/done=1/);
+  await admin.goto(`${BASE}/admin`);
+  check("in the review queue after confirming", (await admin.locator('.app-card a[href="/deniz-aksoy"]').count()) === 1);
+  await admin.locator(".app-card", { has: admin.locator('a[href="/deniz-aksoy"]') }).locator('button:has-text("Approve")').click();
+  await admin.locator('.app-card a[href="/deniz-aksoy"]').waitFor({ state: "detached" });
 
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");

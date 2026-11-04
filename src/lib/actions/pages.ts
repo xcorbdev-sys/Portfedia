@@ -183,7 +183,7 @@ function parseSources(v: FormDataEntryValue | null): SourceRef[] {
 export async function savePersonAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/edit");
-  if (!user.emailVerified) return { error: VERIFY_FIRST };
+  // Unconfirmed emails can still save: the profile stays private and goes to review once the email is confirmed
 
   const title = str(fd.get("title"), 120);
   const occupation = str(fd.get("occupation"), 120);

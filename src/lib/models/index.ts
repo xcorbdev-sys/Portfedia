@@ -113,6 +113,8 @@ const PageSchema = new Schema<any>(
           note: { type: String, default: "", maxlength: 1000 },
           // Automatic warnings for moderators (same name / same photo as another profile, …)
           flags: { type: [String], default: [] },
+          // Saved by someone who hasn't confirmed their email yet: kept, but not in the review queue until they do
+          awaitingEmail: { type: Boolean, default: false },
         },
         { _id: false },
       ),

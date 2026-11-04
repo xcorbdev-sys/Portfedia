@@ -209,7 +209,10 @@ export async function confirmEmailManually(userId: string): Promise<string | nul
   if (!Types.ObjectId.isValid(userId)) return "User not found.";
   await connectDB();
   const res = await User.updateOne({ _id: userId, emailVerifiedAt: null }, { $set: { emailVerifiedAt: new Date() } });
-  return res.matchedCount ? null : "This email address is already confirmed.";
+  if (!res.matchedCount) return "This email address is already confirmed.";
+  const { submitProfileAfterEmailConfirmed } = await import("./account");
+  await submitProfileAfterEmailConfirmed(userId);
+  return null;
 }
 
 /** Gives or removes the blue "verified" badge on a profile or organization page. */

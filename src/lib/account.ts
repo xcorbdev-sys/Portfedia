@@ -28,7 +28,17 @@ export async function verifyEmail(raw: string): Promise<boolean> {
   if (!t?.userId) return false;
   await connectDB();
   await User.updateOne({ _id: t.userId, emailVerifiedAt: null }, { $set: { emailVerifiedAt: new Date() } });
+  await submitProfileAfterEmailConfirmed(t.userId);
   return true;
+}
+
+/** A profile saved before the email was confirmed goes to the review queue now. */
+export async function submitProfileAfterEmailConfirmed(userId: string): Promise<void> {
+  await connectDB();
+  await Page.updateOne(
+    { type: "person", ownerId: userId, status: "pending", "review.awaitingEmail": true },
+    { $set: { "review.awaitingEmail": false, "review.submittedAt": new Date() } },
+  );
 }
 
 /* ───────────── Password reset ───────────── */

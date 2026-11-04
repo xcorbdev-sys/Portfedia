@@ -73,6 +73,7 @@ function toPage(d: any): PageDoc {
       reviewerName: d.review?.reviewerName ?? "",
       note: d.review?.note ?? "",
       flags: d.review?.flags ?? [],
+      awaitingEmail: Boolean(d.review?.awaitingEmail),
     },
     followerCount: d.followerCount ?? 0,
     thanksCount: d.thanksCount ?? 0,
@@ -416,6 +417,7 @@ export async function listApplications(status: "pending" | "rejected" | "publish
   await connectDB();
   const sort: Record<string, 1 | -1> = status === "pending" ? { "review.submittedAt": 1 } : { "review.reviewedAt": -1 };
   const filter: Record<string, unknown> = { type: "person", status };
+  if (status === "pending") filter["review.awaitingEmail"] = { $ne: true }; // not submitted until the email is confirmed
   if (status === "published") filter["review.reviewedAt"] = { $ne: null };
   const rows = await Page.find(filter, { ...CARD_FIELDS, status: 1, review: 1, ownerId: 1 }).sort(sort).limit(limit).lean();
   const owners = await User.find({ _id: { $in: rows.map((r) => r.ownerId).filter(Boolean) } }, { email: 1, plan: 1 }).lean<{ _id: unknown; email: string; plan?: Plan }[]>();
@@ -439,7 +441,7 @@ export async function listApplications(status: "pending" | "rejected" | "publish
 
 export async function countPendingApplications(): Promise<number> {
   await connectDB();
-  return Page.countDocuments({ type: "person", status: "pending" });
+  return Page.countDocuments({ type: "person", status: "pending", "review.awaitingEmail": { $ne: true } });
 }
 
 export async function getOwnerContact(ownerId: string | null): Promise<{ email: string; name: string; notify: boolean } | null> {
@@ -646,8 +648,11 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
   let oldImage: StoredImage | null = null;
   const prevSize = existing?.body?.length ?? 0;
   const status = statusAfterOwnerSave(existing ? existing.status : null);
-  // A new or resubmitted application goes (back) to the review queue
-  const resubmitted = status === "pending" && (!existing || existing.status !== "pending");
+  // A new or resubmitted application goes (back) to the review queue. Someone who hasn't confirmed their
+  // email yet keeps everything they entered, but the profile waits outside the queue until they confirm.
+  const awaitingEmail = status === "pending" && !user.emailVerified;
+  const resubmitted =
+    status === "pending" && !awaitingEmail && (!existing || existing.status !== "pending" || Boolean(existing.review?.awaitingEmail) || !existing.review?.submittedAt);
   if (existing) {
     if (input.image !== undefined) {
       oldImage = existing.image?.url ? { key: existing.image.key, url: existing.image.url } : null;
@@ -659,6 +664,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     }
     existing.set(content);
     existing.status = status;
+    existing.set("review.awaitingEmail", awaitingEmail);
     if (resubmitted) existing.set("review.submittedAt", new Date());
     existing.revisionCount = (existing.revisionCount ?? 0) + 1;
     page = await existing.save();
@@ -670,7 +676,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
       slug,
       ownerId: user.id,
       status,
-      review: { submittedAt: new Date() },
+      review: { submittedAt: awaitingEmail ? null : new Date(), awaitingEmail },
       image: input.image ?? null,
       cover: input.cover ?? null,
       revisionCount: 1,

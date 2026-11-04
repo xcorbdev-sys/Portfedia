@@ -63,7 +63,14 @@ export function ReviewBanner({ page, user }: { page: PageDoc; user: SessionUser 
       <div className="review-banner__text">
         {pending ? <Clock size={18} /> : <X size={18} />}
         <div>
-          {pending ? (
+          {pending && page.review.awaitingEmail ? (
+            <>
+              <b>{isOwner ? "Your profile is saved." : "Saved, but the owner hasn't confirmed their email yet."}</b>{" "}
+              {isOwner
+                ? "Confirm your email address with the link we sent you, and it goes to our team for review automatically. Until then only you can see this page."
+                : "It will appear in the review queue once they confirm."}
+            </>
+          ) : pending ? (
             <>
               <b>{isOwner ? "Your profile is under review." : "This application is waiting for review."}</b>{" "}
               {isOwner

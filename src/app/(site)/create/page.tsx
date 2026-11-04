@@ -20,7 +20,7 @@ export default async function CreatePage({ searchParams }: Props) {
     <div className="narrow" style={{ maxWidth: 900 }}>
       {!user.emailVerified && (
         <div className="notice notice--info" style={{ marginBottom: 18 }}>
-          <b>Confirm your email first.</b> You can fill in your profile now, but it can only be submitted once your email address is confirmed.
+          <b>Don&apos;t forget to confirm your email.</b> You can fill in and save your profile now; it goes to review as soon as your email address is confirmed.
         </div>
       )}
       <div className="wizard-head">

@@ -52,13 +52,10 @@ export function FormDraft({ storageKey, savedAt }: { storageKey: string; savedAt
         }
       }, 800);
     };
+    // The draft is kept on submit: if saving fails, nothing is lost. After a successful save the page's
+    // own "last saved" time is newer than the draft, so the draft is dropped the next time the form opens.
     const onSubmit = () => {
       dirty.current = false;
-      try {
-        localStorage.removeItem(storageKey);
-      } catch {
-        /* ignore */
-      }
     };
     const onLeave = (e: BeforeUnloadEvent) => {
       if (dirty.current) e.preventDefault();

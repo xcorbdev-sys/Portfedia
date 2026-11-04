@@ -11,6 +11,8 @@ export interface ReviewInfo {
   reviewerName: string;
   note: string;
   flags: string[];
+  /** Saved before the owner confirmed their email; goes to review once they do */
+  awaitingEmail: boolean;
 }
 export type Verification = "unverified" | "verified" | "rejected";
 
