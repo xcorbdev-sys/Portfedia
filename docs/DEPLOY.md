@@ -59,6 +59,7 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 | `RESEND_API_KEY` | `re_...` | E-posta gönderimi (bkz. 3.1). Boşsa e-postalar loga yazılır. |
 | `EMAIL_FROM` | `Portfedia <no-reply@portfedia.com>` | Gönderen adres; alan adı Resend'de doğrulanmış olmalı |
 | `COMPANY_NAME` | `Portfedia Teknoloji A.Ş.` | E-postaların altında görünür (yasal zorunluluk) |
+| `CONTACT_EMAIL` | `privacy@portfedia.com` | Gizlilik politikasında görünen iletişim adresi |
 | `COMPANY_ADDRESS` | `Örnek Mah. 1. Sok. No:1, İstanbul, Türkiye` | E-postaların altında görünür (yasal zorunluluk) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | "Google ile giriş" (bkz. 3.2). Boşsa düğme görünmez. |
 | `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | | "LinkedIn ile giriş" (bkz. 3.3). Boşsa düğme görünmez. |
@@ -147,6 +148,36 @@ Temizlemek için (veritabanı dahil her şeyi siler):
 docker compose down -v
 ```
 
-## 6. Güncelleme
+## 6. Yedekleme ve geri yükleme
+
+Coolify'daki otomatik yedekleme (1. adım) `mongodump` arşivi üretir. **Bir yedeği en az bir kez geri yüklemeyi dene**; denenmemiş yedek, yedek sayılmaz.
+
+Coolify → MongoDB → **Terminal**:
+
+```bash
+# Elle yedek al
+mongodump --uri="$MONGO_URI" --db=portfedia --archive=/tmp/portfedia.archive --gzip
+
+# Test için ayrı bir veritabanına geri yükle (canlı veriye dokunmaz)
+mongorestore --uri="$MONGO_URI" --archive=/tmp/portfedia.archive --gzip \
+  --nsFrom='portfedia.*' --nsTo='portfedia_restore_test.*'
+```
+
+Görseller Cloudflare R2'de durur; R2 dosyaları silinmez, yalnızca değiştirilen görselin eskisi silinir.
+
+## 7. Hatalar ve loglar
+
+Sunucu hataları Coolify'daki uygulama loglarına tek satırlık JSON olarak yazılır (`"level":"error"` ile ara). Ücretli bir hata takip servisi gerekmez.
+
+## 8. Testler (CI)
+
+GitHub'a her push'ta `.github/workflows/ci.yml` çalışır: tip kontrolü, birim testleri, build ve gerçek bir MongoDB ile uçtan uca test (`e2e/run.cjs`, 30 kontrol). Yerelde:
+
+```bash
+docker compose up -d --build        # ADMIN_EMAILS=admin@example.com ile
+npm run e2e
+```
+
+## 9. Güncelleme
 
 `main` dalına push yaptığında Coolify'da **Auto Deploy** açıksa yeni sürüm otomatik kurulur. Kapalıysa Coolify'dan **Redeploy**'a bas. Veritabanı şeması kodla birlikte gelir; ayrı bir migration adımı yoktur (indeksler uygulama ilk açıldığında oluşturulur).

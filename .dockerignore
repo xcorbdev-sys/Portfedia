@@ -13,3 +13,5 @@ Dockerfile
 docker-compose*.yml
 .dockerignore
 *.tsbuildinfo
+e2e
+.github

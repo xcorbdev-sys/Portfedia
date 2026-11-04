@@ -100,7 +100,7 @@ export default async function OrgPage({ params }: Props) {
         </aside>
 
         <article className="profile__main">
-          {!page.body.trim() && (
+          {page.status === "draft" && !page.body.trim() && !page.summary && (
             <div className="notice notice--info" style={{ marginBottom: 18 }}>
               This is a <b>draft</b> page, created automatically when a member added {page.title} to their profile.{" "}
               {user ? (

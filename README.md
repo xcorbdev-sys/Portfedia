@@ -525,27 +525,36 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [x] Alan bazında gizlilik + hesap silme
 - [x] Mobil uyum
 
-### Faz 2 — Güven ve kuruluşlar (6 hafta)
-- [ ] Kuruluş sahiplenme (alan adı / iş e-postası)
-- [ ] Kuruluş yönetici paneli + deneyim onay akışı
-- [ ] Doğrulama rozetleri
+### Faz 2 — Güven ve kuruluşlar ✅
+- [x] Kuruluş sahiplenme: **yalnızca şirket e-postasıyla** (ücretsiz mail servisleri engelli, web sitesi kilidi + 3 gün bekleme)
+- [x] Kuruluş yönetim ekranı: deneyim onayla/reddet, yönetici davet et/çıkar; kişiler iş e-postasıyla kendi deneyimini doğrulayabilir
+- [x] Doğrulama rozetleri
 - [ ] Düzenleme önerileri (PR modeli)
-- [ ] Diff görünümü, geri alma
-- [ ] CV (PDF) içe aktarma
+- [x] Sürüm karşılaştırma ve geri yükleme
+- [ ] CV (PDF) içe aktarma — ücretli API gerektirdiği için plandan çıkarıldı
 - [x] PDF olarak kaydet (tarayıcı yazdırma görünümü)
 - [x] Moderatör paneli: profil başvurularını onaylama / reddetme / yayından kaldırma
-- [ ] Şikâyet (report) akışı
+- [x] Şikâyet (Report) akışı, telif kaldırma sayfası (/copyright), kullanıcı engelleme
 
 ### Faz 3 — Ansiklopedi hissi (sürekli)
 - [x] Takip et (Follow), sektörler sayfası, filtreli arama
-- [ ] Kategoriler ve kategori sayfaları
+- [x] Koleksiyonlar (elle derlenmiş listeler) ve sektör sayfaları
 - [ ] Ana sayfa: günün portfolyosu, biliyor muydunuz, rastgele sayfa
 - [ ] Anlam ayrımı sayfaları, yönlendirmeler, sayfa birleştirme
 - [ ] Proje sayfa türü (birden çok kişinin bağlandığı)
-- [ ] Gelişmiş arama ve filtreler (Meilisearch)
+- [x] Filtreli arama (tür, sektör) — Meilisearch ölçek gerektiğinde
 - [ ] Kimlik doğrulama (e-Devlet vb.)
 - [ ] Çoklu dil (arayüz şu an yalnızca İngilizce)
 - [x] Koyu mod (sistem ayarına göre)
+
+### Ek olarak tamamlananlar
+- [x] Bildirimler (zil): başvuru kararı, deneyim onayı, yeni takipçi, takip edilen sayfa güncellemesi
+- [x] Yatırım turları (Funding) ve yatırımcıların "Investments" bölümü
+- [x] CSV ile toplu şirket ekleme (admin)
+- [x] Görseller 400 px WebP'ye küçültülür, konum bilgisi silinir; paylaşım kartları (Open Graph)
+- [x] Google: ProfilePage / Organization / Breadcrumb yapısal verisi — bkz. [docs/GOOGLE.md](docs/GOOGLE.md)
+- [x] KVKK/GDPR: gizlilik politikası, "verilerimi indir", hesap silme
+- [x] CI: tip kontrolü, birim testleri, build ve uçtan uca test (GitHub Actions)
 
 ### Faz 4 — Gelir ve ekosistem
 - [ ] Portfedia Pro, kuruluş planları (bkz. §17)
