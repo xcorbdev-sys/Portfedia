@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { connectDB } from "./db";
@@ -43,9 +43,15 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null;
   await connectDB();
   const session = await Session.findOne({ tokenHash: hash(token), expiresAt: { $gt: new Date() } }).lean<{
+    _id: unknown;
     userId: unknown;
+    lastSeenAt?: Date;
   }>();
   if (!session) return null;
+  // "Last active" for the sessions list, updated at most every 10 minutes
+  if (!session.lastSeenAt || Date.now() - new Date(session.lastSeenAt).getTime() > 600_000) {
+    void Session.updateOne({ _id: session._id }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
+  }
   const user = await User.findById(session.userId).lean<{
     _id: unknown;
     name: string;
@@ -102,4 +108,57 @@ export function safeNext(next: unknown, fallback = "/"): string {
     return fallback;
   }
   return next;
+}
+
+
+/* ───────────── Sessions list (#14) and rotation (#20) ───────────── */
+
+export async function currentSessionHash(): Promise<string | null> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  return token ? hash(token) : null;
+}
+
+export async function listSessions(userId: string) {
+  await connectDB();
+  const current = await currentSessionHash();
+  const rows = await Session.find({ userId, expiresAt: { $gt: new Date() } }, { tokenHash: 1, userAgent: 1, ipPrefix: 1, createdAt: 1, lastSeenAt: 1 })
+    .sort({ lastSeenAt: -1 })
+    .limit(50)
+    .lean<{ _id: unknown; tokenHash: string; userAgent?: string; ipPrefix?: string; createdAt?: Date; lastSeenAt?: Date }[]>();
+  return rows.map((r) => ({
+    id: String(r._id),
+    current: r.tokenHash === current,
+    device: describeUserAgent(r.userAgent ?? ""),
+    ipPrefix: r.ipPrefix ?? "",
+    createdAt: r.createdAt ?? null,
+    lastSeenAt: r.lastSeenAt ?? null,
+  }));
+}
+
+export function describeUserAgent(ua: string): string {
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "Unknown OS";
+  return ua ? `${browser} on ${os}` : "Unknown device";
+}
+
+export async function revokeSession(userId: string, sessionId: string) {
+  await connectDB();
+  await Session.deleteOne({ _id: sessionId, userId });
+}
+
+export async function revokeOtherSessions(userId: string) {
+  await connectDB();
+  const current = await currentSessionHash();
+  await Session.deleteMany({ userId, ...(current ? { tokenHash: { $ne: current } } : {}) });
+}
+
+/**
+ * Issues a fresh session token after a security-relevant change (password, email, new privileges),
+ * so a token captured earlier stops working.
+ */
+export async function rotateSession(userId: string) {
+  await connectDB();
+  const current = await currentSessionHash();
+  if (current) await Session.deleteOne({ tokenHash: current });
+  await createSession(userId);
 }

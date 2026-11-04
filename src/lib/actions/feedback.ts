@@ -20,7 +20,7 @@ async function target(fd: FormData) {
   if (!page || !isPublic(page)) return { user, page: null, error: "Profile not found." };
   if (!user.emailVerified) return { user, page: null, error: "Please confirm your email address first." };
   if (page.ownerId === user.id) return { user, page: null, error: "You can edit your own profile directly." };
-  if (!rateLimit(`feedback:${user.id}`, 10, 3600_000)) return { user, page: null, error: "Too many requests. Please try again later." };
+  if (!(await rateLimit(`feedback:${user.id}`, 10, 3600_000))) return { user, page: null, error: "Too many requests. Please try again later." };
   return { user, page, error: null };
 }
 

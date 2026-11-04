@@ -6,14 +6,11 @@ import { createReport } from "./moderation";
 import type { PageDoc, SessionUser } from "./types";
 
 const DAY = 86400_000;
-const linkLog = new Map<string, { at: number; n: number }[]>();
 
-function addLinks(userId: string, n: number): number {
-  const now = Date.now();
-  const log = (linkLog.get(userId) ?? []).filter((e) => now - e.at < DAY);
-  if (n > 0) log.push({ at: now, n });
-  linkLog.set(userId, log);
-  return log.reduce((sum, e) => sum + e.n, 0);
+/** Links added per user per day, stored in MongoDB so the limit holds across restarts and containers. */
+async function addLinks(userId: string, n: number): Promise<number> {
+  const { addToCounter } = await import("./rate-limit");
+  return addToCounter(`links:${userId}`, n, DAY);
 }
 
 /**
@@ -34,7 +31,7 @@ export async function guardContent(
   const doc = await User.findById(user.id, { createdAt: 1 }).lean<{ createdAt: Date }>();
   const isNew = !doc || Date.now() - new Date(doc.createdAt).getTime() < 7 * DAY;
   const limit = isNew ? 8 : 25;
-  const total = addLinks(user.id, opts.newLinks.length);
+  const total = await addLinks(user.id, opts.newLinks.length);
   if (total > limit) {
     await createReport({
       page: opts.page,

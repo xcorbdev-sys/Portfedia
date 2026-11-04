@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { confirmEmailChange, verifyEmail } from "@/lib/account";
 import { peekToken } from "@/lib/tokens";
+import { getCurrentUser, rotateSession } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Confirm email", robots: { index: false }, referrer: "no-referrer" };
 
@@ -13,6 +14,9 @@ async function confirmAction(fd: FormData) {
   const token = String(fd.get("token") ?? "");
   const change = fd.get("change") === "1";
   const ok = change ? await confirmEmailChange(token) : await verifyEmail(token);
+  // New email (or newly verified one, which can grant admin rights) = new session token
+  const user = await getCurrentUser();
+  if (ok && user) await rotateSession(user.id);
   redirect(ok ? `/verify-email?done=${change ? "change" : "1"}` : "/verify-email?failed=1");
 }
 

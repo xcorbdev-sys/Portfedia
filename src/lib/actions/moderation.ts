@@ -44,7 +44,7 @@ export async function reportAction(_: FormState, fd: FormData): Promise<FormStat
   if (details.length < 10) return { error: "Please describe the problem in a few words." };
   const reporterEmail = user ? user.email : cleanEmail(fd.get("email"));
   if (!user && !reporterEmail) return { error: "Please enter your email so we can follow up." };
-  if (!rateLimit(`report:${user?.id ?? (await ip())}`, 10, 3600_000)) return { error: "Too many reports. Please try again later." };
+  if (!(await rateLimit(`report:${user?.id ?? (await ip())}`, 10, 3600_000))) return { error: "Too many reports. Please try again later." };
   const slug = str(fd.get("slug"), 100);
   const page = slug ? await getPageBySlug(slug) : null;
 

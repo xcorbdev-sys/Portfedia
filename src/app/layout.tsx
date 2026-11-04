@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -19,7 +20,9 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Reading the request makes every page dynamic, which the per-request CSP nonce requires
+  await headers();
   return (
     <html lang="en">
       <body>

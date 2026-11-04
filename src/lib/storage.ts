@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import sharp from "sharp";
+import { scanBuffer } from "./clamav";
 import type { StoredImage } from "./types";
 import { sniffImage } from "./storage-sniff";
 
@@ -51,6 +52,12 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
   if (file.size > MAX_IMAGE_BYTES) throw new UploadError("Images must be 5 MB or smaller.");
   const input = new Uint8Array(await file.arrayBuffer());
   if (!sniffImage(input)) throw new UploadError("Only JPEG, PNG or WebP images are allowed.");
+  const scan = await scanBuffer(input);
+  if (scan.status === "infected") {
+    console.warn(JSON.stringify({ level: "warn", message: "upload blocked by virus scanner", signature: scan.signature }));
+    throw new UploadError("This file was flagged by our virus scanner and can't be uploaded.");
+  }
+  if (scan.status === "skipped" && process.env.CLAMAV_HOST) console.warn(JSON.stringify({ level: "warn", message: "virus scan skipped", reason: scan.reason }));
   let buf: Uint8Array;
   try {
     buf = await sharp(input, { limitInputPixels: 50_000_000 })

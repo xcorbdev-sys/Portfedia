@@ -6,7 +6,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "../db";
 import { User } from "../models";
-import { createSession, destroySession, getCurrentUser, safeNext } from "../auth";
+import { createSession, destroySession, getCurrentUser, revokeOtherSessions, revokeSession, rotateSession, safeNext } from "../auth";
 import { deleteAccount } from "../pages";
 import {
   changePassword, changeProfileSlug, requestEmailChange, requestPasswordReset, resetPassword, sendVerificationEmail, setEmailPrefs,
@@ -55,7 +55,7 @@ export async function registerAction(_: FormState, fd: FormData): Promise<FormSt
   if (pwErr) return { error: pwErr };
   if (!isOldEnough(fd.get("birthYear"))) return { error: AGE_ERROR };
   if (fd.get("consent") !== "on") return { error: "Please accept the Terms and Privacy Policy to continue." };
-  if (!rateLimit(`register:${await clientIp()}`, 10, 60 * 60_000)) {
+  if (!(await rateLimit(`register:${await clientIp()}`, 10, 60 * 60_000))) {
     return { error: "Too many attempts. Please try again later." };
   }
 
@@ -72,7 +72,7 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
   const password = String(fd.get("password") ?? "");
   const next = safeNext(fd.get("next"));
   if (!email || !password) return { error: "Email and password are required." };
-  if (!rateLimit(`login:${email}`, 8, 15 * 60_000) || !rateLimit(`login-ip:${await clientIp()}`, 30, 15 * 60_000)) {
+  if (!(await rateLimit(`login:${email}`, 8, 15 * 60_000)) || !(await rateLimit(`login-ip:${await clientIp()}`, 30, 15 * 60_000))) {
     return { error: "Too many failed attempts. Please try again in 15 minutes." };
   }
   await connectDB();
@@ -126,7 +126,7 @@ export async function resendVerificationAction(): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.emailVerified) return { ok: "Your email is already confirmed." };
-  if (!rateLimit(`verify:${user.id}`, 3, 60 * 60_000)) return { error: "Please wait a while before requesting another email." };
+  if (!(await rateLimit(`verify:${user.id}`, 3, 60 * 60_000))) return { error: "Please wait a while before requesting another email." };
   await sendVerificationEmail(user.id, user.email, user.name);
   return { ok: `We sent a new confirmation link to ${user.email}.` };
 }
@@ -135,7 +135,7 @@ export async function forgotPasswordAction(_: FormState, fd: FormData): Promise<
   if (looksLikeBot(fd)) return { error: "Something went wrong. Please wait a moment and try again." };
   const email = cleanEmail(fd.get("email"));
   if (!email) return { error: "Please enter a valid email address." };
-  if (rateLimit(`forgot:${email}`, 3, 60 * 60_000) && rateLimit(`forgot-ip:${await clientIp()}`, 10, 60 * 60_000)) {
+  if ((await rateLimit(`forgot:${email}`, 3, 60 * 60_000)) && (await rateLimit(`forgot-ip:${await clientIp()}`, 10, 60 * 60_000))) {
     await requestPasswordReset(email);
   }
   // Same answer whether or not the account exists
@@ -167,8 +167,13 @@ export async function changePasswordAction(_: FormState, fd: FormData): Promise<
   const pwErr = await newPasswordError(next);
   if (pwErr) return { error: pwErr };
   if (next !== String(fd.get("confirm") ?? "")) return { error: "The new passwords don't match." };
-  if (!rateLimit(`chpw:${user.id}`, 5, 15 * 60_000)) return { error: "Too many attempts. Please try again later." };
+  if (!(await rateLimit(`chpw:${user.id}`, 5, 15 * 60_000))) return { error: "Too many attempts. Please try again later." };
   const err = await changePassword(user, String(fd.get("current") ?? ""), next);
+  if (!err) {
+    // A new password signs out every other device and renews this session's token
+    await revokeOtherSessions(user.id);
+    await rotateSession(user.id);
+  }
   return err ? { error: err } : { ok: user.hasPassword ? "Your password was changed." : "Password added. You can now also log in with your email." };
 }
 
@@ -176,7 +181,7 @@ export async function changeEmailAction(_: FormState, fd: FormData): Promise<For
   const user = await me();
   const newEmail = cleanEmail(fd.get("email"));
   if (!newEmail) return { error: "Please enter a valid email address." };
-  if (!rateLimit(`chemail:${user.id}`, 3, 60 * 60_000)) return { error: "Too many attempts. Please try again later." };
+  if (!(await rateLimit(`chemail:${user.id}`, 3, 60 * 60_000))) return { error: "Too many attempts. Please try again later." };
   const err = await requestEmailChange(user, newEmail);
   return err ? { error: err } : { ok: `We sent a confirmation link to ${newEmail}. Your email changes when you click it.` };
 }
@@ -208,4 +213,16 @@ export async function deleteAccountAction(_: FormState, fd: FormData): Promise<F
   await deleteAccount(user.id);
   await destroySession();
   redirect("/?deleted=1");
+}
+
+export async function revokeSessionAction(fd: FormData): Promise<void> {
+  const user = await me();
+  await revokeSession(user.id, str(fd.get("id"), 40));
+  redirect("/account#sessions");
+}
+
+export async function revokeOtherSessionsAction(): Promise<void> {
+  const user = await me();
+  await revokeOtherSessions(user.id);
+  redirect("/account#sessions");
 }

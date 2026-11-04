@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { listSessions, requireUser } from "@/lib/auth";
+import { revokeOtherSessionsAction, revokeSessionAction } from "@/lib/actions/auth";
+import { formatDateTime } from "@/lib/site";
 import { getPageBySlug, getPersonPageOf } from "@/lib/pages";
 import { claimDomainOf } from "@/lib/org-admin";
 import { WorkVerifyForm } from "@/components/forms/OrgAdminForms";
@@ -30,6 +32,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const user = await requireUser("/account");
   const page = await getPersonPageOf(user.id);
   const { reset } = await searchParams;
+  const sessions = await listSessions(user.id);
   const host = siteUrl().replace(/^https?:\/\//, "");
   // Domain each position can be verified with (work email at that organization)
   const positions = page
@@ -111,6 +114,32 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <p className="small muted">You sign in with Google or LinkedIn. Add a password to also log in with your email.</p>
         )}
         <ChangePasswordForm hasPassword={user.hasPassword} />
+      </Section>
+
+      <Section id="sessions" title="Where you're signed in">
+        <ul className="plain-list" style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
+          {sessions.map((x) => (
+            <li key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+              <span>
+                <b>{x.device}</b> {x.current && <span className="status-pill status-pill--published">This device</span>}
+                <span className="small muted" style={{ display: "block" }}>
+                  {x.ipPrefix && `${x.ipPrefix} · `}last active {x.lastSeenAt ? formatDateTime(x.lastSeenAt) : "—"}
+                </span>
+              </span>
+              {!x.current && (
+                <form action={revokeSessionAction}>
+                  <input type="hidden" name="id" value={x.id} />
+                  <button className="btn btn--sm" type="submit">Sign out</button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+        {sessions.length > 1 && (
+          <form action={revokeOtherSessionsAction}>
+            <button className="btn btn--sm" type="submit">Sign out of all other devices</button>
+          </form>
+        )}
       </Section>
 
       <Section id="notifications" title="Email notifications">

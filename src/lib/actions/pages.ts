@@ -379,7 +379,7 @@ export async function thankAction(fd: FormData): Promise<void> {
   if (!user) redirect(`/login?next=/${slug}`);
   const page = await getPageBySlug(slug, "person");
   if (!page || !isPublic(page) || !user.emailVerified) return;
-  if (!rateLimit(`thanks:${user.id}`, 30, 3600_000)) return;
+  if (!(await rateLimit(`thanks:${user.id}`, 30, 3600_000))) return;
   await giveThanks(user, page);
   revalidatePath(`/${slug}`);
 }

@@ -51,6 +51,11 @@ const SessionSchema = new Schema<any>({
   tokenHash: { type: String, required: true, unique: true },
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   expiresAt: { type: Date, required: true },
+  // Shown on the account page (#14); the IP is stored truncated (last block removed)
+  userAgent: { type: String, default: "" },
+  ipPrefix: { type: String, default: "" },
+  createdAt: { type: Date, default: () => new Date() },
+  lastSeenAt: { type: Date, default: () => new Date() },
 });
 // Süresi dolan oturumları MongoDB kendisi siler
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
@@ -348,6 +353,14 @@ const ImageTrashSchema = new Schema<any>({
 });
 ImageTrashSchema.index({ deleteAfter: 1 });
 
+/* ───────────── Rate limiting counters (shared by all containers, #13) ───────────── */
+const RateCounterSchema = new Schema<any>({
+  _id: { type: String },
+  count: { type: Number, default: 0 },
+  expiresAt: { type: Date, required: true },
+});
+RateCounterSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -367,3 +380,4 @@ export const Thank = getModel("Thank", ThankSchema);
 export const Job = getModel("Job", JobSchema);
 export const Meta = getModel("Meta", MetaSchema);
 export const ImageTrash = getModel("ImageTrash", ImageTrashSchema);
+export const RateCounter = getModel("RateCounter", RateCounterSchema);

@@ -16,6 +16,9 @@ services:
       COMPANY_NAME: ${COMPANY_NAME:-Portfedia}
       COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      PWNED_CHECK: ${PWNED_CHECK:-}
+      # Virus scanning of uploads: start with `docker compose --profile security up` and set CLAMAV_HOST=clamav
+      CLAMAV_HOST: ${CLAMAV_HOST:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
@@ -42,6 +45,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # Optional virus scanner for uploads (#19). Needs ~1.5 GB RAM; downloads signatures on first start.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    profiles: ["security"]
 
 volumes:
   mongo-data:

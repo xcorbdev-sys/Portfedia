@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "../auth";
+import { getCurrentUser, rotateSession } from "../auth";
 import { getPageBySlug } from "../pages";
 import { confirmOrgClaim, decidePosition, removeOrgAdmin, requestOrgClaim, requestWorkVerification } from "../org-admin";
 import { email as cleanEmail, str } from "../validate";
@@ -23,7 +23,7 @@ export async function claimOrgAction(_: FormState, fd: FormData): Promise<FormSt
   if (!page) return { error: "Page not found." };
   const workEmail = cleanEmail(fd.get("email"));
   if (!workEmail) return { error: "Please enter a valid email address." };
-  if (!rateLimit(`claim:${user.id}`, 5, 3600_000)) return { error: "Too many attempts. Please try again later." };
+  if (!(await rateLimit(`claim:${user.id}`, 5, 3600_000))) return { error: "Too many attempts. Please try again later." };
   const err = await requestOrgClaim(user, page, workEmail);
   return err ? { error: err } : { ok: `We sent a confirmation link to ${workEmail}. Open it while signed in to finish.` };
 }
@@ -34,6 +34,7 @@ export async function confirmClaimAction(fd: FormData): Promise<void> {
   if (!user) redirect("/login");
   const res = await confirmOrgClaim(user, token);
   if (res.error || !res.slug) redirect(`/?claim=failed`);
+  await rotateSession(user.id); // new privileges → new session token
   revalidatePath(`/org/${res.slug}`);
   redirect(`/org/${res.slug}/manage?claimed=1`);
 }
@@ -47,7 +48,7 @@ export async function inviteOrgAdminAction(_: FormState, fd: FormData): Promise<
   if (!isMod && !page.orgAdmins.includes(user.id)) return { error: "Only this organization's admins can invite others." };
   const workEmail = cleanEmail(fd.get("email"));
   if (!workEmail) return { error: "Please enter a valid email address." };
-  if (!rateLimit(`invite:${user.id}`, 10, 3600_000)) return { error: "Too many invitations. Please try again later." };
+  if (!(await rateLimit(`invite:${user.id}`, 10, 3600_000))) return { error: "Too many invitations. Please try again later." };
   const err = await requestOrgClaim(user, page, workEmail, user.name);
   return err ? { error: err } : { ok: `Invitation sent to ${workEmail}.` };
 }
@@ -76,7 +77,7 @@ export async function decidePositionAction(fd: FormData): Promise<void> {
 
 export async function requestWorkVerificationAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await verifiedUser("/account#positions");
-  if (!rateLimit(`workverify:${user.id}`, 10, 3600_000)) return { error: "Too many attempts. Please try again later." };
+  if (!(await rateLimit(`workverify:${user.id}`, 10, 3600_000))) return { error: "Too many attempts. Please try again later." };
   const workEmail = cleanEmail(fd.get("email"));
   if (!workEmail) return { error: "Please enter a valid email address." };
   const err = await requestWorkVerification(user, Number(fd.get("index")), workEmail);
