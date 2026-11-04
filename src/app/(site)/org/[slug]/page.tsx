@@ -6,7 +6,8 @@ import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditOrg, isOrgAdmin, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
-import { formatDate, initials, plainExcerpt, siteUrl } from "@/lib/site";
+import { formatDate, initials, plainExcerpt } from "@/lib/site";
+import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
 import { Breadcrumbs, VerifiedBadge } from "@/components/ui";
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
@@ -73,17 +74,6 @@ export default async function OrgPage({ params }: Props) {
   if (backlinks.length) nav.push({ id: "connections", label: "Connections" });
   if (page.sources.length) nav.push({ id: "sources", label: "Sources" });
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": isSchool ? "EducationalOrganization" : "Organization",
-    name: page.title,
-    description: page.summary || undefined,
-    url: `${siteUrl()}/org/${page.slug}`,
-    logo: page.image?.url,
-    foundingDate: ib.founded ? String(ib.founded) : undefined,
-    address: ib.headquarters ? { "@type": "PostalAddress", addressLocality: ib.headquarters } : undefined,
-    sameAs: ib.website ? [ib.website] : undefined,
-  };
 
   return (
     <div className="container">
@@ -262,7 +252,11 @@ export default async function OrgPage({ params }: Props) {
           </footer>
         </article>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(organizationLd(page)) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: ldJson(breadcrumbLd([{ name: "Companies", path: "/companies" }, { name: page.title, path: `/org/${page.slug}` }])) }}
+      />
     </div>
   );
 }

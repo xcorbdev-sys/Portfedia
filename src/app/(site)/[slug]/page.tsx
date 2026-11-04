@@ -9,7 +9,8 @@ import { canView, isPublic } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getPageBySlug, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
-import { formatDate, plainExcerpt, siteUrl, initials } from "@/lib/site";
+import { formatDate, plainExcerpt, initials } from "@/lib/site";
+import { breadcrumbLd, ldJson, personProfileLd } from "@/lib/seo";
 import { Breadcrumbs, GitHubIcon, LinkedInIcon, VerifiedBadge } from "@/components/ui";
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
@@ -92,20 +93,6 @@ export default async function PersonPage({ params }: Props) {
   if (backlinks.length) nav.push({ id: "connections", label: "Connections" });
   if (page.sources.length) nav.push({ id: "sources", label: "Sources" });
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: page.title,
-    description: page.summary || undefined,
-    jobTitle: ib.occupation,
-    url: `${siteUrl()}/${page.slug}`,
-    image: page.image?.url,
-    nationality: ib.nationality || undefined,
-    address: ib.location ? { "@type": "PostalAddress", addressLocality: ib.location } : undefined,
-    worksFor: current.map((e) => ({ "@type": "Organization", name: e.orgTitle, url: `${siteUrl()}/org/${e.orgSlug}` })),
-    alumniOf: page.educations.map((e) => ({ "@type": "EducationalOrganization", name: e.schoolTitle, url: `${siteUrl()}/org/${e.schoolSlug}` })),
-    sameAs: [ib.website, ib.github && `https://github.com/${ib.github}`, ib.linkedin && `https://www.linkedin.com/in/${ib.linkedin}`].filter(Boolean),
-  };
 
   return (
     <div className="container">
@@ -316,7 +303,15 @@ export default async function PersonPage({ params }: Props) {
           )}
         </aside>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      {isPublic(page) && (
+        <>
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(personProfileLd(page)) }} />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: ldJson(breadcrumbLd([{ name: "People", path: "/people" }, { name: page.title, path: `/${page.slug}` }])) }}
+          />
+        </>
+      )}
     </div>
   );
 }

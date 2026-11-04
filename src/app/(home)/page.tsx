@@ -5,6 +5,7 @@ import { pageHref } from "@/lib/wikitext";
 import { EntityGrid } from "@/components/EntityCards";
 import { Thumb } from "@/components/ui";
 import { FeaturedTabs } from "./FeaturedTabs";
+import { ldJson, websiteLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +129,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           </Link>
         </div>
       </section>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(websiteLd()) }} />
     </>
   );
 }
