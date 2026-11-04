@@ -191,31 +191,6 @@ export default async function OrgPage({ params }: Props) {
               </Expandable>
             </section>
           )}
-          {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
-
-          <ProductsSection page={page} />
-          <LeadershipSection page={page} existing={existing} />
-          <JobsSection page={page} />
-          {page.fundingRounds.length > 0 && (
-            <section className="p-section" id="funding">
-              <h2>Funding</h2>
-              <FundingTable rounds={page.fundingRounds} existing={existing} />
-            </section>
-          )}
-          <AcquisitionsSection page={page} existing={existing} acquiredBy={relations.acquiredBy} />
-          {investments.length > 0 && (
-            <section className="p-section" id="investments">
-              <h2>Investments</h2>
-              <InvestmentsList items={investments} />
-            </section>
-          )}
-          <GroupSection page={page} existing={existing} subsidiaries={relations.subsidiaries} />
-          <MilestonesSection page={page} />
-          <OfficesSection page={page} />
-          <PressSection page={page} />
-          <TrendSection spans={spans} />
-          {page.type === "school" && <AlumniEmployersSection rows={alumniEmployers} />}
-
           <div className="two-cards">
             <div className="card" id="key-people">
               <div className="card__body">
@@ -259,6 +234,31 @@ export default async function OrgPage({ params }: Props) {
               </div>
             </div>
           </div>
+          {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
+
+          <ProductsSection page={page} />
+          <LeadershipSection page={page} existing={existing} />
+          <JobsSection page={page} />
+          {page.fundingRounds.length > 0 && (
+            <section className="p-section" id="funding">
+              <h2>Funding</h2>
+              <FundingTable rounds={page.fundingRounds} existing={existing} />
+            </section>
+          )}
+          <AcquisitionsSection page={page} existing={existing} acquiredBy={relations.acquiredBy} />
+          {investments.length > 0 && (
+            <section className="p-section" id="investments">
+              <h2>Investments</h2>
+              <InvestmentsList items={investments} />
+            </section>
+          )}
+          <GroupSection page={page} existing={existing} subsidiaries={relations.subsidiaries} />
+          <MilestonesSection page={page} />
+          <OfficesSection page={page} />
+          <PressSection page={page} />
+          <TrendSection spans={spans} />
+          {page.type === "school" && <AlumniEmployersSection rows={alumniEmployers} />}
+
 
           {people.current.length > keyPeople.length && (
             <section className="p-section" id="people">

@@ -16,7 +16,15 @@ export function EntityGrid({ items, className = "" }: { items: PageCard[]; class
               <span className="entity__name">
                 {c.title} {c.verified && <VerifiedBadge size={15} />}
               </span>
-              <span className="entity__sub">{c.subtitle || c.summary}</span>
+              {c.type === "person" && c.subtitle.includes(" · ") ? (
+                <span className="entity__sub">
+                  {c.subtitle.split(" · ").map((line) => (
+                    <span key={line} className="entity__sub--line">{line}</span>
+                  ))}
+                </span>
+              ) : (
+                <span className="entity__sub">{c.subtitle || c.summary}</span>
+              )}
             </span>
           </Link>
         </li>

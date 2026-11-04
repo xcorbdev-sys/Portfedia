@@ -36,7 +36,7 @@ export function PageActions({
           type="submit"
           title={`${followers.toLocaleString("en-US")} follower${followers === 1 ? "" : "s"}`}
         >
-          {following ? <UserCheck size={16} /> : <UserPlus size={16} />}
+          {following && <UserCheck size={16} />}
           {following ? "Following" : "Follow"}
         </button>
       </form>

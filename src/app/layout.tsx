@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { siteUrl } from "@/lib/site";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { NavProgress } from "@/components/NavProgress";
+import { Suspense } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,18 +17,22 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c111b" },
-  ],
+  themeColor: "#ffffff",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Reading the request makes every page dynamic, which the per-request CSP nonce requires
-  await headers();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Applies a saved dark-theme choice before the first paint (light is the default) */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('pf-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}" }} />
+      </head>
       <body>
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         {children}
         <footer className="site-footer">
           <div className="container site-footer__inner">
@@ -40,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/terms">Terms</Link>
               <Link href="/copyright">Copyright</Link>
               <Link href="/privacy">Privacy</Link>
+              <ThemeToggle />
             </nav>
           </div>
         </footer>

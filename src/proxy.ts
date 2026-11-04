@@ -8,7 +8,11 @@ import { NextResponse, type NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";
-  const https = (process.env.SITE_URL ?? "").startsWith("https://");
+  // Only ask browsers to upgrade sub-resources when this request itself came over HTTPS.
+  // (Behind Coolify/Traefik the original scheme is in x-forwarded-proto. On a plain-HTTP deployment
+  // upgrading would make every CSS/JS request fail and the site would render unstyled.)
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || request.nextUrl.protocol.replace(":", "");
+  const https = proto === "https";
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
