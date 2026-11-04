@@ -10,6 +10,14 @@ import { Thumb } from "./ui";
 import { MenuCloser } from "./client";
 import { ResendVerificationButton } from "./forms/AuthForms";
 
+// #60: the mobile menu also lists pages that only appear in the desktop footer
+const MOBILE_EXTRA = [
+  { href: "/jobs", label: "Jobs" },
+  { href: "/events", label: "Events" },
+  { href: "/investors", label: "Investors" },
+  { href: "/help", label: "Help" },
+];
+
 const NAV = [
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
@@ -108,7 +116,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
             </summary>
             <div className="menu__panel">
               <Link href="/search"><Search size={16} /> Search</Link>
-              {NAV.map((n) => (
+              {[...NAV, ...MOBILE_EXTRA].map((n) => (
                 <Link key={n.href} href={n.href}>{n.label}</Link>
               ))}
             </div>

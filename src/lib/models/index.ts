@@ -177,6 +177,10 @@ const PageSchema = new Schema<any>(
     followerCount: { type: Number, default: 0 },
     thanksCount: { type: Number, default: 0 },
     noindex: { type: Boolean, default: false },
+    // #75: "members" profiles are only visible to signed-in members (and never in lists or search engines)
+    visibility: { type: String, enum: ["public", "members"], default: "public" },
+    // #66: wide banner image
+    cover: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null },
     revisionCount: { type: Number, default: 0 },
   },
   { timestamps: true, minimize: false },

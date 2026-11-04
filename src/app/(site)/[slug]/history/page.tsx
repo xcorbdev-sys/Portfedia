@@ -3,7 +3,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getPageBySlug } from "@/lib/pages";
 import { getCurrentUser } from "@/lib/auth";
 import { findRenamedPage } from "@/lib/account";
-import { canView } from "@/lib/visibility";
+import { canView, isMembersOnly } from "@/lib/visibility";
+import { redirect } from "next/navigation";
 import { HistoryPage } from "@/components/HistoryPage";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ restored?: string; error?: string; page?: string }> };
@@ -17,6 +18,8 @@ export default async function PersonHistory({ params, searchParams }: Props) {
     notFound();
   }
   if (page.type !== "person") permanentRedirect(`/org/${page.slug}/history`);
-  if (!canView(page, await getCurrentUser())) notFound();
+  const user = await getCurrentUser();
+  if (!canView(page, user)) notFound();
+  if (isMembersOnly(page) && !user) redirect(`/login?next=/${page.slug}/history`);
   return <HistoryPage page={page} notice={await searchParams} />;
 }

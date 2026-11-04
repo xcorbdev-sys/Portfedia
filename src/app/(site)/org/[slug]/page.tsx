@@ -138,6 +138,7 @@ export default async function OrgPage({ params }: Props) {
               )}
             </div>
           )}
+          {page.cover && <div className="p-cover" style={{ backgroundImage: `url(${page.cover.url})` }} role="img" aria-label={`${page.title} cover image`} />}
           <header className="p-head" id="overview">
             <div className="p-photo p-photo--logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}

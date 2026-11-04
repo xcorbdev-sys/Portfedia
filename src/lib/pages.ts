@@ -69,6 +69,8 @@ function toPage(d: any): PageDoc {
     followerCount: d.followerCount ?? 0,
     thanksCount: d.thanksCount ?? 0,
     noindex: Boolean(d.noindex),
+    visibility: d.visibility === "members" ? "members" : "public",
+    cover: d.cover?.url ? { key: d.cover.key, url: d.cover.url } : null,
     revisionCount: d.revisionCount ?? 0,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
@@ -137,7 +139,7 @@ export async function existingPages(slugs: string[]): Promise<Map<string, PageTy
   if (slugs.length === 0) return new Map();
   await connectDB();
   const rows = await Page.find(
-    { $or: [{ slug: { $in: slugs } }, { oldSlugs: { $in: slugs } }], ...PUBLIC_FILTER },
+    { $or: [{ slug: { $in: slugs } }, { oldSlugs: { $in: slugs } }], status: PUBLIC_FILTER.status },
     { slug: 1, type: 1, oldSlugs: 1 },
   ).lean<{ slug: string; type: PageType; oldSlugs?: string[] }[]>();
   const map = new Map<string, PageType>();
@@ -570,8 +572,10 @@ export interface PersonInput {
   languageLevels: LanguageLevel[];
   openTo: OpenTo[];
   noindex: boolean;
+  visibility: "public" | "members";
   editSummary: string;
   image?: StoredImage | null; // undefined = keep, null = remove
+  cover?: StoredImage | null;
 }
 
 export async function savePersonPage(user: SessionUser, input: PersonInput): Promise<PageDoc> {
@@ -622,6 +626,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     openTo: input.openTo,
     outLinks: extractWikiLinks(input.body),
     noindex: input.noindex,
+    visibility: input.visibility,
   };
 
   let page;
@@ -634,6 +639,10 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     if (input.image !== undefined) {
       oldImage = existing.image?.url ? { key: existing.image.key, url: existing.image.url } : null;
       existing.image = input.image;
+    }
+    if (input.cover !== undefined) {
+      if (existing.cover?.key && existing.cover.key !== input.cover?.key) await trashImage(existing.cover);
+      existing.cover = input.cover;
     }
     existing.set(content);
     existing.status = status;
@@ -650,6 +659,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
       status,
       review: { submittedAt: new Date() },
       image: input.image ?? null,
+      cover: input.cover ?? null,
       revisionCount: 1,
     });
   }
@@ -705,6 +715,7 @@ export interface OrgInput {
   ticker: Ticker | null;
   editSummary: string;
   image?: StoredImage | null;
+  cover?: StoredImage | null;
   /** Moderators only */
   claimDomain?: string;
   /** Moderators only: 0 removes protection */
@@ -780,6 +791,10 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   if (input.image !== undefined) {
     oldImage = page.image?.url ? { key: page.image.key, url: page.image.url } : null;
     page.image = input.image;
+  }
+  if (input.cover !== undefined) {
+    if (page.cover?.key && page.cover.key !== input.cover?.key) await trashImage(page.cover);
+    page.cover = input.cover;
   }
   if (isMod && input.claimDomain !== undefined) page.claimDomain = input.claimDomain || null;
   if (isMod && input.protectDays !== undefined) {
@@ -874,6 +889,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     const revs = await Revision.find({ pageId: page._id }, { snapshot: 1, snapshotZ: 1 }).lean<{ snapshot?: unknown; snapshotZ?: unknown }[]>();
     const keys = new Set<string>();
     if (page.image?.key) keys.add(page.image.key);
+    if (page.cover?.key) keys.add(page.cover.key);
     for (const r of revs) {
       const snap = readSnapshot(r as never);
       if (snap.image?.key) keys.add(snap.image.key);

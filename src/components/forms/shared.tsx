@@ -133,6 +133,45 @@ export function ImagePicker({ current, name, label, logo = false }: { current: S
   );
 }
 
+/* ───────────── Cover image (#66) ───────────── */
+
+export function CoverPicker({ current }: { current: StoredImage | null }) {
+  const [preview, setPreview] = useState<string | null>(current?.url ?? null);
+  const [removed, setRemoved] = useState(false);
+  const id = useId();
+  return (
+    <div className="field">
+      <span className="label">Cover image</span>
+      <label htmlFor={id} className="cover-pick" style={preview && !removed ? { backgroundImage: `url(${preview})` } : undefined}>
+        {!(preview && !removed) && (
+          <span className="muted small">
+            <Upload size={16} style={{ verticalAlign: -3 }} /> Upload a wide image (shown as a banner, 1500×500)
+          </span>
+        )}
+      </label>
+      <input
+        id={id}
+        className="visually-hidden"
+        type="file"
+        name="cover"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) {
+            setPreview(URL.createObjectURL(f));
+            setRemoved(false);
+          }
+        }}
+      />
+      {current && (
+        <label className="check">
+          <input type="checkbox" name="removeCover" checked={removed} onChange={(e) => setRemoved(e.target.checked)} /> Remove cover image
+        </label>
+      )}
+    </div>
+  );
+}
+
 /* ───────────── Organisation autocomplete ───────────── */
 
 export function OrgInput({

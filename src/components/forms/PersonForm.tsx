@@ -9,7 +9,7 @@ import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
 import { FormError } from "../ui";
 import {
-  AddButton, ImagePicker, MARKDOWN_HINT, OrgInput, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps,
+  AddButton, CoverPicker, ImagePicker, MARKDOWN_HINT, OrgInput, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps,
 } from "./shared";
 
 type Exp = { orgTitle: string; role: string; startYear: string; endYear: string; current: boolean; description: string };
@@ -83,6 +83,7 @@ export function PersonForm({
           <p className="muted small">This is what people see first on your profile.</p>
         </div>
         <ImagePicker current={page?.image ?? null} name={name} label="Photo" />
+        <CoverPicker current={page?.cover ?? null} />
         <div className="grid-2">
           <div className="field">
             <label htmlFor="title">Full name *</label>
@@ -262,6 +263,13 @@ export function PersonForm({
         <SourcesEditor initial={page?.sources ?? []} />
         <div className="field">
           <span className="label">Privacy</span>
+          <label className="check">
+            <input type="radio" name="visibility" value="public" defaultChecked={page?.visibility !== "members"} /> Public: anyone can see my profile
+          </label>
+          <label className="check">
+            <input type="radio" name="visibility" value="members" defaultChecked={page?.visibility === "members"} /> Members only: only signed-in Portfedia
+            members can open my profile; it is left out of lists, search and search engines
+          </label>
           <label className="check">
             <input type="checkbox" name="noindex" defaultChecked={page?.noindex} /> Hide my profile from search engines (Google, Bing…)
           </label>

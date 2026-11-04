@@ -24,6 +24,13 @@ import { OPEN_TO } from "../types";
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
 
+async function coverFrom(fd: FormData): Promise<StoredImage | null | undefined> {
+  if (bool(fd.get("removeCover"))) return null;
+  const f = fd.get("cover");
+  if (f instanceof File && f.size > 0) return saveImage(f, "cover");
+  return undefined;
+}
+
 async function imageFrom(fd: FormData, kind: "photo" | "logo"): Promise<StoredImage | null | undefined> {
   if (bool(fd.get("removeImage"))) return null;
   const f = fd.get("image");
@@ -203,8 +210,10 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
 
   let image: StoredImage | null | undefined;
   let projects: Project[];
+  let cover: StoredImage | null | undefined;
   try {
     image = await imageFrom(fd, "photo");
+    cover = await coverFrom(fd);
     projects = await parseProjects(fd, prev);
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
@@ -268,8 +277,10 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     languageLevels,
     openTo,
     noindex: bool(fd.get("noindex")),
+    visibility: fd.get("visibility") === "members" ? "members" : "public",
     editSummary: str(fd.get("editSummary"), 300),
     image,
+    cover,
   });
 
   if (isPublic(page)) {
@@ -328,8 +339,10 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
 
   let image: StoredImage | null | undefined;
   let products: Project[];
+  let orgCover: StoredImage | null | undefined;
   try {
     image = await imageFrom(fd, "logo");
+    orgCover = await coverFrom(fd);
     products = await parseImageCards(fd, prevOrg?.products ?? [], "products", "productImage_");
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
@@ -361,6 +374,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg) : undefined,
       editSummary: str(fd.get("editSummary"), 300),
       image,
+      cover: orgCover,
       protectDays: fd.has("protectDays") ? Math.max(0, Math.min(365, Number(fd.get("protectDays")) || 0)) : undefined,
       protectReason: str(fd.get("protectReason"), 200),
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,

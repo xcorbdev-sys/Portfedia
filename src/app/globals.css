@@ -541,3 +541,10 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .cropper { width: min(340px, 100%); }
 .cropper__frame { position: relative; overflow: hidden; border-radius: 12px; background: #111; touch-action: none; cursor: grab; margin: 0 auto; }
 .cropper__frame img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }
+.cover-pick { display: grid; place-items: center; height: 120px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2) center / cover no-repeat; cursor: pointer; }
+.p-cover { height: 200px; border-radius: var(--radius); background: var(--bg-soft) center / cover no-repeat; margin-bottom: 18px; border: 1px solid var(--border); }
+@media (max-width: 860px) { .p-cover { height: 130px; } }
+@media (max-width: 860px) { .profile__main > .p-cover { order: 0; } }
+.sk { background: linear-gradient(90deg, var(--bg-soft) 25%, var(--border) 50%, var(--bg-soft) 75%); background-size: 200% 100%; animation: sk 1.2s ease-in-out infinite; border-radius: 6px; }
+@keyframes sk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }

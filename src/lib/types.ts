@@ -168,6 +168,8 @@ export interface PageDoc {
   followerCount: number;
   thanksCount: number;
   noindex: boolean;
+  visibility: "public" | "members";
+  cover: StoredImage | null;
   revisionCount: number;
   createdAt: Date;
   updatedAt: Date;

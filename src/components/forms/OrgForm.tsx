@@ -8,7 +8,7 @@ import { FormError } from "../ui";
 import { OrgMoreStep } from "./OrgMoreStep";
 import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
-import { AddButton, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
+import { AddButton, CoverPicker, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
 
 const STEPS = ["Basic Info", "Details", "More", "Sources & Submit"];
 const LAST = STEPS.length - 1;
@@ -83,6 +83,7 @@ export function OrgForm({
           <p className="muted small">The essentials: who this organization is and what it does.</p>
         </div>
         <ImagePicker current={page?.image ?? null} name={name} label="Logo" logo />
+        <CoverPicker current={page?.cover ?? null} />
         <div className="grid-2">
           <div className="field">
             <label htmlFor="title">Organization name *</label>

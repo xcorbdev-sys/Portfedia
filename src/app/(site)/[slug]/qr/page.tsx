@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { getPageBySlug, currentRole } from "@/lib/pages";
-import { isPublic } from "@/lib/visibility";
+import { getCurrentUser } from "@/lib/auth";
+import { isMembersOnly, isPublic } from "@/lib/visibility";
 import { siteUrl } from "@/lib/site";
 import { PrintButton } from "@/components/client";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "QR code", robots: { index: false } }
 export default async function QrPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const page = await getPageBySlug(slug, "person");
-  if (!page || !isPublic(page)) notFound();
+  if (!page || !isPublic(page) || (isMembersOnly(page) && !(await getCurrentUser()))) notFound();
   const url = `${siteUrl()}/@${page.slug}`;
   const svg = await QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0f172a", light: "#ffffff" } });
   const download = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

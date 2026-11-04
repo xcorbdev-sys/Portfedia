@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { findRenamedPage } from "@/lib/account";
-import { canView, isPublic } from "@/lib/visibility";
+import { canView, isMembersOnly, isPublic } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getInvestments, getPageBySlug, isFollowing } from "@/lib/pages";
 import { InvestmentsList } from "@/components/Funding";
@@ -35,6 +35,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isPublic(page)) {
     // Profiles under review never reach search engines and don't leak details in previews
     return { title: canView(page, await getCurrentUser()) ? page.title : "Page not found", robots: { index: false, follow: false } };
+  }
+  if (isMembersOnly(page)) {
+    // #75: no details for previews or search engines
+    return { title: (await getCurrentUser()) ? page.title : "Members-only profile", robots: { index: false, follow: false } };
   }
   const role = currentRole(page);
   const description = stripWikiLinks(page.summary) || plainExcerpt(page.body) || `${page.title}, ${role}`;
@@ -77,6 +81,19 @@ export default async function PersonPage({ params }: Props) {
   const user = await getCurrentUser();
   // Profiles awaiting review are visible only to their owner and moderators
   if (!canView(page, user)) notFound();
+  // #75: members-only profiles ask visitors to sign in
+  if (isMembersOnly(page) && !user) {
+    return (
+      <div className="narrow" style={{ textAlign: "center", paddingTop: 64 }}>
+        <h1>Members-only profile</h1>
+        <p className="muted">This person chose to show their profile only to Portfedia members.</p>
+        <p style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <Link className="btn btn--primary" href={`/login?next=/${page.slug}`}>Log in to view</Link>
+          <Link className="btn" href="/signup">Create an account</Link>
+        </p>
+      </div>
+    );
+  }
   const orgSlugs = [...new Set([...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)])];
   const [existing, backlinks, related, following, investments, recommendations, viewerPage, thanked] = await Promise.all([
     existingPages([...page.outLinks.map((l) => l.slug), ...page.awards.map((a) => slugify(a.issuer)), ...page.volunteering.map((v) => slugify(v.org))].filter(Boolean)),
@@ -133,7 +150,11 @@ export default async function PersonPage({ params }: Props) {
         </aside>
 
         <article className="profile__main">
+          {page.cover && <div className="p-cover" style={{ backgroundImage: `url(${page.cover.url})` }} role="img" aria-label={`${page.title} cover image`} />}
           {user && !isPublic(page) && <ReviewBanner page={page} user={user} />}
+          {isMembersOnly(page) && isPublic(page) && (
+            <div className="notice notice--info small" style={{ marginBottom: 12 }}>🔒 Members-only profile: visible to signed-in members only.</div>
+          )}
           <header className="p-head" id="overview">
             <div className="p-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -382,7 +403,7 @@ export default async function PersonPage({ params }: Props) {
           )}
         </aside>
       </div>
-      {isPublic(page) && (
+      {isPublic(page) && !isMembersOnly(page) && (
         <>
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(personProfileLd(page)) }} />
           <script

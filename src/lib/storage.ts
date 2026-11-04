@@ -50,7 +50,7 @@ export const thumbKeyOf = (key: string) => key.replace(/(\.[a-z]+)$/, "_t$1");
  * Validates, resizes and re-encodes an upload: 400×400 WebP (photos are cropped to a square,
  * logos fit inside). Re-encoding also strips metadata such as GPS coordinates from phone photos.
  */
-export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): Promise<StoredImage> {
+export async function saveImage(file: File, kind: "photo" | "logo" | "cover" = "photo"): Promise<StoredImage> {
   if (file.size > MAX_IMAGE_BYTES) throw new UploadError("Images must be 5 MB or smaller.");
   const input = new Uint8Array(await file.arrayBuffer());
   if (!sniffImage(input)) throw new UploadError("Only JPEG, PNG or WebP images are allowed.");
@@ -64,7 +64,11 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
   try {
     buf = await sharp(input, { limitInputPixels: 50_000_000 })
       .rotate() // respect EXIF orientation before it is stripped
-      .resize(OUTPUT_SIZE, OUTPUT_SIZE, kind === "photo" ? { fit: "cover", position: "attention" } : { fit: "inside", withoutEnlargement: true })
+      .resize(
+        kind === "cover" ? 1500 : OUTPUT_SIZE,
+        kind === "cover" ? 500 : OUTPUT_SIZE,
+        kind === "logo" ? { fit: "inside", withoutEnlargement: true } : { fit: "cover", position: "attention" },
+      )
       .webp({ quality: 82 })
       .toBuffer();
   } catch {
@@ -74,7 +78,7 @@ export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): P
   const hash = createHash("sha256").update(buf).digest("hex");
   const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kindInfo.ext}`;
   // Small variant for avatars and lists, so pages don't download the 400px original everywhere
-  const thumb = await sharp(buf).resize(96, 96, kind === "photo" ? { fit: "cover" } : { fit: "inside" }).webp({ quality: 78 }).toBuffer();
+  const thumb = await sharp(buf).resize(96, 96, kind === "logo" ? { fit: "inside" } : { fit: "cover" }).webp({ quality: 78 }).toBuffer();
   const thumbKey = thumbKeyOf(key);
 
   if (r2Configured()) {
