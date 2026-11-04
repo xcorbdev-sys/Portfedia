@@ -661,3 +661,5 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .globe-picks { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 10px; }
 .globe-picks li { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; }
 .globe-picks .thumb { width: 28px; height: 28px; }
+.globe-avatar--logo { border-radius: 12px; background: #fff; }
+.globe-avatar--logo img { object-fit: contain; padding: 3px; }

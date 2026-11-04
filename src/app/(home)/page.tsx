@@ -6,6 +6,7 @@ import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-re
 import { cachedCollections, cachedHomeData } from "@/lib/cached";
 import { EntityGrid } from "@/components/EntityCards";
 import { HeroArt, NODES } from "@/components/HeroArt";
+import { pageHref } from "@/lib/wikitext";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
 
@@ -51,8 +52,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
                 {data.globePeople.slice(0, NODES.length).map((p, i) => (
                   <Link
                     key={p.slug}
-                    href={`/${p.slug}`}
-                    className="globe-avatar"
+                    href={pageHref(p.type, p.slug)}
+                    className={`globe-avatar${p.type === "person" ? "" : " globe-avatar--logo"}`}
                     style={{ left: `${(NODES[i][0] / 480) * 100}%`, top: `${(NODES[i][1] / 390) * 100}%`, animationDelay: `${i * 60}ms` }}
                     title={p.occupation ? `${p.title} · ${p.occupation}` : p.title}
                     aria-label={p.title}

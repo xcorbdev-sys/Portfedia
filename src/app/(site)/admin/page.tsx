@@ -225,25 +225,26 @@ async function HomeGlobe() {
   return (
     <section className="card">
       <div className="card__body">
-        <h2 className="card__title">Profiles on the home page globe</h2>
+        <h2 className="card__title">Profiles and companies on the home page globe</h2>
         <p className="small muted">
-          Up to {GLOBE_SPOTS} profiles, one on each blue dot, in this order. Only published profiles with a photo can be placed.
-          Write one profile address per line (e.g. <code>hakan-yetis</code> or a link to the profile). Leave empty to show plain dots.
+          Up to {GLOBE_SPOTS} people, companies or SaaS projects, one on each blue dot, in this order. They must be public and have a
+          photo or logo. Write one address per line, e.g. <code>hakan-yetis</code> for a person, <code>org/menulify</code> for a company,
+          or paste a link to the page. Leave empty to show plain dots.
         </p>
         {people.length > 0 && (
           <ul className="globe-picks">
             {people.map((p, i) => (
               <li key={p.slug}>
                 <span className="muted small">{i + 1}</span>
-                <Thumb image={p.image} name={p.title} variant="round" />
-                <Link href={`/${p.slug}`}>{p.title}</Link>
+                <Thumb image={p.image} name={p.title} variant={p.type === "person" ? "round" : "logo"} />
+                <Link href={pageHref(p.type, p.slug)}>{p.title}</Link>
               </li>
             ))}
           </ul>
         )}
         <form action={saveGlobeAction} className="form" style={{ gap: 10 }}>
           <label htmlFor="globe-people" className="visually-hidden">Profile addresses</label>
-          <textarea id="globe-people" name="people" className="textarea textarea--plain" rows={9} defaultValue={slugs.join("\n")} placeholder={"hakan-yetis\nayse-demir"} />
+          <textarea id="globe-people" name="people" className="textarea textarea--plain" rows={9} defaultValue={people.map((p) => (p.type === "person" ? p.slug : `org/${p.slug}`)).join("\n")} placeholder={"hakan-yetis\norg/menulify"} />
           <button className="btn btn--primary" type="submit" style={{ width: "fit-content" }}>Save</button>
         </form>
       </div>

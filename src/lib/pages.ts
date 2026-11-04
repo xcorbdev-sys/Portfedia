@@ -419,11 +419,12 @@ export async function globeSlugs(): Promise<string[]> {
   return ((await getMeta<string[]>("globePeople")) ?? []).slice(0, GLOBE_SPOTS);
 }
 
-/** Saves the admin's choice; only published profiles with a photo can be placed. Returns the addresses that didn't work. */
+/** Saves the admin's choice: people, companies or SaaS projects that are public and have a photo or logo. Returns the addresses that didn't work. */
 export async function setGlobeSlugs(input: string[]): Promise<{ saved: string[]; skipped: string[] }> {
   await connectDB();
-  const wanted = [...new Set(input.map((x) => x.trim().replace(/^https?:\/\/[^/]+/, "").replace(/^\/+|\/+$/g, "").replace(/^@/, "").toLowerCase()).filter(Boolean))].slice(0, GLOBE_SPOTS);
-  const rows = await Page.find({ type: "person", slug: { $in: wanted }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1 }).lean<{ slug: string }[]>();
+  const clean = (x: string) => x.trim().replace(/^https?:\/\/[^/]+/, "").replace(/^\/+|\/+$/g, "").replace(/^org\//, "").replace(/^@/, "").toLowerCase();
+  const wanted = [...new Set(input.map(clean).filter(Boolean))].slice(0, GLOBE_SPOTS);
+  const rows = await Page.find({ slug: { $in: wanted }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1 }).lean<{ slug: string }[]>();
   const ok = new Set(rows.map((r) => r.slug));
   const saved = wanted.filter((s) => ok.has(s));
   const { setMeta } = await import("./maintenance");
@@ -445,7 +446,7 @@ export async function homeData() {
     // Profile photos on the globe of the home page: chosen by an admin (Admin → Home page)
     globeSlugs().then((slugs) =>
       slugs.length
-        ? Page.find({ type: "person", slug: { $in: slugs }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1, "infobox.occupation": 1 })
+        ? Page.find({ slug: { $in: slugs }, "image.url": { $nin: [null, ""] }, ...PUBLIC_FILTER }, { slug: 1, type: 1, title: 1, image: 1, summary: 1, "infobox.occupation": 1 })
             .lean()
             .then((rows) => slugs.map((s) => rows.find((r) => r.slug === s)).filter(Boolean))
         : [],
@@ -459,8 +460,9 @@ export async function homeData() {
     globePeople: (globePeople as any[]).map((d) => ({
       slug: d.slug as string,
       title: d.title as string,
-      occupation: (d.infobox?.occupation as string) ?? "",
-      photo: (d.image?.thumbUrl as string) || (d.image?.url as string),
+      occupation: d.type === "person" ? ((d.infobox?.occupation as string) ?? "") : ((d.summary as string) ?? ""),
+      photo: d.type === "person" ? (d.image?.thumbUrl as string) || (d.image?.url as string) : (d.image?.url as string),
+      type: d.type as PageType,
     })),
   };
 }

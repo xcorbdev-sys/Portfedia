@@ -497,13 +497,21 @@ async function createProfile(p, opts) {
   // ── Home page globe: only profiles an admin picks
   await anon.goto(`${BASE}/`);
   check("globe shows no photos until an admin picks them", (await anon.locator(".globe-avatar").count()) === 0);
+  await elif.goto(`${BASE}/org/elif-analytics/edit`);
+  await elif.setInputFiles("input[name=image]", photo("blue"));
+  for (let i = 0; i < 3; i++) await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/elif-analytics`);
   await admin.goto(`${BASE}/admin?section=home`);
-  await admin.fill("#globe-people", "ayse-demir\nno-such-person");
+  await admin.fill("#globe-people", `ayse-demir\n${BASE}/org/elif-analytics\nno-such-person`);
   await admin.click('button:has-text("Save")');
   await admin.waitForSelector(".notice--error");
-  check("admin picks globe profiles (invalid ones are reported)", /Saved 1 profile/.test(await admin.locator(".notice--error").innerText()) && /no-such-person/.test(await admin.locator(".notice--error").innerText()));
+  check("admin picks people and companies for the globe (invalid ones are reported)", /Saved 2 entries/.test(await admin.locator(".notice--error").innerText()) && /no-such-person/.test(await admin.locator(".notice--error").innerText()));
   await anon.goto(`${BASE}/`);
-  check("picked profile is on the globe", (await anon.locator('.globe-avatar[href="/ayse-demir"]').count()) === 1 && (await anon.locator(".globe-avatar").count()) === 1);
+  check(
+    "picked profile and company are on the globe",
+    (await anon.locator('.globe-avatar[href="/ayse-demir"]').count()) === 1 && (await anon.locator('.globe-avatar--logo[href="/org/elif-analytics"]').count()) === 1 && (await anon.locator(".globe-avatar").count()) === 2,
+  );
 
   // ── My pages: a member's own companies and SaaS projects
   await elif.goto(`${BASE}/my-pages`);

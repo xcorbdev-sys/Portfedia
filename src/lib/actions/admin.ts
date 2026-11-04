@@ -20,7 +20,7 @@ export async function saveGlobeAction(fd: FormData): Promise<void> {
   const res = await setGlobeSlugs(String(fd.get("people") ?? "").split(/[\n,]+/).slice(0, 30));
   revalidateTag("lists", { expire: 0 });
   revalidatePath("/");
-  const msg = `Saved ${res.saved.length} profile${res.saved.length === 1 ? "" : "s"} on the globe.` + (res.skipped.length ? ` Not added (no public profile with a photo): ${res.skipped.join(", ")}.` : "");
+  const msg = `Saved ${res.saved.length} ${res.saved.length === 1 ? "entry" : "entries"} on the globe.` + (res.skipped.length ? ` Not added (no public page with a photo or logo at that address): ${res.skipped.join(", ")}.` : "");
   redirect(`/admin?section=home&${res.skipped.length ? "error" : "done"}=${encodeURIComponent(msg)}`);
 }
 
