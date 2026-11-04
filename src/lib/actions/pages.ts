@@ -13,6 +13,7 @@ import type { FormState } from "./auth";
 import type { SourceRef, StoredImage } from "../types";
 
 const MAX_BODY = 100_000;
+const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
 
 async function imageFrom(fd: FormData): Promise<StoredImage | null | undefined> {
   if (bool(fd.get("removeImage"))) return null;
@@ -54,6 +55,7 @@ function parseSources(v: FormDataEntryValue | null): SourceRef[] {
 export async function savePersonAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/edit");
+  if (!user.emailVerified) return { error: VERIFY_FIRST };
 
   const title = str(fd.get("title"), 120);
   const occupation = str(fd.get("occupation"), 120);
@@ -132,6 +134,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   const user = await getCurrentUser();
   const slug = str(fd.get("slug"), 100) || null;
   if (!user) redirect(`/login?next=${encodeURIComponent(slug ? `/org/${slug}/edit` : "/create")}`);
+  if (!user.emailVerified) return { error: VERIFY_FIRST };
 
   const title = str(fd.get("title"), 160);
   if (!slug && !slugify(title)) return { error: "Organization name is required." };

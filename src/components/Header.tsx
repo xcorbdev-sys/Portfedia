@@ -5,6 +5,7 @@ import { countPendingApplications, getPersonPageOf } from "@/lib/pages";
 import { logoutAction } from "@/lib/actions/auth";
 import { Thumb } from "./ui";
 import { MenuCloser } from "./client";
+import { ResendVerificationButton } from "./forms/AuthForms";
 
 const NAV = [
   { href: "/people", label: "People" },
@@ -95,6 +96,16 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
           </details>
         </div>
       </div>
+      {user && !user.emailVerified && (
+        <div className="verify-bar" role="status">
+          <div className="container">
+            <span>
+              <b>Confirm your email address.</b> We sent a link to {user.email}. You need it to submit your profile or edit pages.
+            </span>
+            <ResendVerificationButton />
+          </div>
+        </div>
+      )}
     </header>
   );
 }

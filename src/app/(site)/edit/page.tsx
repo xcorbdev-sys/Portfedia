@@ -11,6 +11,11 @@ export default async function EditMyProfile() {
   const page = await getPersonPageOf(user.id);
   return (
     <div className="narrow" style={{ maxWidth: 900 }}>
+      {!user.emailVerified && (
+        <div className="notice notice--info" style={{ marginBottom: 18 }}>
+          <b>Confirm your email first.</b> You can fill in your profile now, but it can only be submitted once your email address is confirmed.
+        </div>
+      )}
       <div className="wizard-head">
         <h1>{page ? "Edit your profile" : "Create your profile"}</h1>
         <p className="muted">

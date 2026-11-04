@@ -117,4 +117,7 @@ export interface SessionUser {
   name: string;
   email: string;
   role: "user" | "moderator" | "admin";
+  emailVerified: boolean;
+  hasPassword: boolean;
+  emailPrefs: { profileUpdates: boolean };
 }

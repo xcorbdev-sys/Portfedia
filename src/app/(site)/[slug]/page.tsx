@@ -4,6 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { findRenamedPage } from "@/lib/account";
 import { canView, isPublic } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getPageBySlug, isFollowing } from "@/lib/pages";
@@ -57,7 +58,11 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 export default async function PersonPage({ params }: Props) {
   const { slug } = await params;
   const page = await load(slug);
-  if (!page) notFound();
+  if (!page) {
+    const moved = await findRenamedPage(slug);
+    if (moved) permanentRedirect(pageHref(moved.type, moved.slug));
+    notFound();
+  }
   if (page.type !== "person") permanentRedirect(pageHref(page.type, page.slug));
 
   const user = await getCurrentUser();
@@ -77,7 +82,6 @@ export default async function PersonPage({ params }: Props) {
   const exps = page.experiences.filter((e) => e.verification !== "rejected");
   const current = exps.filter((e) => e.current);
   const role = currentRole(page);
-  const verifiedCount = exps.filter((e) => e.verification === "verified").length;
   const hasLinks = ib.website || ib.github || ib.linkedin || (ib.email && ib.emailPublic);
 
   const nav = [{ id: "overview", label: "Overview" }];
@@ -279,11 +283,6 @@ export default async function PersonPage({ params }: Props) {
                   <Fact label="Expertise">{ib.skills}</Fact>
                 </tbody>
               </table>
-              {exps.length > 0 && (
-                <p className="small" style={{ margin: "12px 0 0", color: verifiedCount ? "var(--ok)" : "var(--text-3)" }}>
-                  {verifiedCount}/{exps.length} career entries verified by organizations
-                </p>
-              )}
             </div>
           </div>
           {hasLinks && (

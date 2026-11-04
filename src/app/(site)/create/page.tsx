@@ -18,6 +18,11 @@ export default async function CreatePage({ searchParams }: Props) {
 
   return (
     <div className="narrow" style={{ maxWidth: 900 }}>
+      {!user.emailVerified && (
+        <div className="notice notice--info" style={{ marginBottom: 18 }}>
+          <b>Confirm your email first.</b> You can fill in your profile now, but it can only be submitted once your email address is confirmed.
+        </div>
+      )}
       <div className="wizard-head">
         {sp.welcome && !myPage && <div className="notice notice--ok" style={{ marginBottom: 18 }}>Welcome to Portfedia, {user.name.split(" ")[0]}! Let&apos;s create your profile.</div>}
         <h1>Create a New Profile</h1>

@@ -1,7 +1,7 @@
 import "server-only";
 import { Types } from "mongoose";
 import { connectDB } from "./db";
-import { Follow, Page, Revision, Session, User } from "./models";
+import { Follow, Page, Revision, Session, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
 import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
@@ -107,8 +107,14 @@ export async function getPersonPageOf(userId: string): Promise<PageDoc | null> {
 export async function existingPages(slugs: string[]): Promise<Map<string, PageType>> {
   if (slugs.length === 0) return new Map();
   await connectDB();
-  const rows = await Page.find({ slug: { $in: slugs }, ...PUBLIC_FILTER }, { slug: 1, type: 1 }).lean<{ slug: string; type: PageType }[]>();
-  return new Map(rows.map((r) => [r.slug, r.type]));
+  const rows = await Page.find(
+    { $or: [{ slug: { $in: slugs } }, { oldSlugs: { $in: slugs } }], ...PUBLIC_FILTER },
+    { slug: 1, type: 1, oldSlugs: 1 },
+  ).lean<{ slug: string; type: PageType; oldSlugs?: string[] }[]>();
+  const map = new Map<string, PageType>();
+  // A renamed page still counts as existing under its old address (that URL redirects)
+  for (const r of rows) for (const s of [r.slug, ...(r.oldSlugs ?? [])]) if (slugs.includes(s)) map.set(s, r.type);
+  return map;
 }
 
 export async function getCards(slugs: string[]): Promise<PageCard[]> {
@@ -331,6 +337,13 @@ export async function listApplications(status: "pending" | "rejected" | "publish
 export async function countPendingApplications(): Promise<number> {
   await connectDB();
   return Page.countDocuments({ type: "person", status: "pending" });
+}
+
+export async function getOwnerContact(ownerId: string | null): Promise<{ email: string; name: string; notify: boolean } | null> {
+  if (!ownerId) return null;
+  await connectDB();
+  const u = await User.findById(ownerId, { email: 1, name: 1, emailPrefs: 1 }).lean<{ email: string; name: string; emailPrefs?: { profileUpdates?: boolean } }>();
+  return u ? { email: u.email, name: u.name, notify: u.emailPrefs?.profileUpdates !== false } : null;
 }
 
 /** Approve or reject a person profile application. */
@@ -633,5 +646,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   // Contributions to organisation pages stay, but are anonymised
   await Revision.updateMany({ authorId: oid }, { $set: { authorName: "Deleted user" } });
   await Session.deleteMany({ userId: oid });
+  await Token.deleteMany({ userId: oid });
   await User.deleteOne({ _id: oid });
 }

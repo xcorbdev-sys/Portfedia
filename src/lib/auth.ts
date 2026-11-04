@@ -51,11 +51,23 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     name: string;
     email: string;
     role: SessionUser["role"];
+    emailVerifiedAt: Date | null;
+    passwordHash?: string;
+    emailPrefs?: { profileUpdates?: boolean };
   }>();
   if (!user) return null;
-  // Accounts listed in ADMIN_EMAILS are admins (set on Coolify; no database edit needed)
-  const role = adminEmails().has(user.email) ? "admin" : user.role;
-  return { id: String(user._id), name: user.name, email: user.email, role };
+  const emailVerified = Boolean(user.emailVerifiedAt);
+  // ADMIN_EMAILS only applies to verified addresses: nobody can become admin by signing up with an unclaimed email
+  const role = emailVerified && adminEmails().has(user.email) ? "admin" : user.role;
+  return {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+    role,
+    emailVerified,
+    hasPassword: Boolean(user.passwordHash),
+    emailPrefs: { profileUpdates: user.emailPrefs?.profileUpdates !== false },
+  };
 });
 
 function adminEmails(): Set<string> {

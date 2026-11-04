@@ -5,16 +5,39 @@ import mongoose, { Schema, type Model } from "mongoose";
 
 const { models, model } = mongoose;
 
-/* ───────────── Kullanıcı ───────────── */
+/* ───────────── User ───────────── */
 const UserSchema = new Schema<any>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true },
+    emailVerifiedAt: { type: Date, default: null },
+    // Empty for accounts that only sign in with Google/LinkedIn
+    passwordHash: { type: String, default: "" },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     role: { type: String, enum: ["user", "moderator", "admin"], default: "user" },
+    // Only the confirmation is stored, never the birth year itself (data minimisation)
+    ageConfirmedAt: { type: Date, default: null },
+    googleId: { type: String, default: null },
+    linkedinId: { type: String, default: null },
+    emailPrefs: {
+      type: new Schema<any>({ profileUpdates: { type: Boolean, default: true } }, { _id: false }),
+      default: () => ({}),
+    },
   },
   { timestamps: true },
 );
+UserSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: { $type: "string" } } });
+UserSchema.index({ linkedinId: 1 }, { unique: true, partialFilterExpression: { linkedinId: { $type: "string" } } });
+
+/* ───────────── One-time tokens (email verification, password reset, email change, OAuth signup) ───────────── */
+const TokenSchema = new Schema<any>({
+  tokenHash: { type: String, required: true, unique: true },
+  type: { type: String, enum: ["verify_email", "reset_password", "change_email", "oauth_signup", "oauth_state"], required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+  data: { type: Schema.Types.Mixed, default: {} },
+  expiresAt: { type: Date, required: true },
+});
+TokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+TokenSchema.index({ userId: 1, type: 1 });
 
 /* ───────────── Oturum ───────────── */
 const SessionSchema = new Schema<any>({
@@ -56,6 +79,8 @@ const PageSchema = new Schema<any>(
   {
     type: { type: String, enum: ["person", "org", "school"], required: true },
     slug: { type: String, required: true, unique: true },
+    // Previous addresses keep working (permanent redirect) after a profile URL change
+    oldSlugs: { type: [String], default: [] },
     title: { type: String, required: true, maxlength: 160 },
     titleKey: { type: String, required: true, index: true },
     summary: { type: String, default: "", maxlength: 400 },
@@ -97,6 +122,7 @@ PageSchema.index(
 );
 PageSchema.index({ "experiences.orgSlug": 1 }); // "Burada çalışanlar"
 PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
+PageSchema.index({ oldSlugs: 1 });
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });
@@ -139,3 +165,4 @@ export const Session = getModel("Session", SessionSchema);
 export const Page = getModel("Page", PageSchema);
 export const Revision = getModel("Revision", RevisionSchema);
 export const Follow = getModel("Follow", FollowSchema);
+export const Token = getModel("Token", TokenSchema);

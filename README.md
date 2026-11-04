@@ -511,7 +511,10 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 
 ### Faz 1 — MVP ✅ (ilk sürüm kodlandı)
 **Amaç:** Bir kişi 5 dakikada güzel bir sayfa yayınlayıp linkini paylaşabilsin.
-- [x] Kayıt / giriş (e-posta + şifre; Google/GitHub girişi sonraki adım)
+- [x] Kayıt / giriş: e-posta + şifre, **Google ve LinkedIn ile giriş**
+- [x] E-posta doğrulama, şifremi unuttum, e-posta/şifre/profil adresi değiştirme (Resend)
+- [x] Kayıtta yaş kontrolü (16+, doğum yılı saklanmaz) ve ücretsiz bot koruması (honeypot + zaman kontrolü)
+- [x] Başvuru sonucu e-postaları (ayarlardan kapatılabilir; altında şirket adı/adresi)
 - [x] Kişi sayfası: bilgi kutusu formu + Markdown makale + `[[link]]`
 - [x] Kariyer ve eğitim kayıtları (yapısal)
 - [x] Taslak kuruluş/okul sayfalarının otomatik oluşması + kırmızı link
@@ -532,7 +535,6 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [x] PDF olarak kaydet (tarayıcı yazdırma görünümü)
 - [x] Moderatör paneli: profil başvurularını onaylama / reddetme / yayından kaldırma
 - [ ] Şikâyet (report) akışı
-- [ ] E-posta doğrulama ve başvuru sonucu e-postası
 
 ### Faz 3 — Ansiklopedi hissi (sürekli)
 - [x] Takip et (Follow), sektörler sayfası, filtreli arama

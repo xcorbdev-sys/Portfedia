@@ -55,7 +55,13 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 | Değişken | Örnek | Açıklama |
 |---|---|---|
 | `SITE_URL` | `https://portfedia.com` | Sitemap, canonical ve paylaşım linkleri için. Sonunda `/` olmasın. |
-| `ADMIN_EMAILS` | `sen@ornek.com,ekip@ornek.com` | Profil başvurularını onaylayacak hesaplar (virgülle ayrılmış). **İlk deploy'da boş bırak**, kayıt olduktan sonra ekle (bkz. 4. adım). |
+| `ADMIN_EMAILS` | `sen@ornek.com,ekip@ornek.com` | Profil başvurularını onaylayacak hesaplar (virgülle ayrılmış). Yalnızca e-postasını doğrulamış hesaplar yönetici olur. |
+| `RESEND_API_KEY` | `re_...` | E-posta gönderimi (bkz. 3.1). Boşsa e-postalar loga yazılır. |
+| `EMAIL_FROM` | `Portfedia <no-reply@portfedia.com>` | Gönderen adres; alan adı Resend'de doğrulanmış olmalı |
+| `COMPANY_NAME` | `Portfedia Teknoloji A.Ş.` | E-postaların altında görünür (yasal zorunluluk) |
+| `COMPANY_ADDRESS` | `Örnek Mah. 1. Sok. No:1, İstanbul, Türkiye` | E-postaların altında görünür (yasal zorunluluk) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | "Google ile giriş" (bkz. 3.2). Boşsa düğme görünmez. |
+| `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | | "LinkedIn ile giriş" (bkz. 3.3). Boşsa düğme görünmez. |
 | `MONGODB_URI` | `mongodb://root:...@mongodb-abc123:27017/portfedia?authSource=admin` | 1. adımdaki adres |
 | `R2_ACCOUNT_ID` | `a1b2c3...` | Cloudflare hesap kimliği |
 | `R2_ACCESS_KEY_ID` | `...` | R2 API token |
@@ -67,23 +73,49 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 
 > **Replika sayısı:** Giriş denemelerini sınırlayan hız sınırlayıcı bellekte tutuluyor. Şimdilik **tek konteyner** çalıştır. Birden fazla konteynere geçerken sınırlayıcı MongoDB veya Redis'e taşınmalı.
 
+### 3.1 E-posta: Resend (ücretsiz kota)
+
+1. [resend.com](https://resend.com)'da hesap aç → **Domains → Add domain** → ör. `portfedia.com`.
+2. Resend'in verdiği DNS kayıtlarını (SPF/DKIM TXT ve MX) alan adının DNS'ine ekle. Cloudflare kullanıyorsan **DNS → Records**. Doğrulama birkaç dakika sürer.
+3. **API Keys → Create API key** (izin: *Sending access*) → `RESEND_API_KEY`.
+4. `EMAIL_FROM` olarak doğruladığın alan adından bir adres yaz: `Portfedia <no-reply@portfedia.com>`.
+
+Gönderilen e-postalar: e-posta doğrulama, şifre sıfırlama, e-posta değişikliği onayı, başvuru sonucu. Pazarlama e-postası gönderilmez. Ücretsiz kotayı aşınca Resend ücretli plana geçmeyi ister; kotayı Resend'in fiyat sayfasından kontrol et.
+
+### 3.2 Google ile giriş (ücretsiz)
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → yeni proje → **APIs & Services → OAuth consent screen**: uygulama adı *Portfedia*, destek e-postası, logo (isteğe bağlı), *External*. İzinler: `openid`, `email`, `profile` (hassas izin olmadığı için uzun inceleme gerekmez). Yayın durumunu **In production** yap.
+2. **Credentials → Create credentials → OAuth client ID → Web application**
+   - Authorized redirect URI: `https://portfedia.com/api/auth/google/callback`
+3. Client ID ve secret'ı `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` olarak gir.
+
+### 3.3 LinkedIn ile giriş (ücretsiz)
+
+1. Bir **LinkedIn şirket sayfası** gerekir (Portfedia için açtığın sayfa).
+2. [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps) → **Create app** → şirket sayfanı seç.
+3. **Products** sekmesinde **Sign In with LinkedIn using OpenID Connect** ürününü ekle.
+4. **Auth** sekmesi → *Authorized redirect URLs*: `https://portfedia.com/api/auth/linkedin/callback`
+5. Client ID ve Primary Client Secret'ı `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` olarak gir.
+
+Google veya LinkedIn ile ilk kez gelen kişi, hesabı oluşturulmadan önce doğum yılını ve kullanım koşullarını onaylar. Bu sağlayıcılardan gelen e-postalar doğrulanmış sayılır.
+
 ### Alternatif: Docker Compose ile tek parça
 
 Coolify'da **Build Pack: Docker Compose** seçip repodaki `docker-compose.yml`'yi de kullanabilirsin; MongoDB aynı dosyada ayağa kalkar. Ancak yedekleme ve izleme açısından MongoDB'yi ayrı bir Coolify kaynağı olarak açmak (yukarıdaki yöntem) daha iyidir.
 
 ## 4. Yöneticiler ve profil başvuruları
 
-1. Önce sitede kendi e-postanla **Sign up** yap.
-2. **Sonra** Coolify'da `ADMIN_EMAILS` değişkenine bu e-postayı yaz ve yeniden deploy et. Sağ üstteki menüde **Review applications** bağlantısı görünür.
+1. Coolify'da `ADMIN_EMAILS` değişkenine kendi e-postanı yaz.
+2. Sitede bu e-posta ile kayıt ol ve gelen bağlantıyla **e-postanı doğrula**. Sağ üstteki menüde **Review applications** bağlantısı görünür.
 
-> ⚠️ **Sıra önemli:** Sitede henüz e-posta doğrulaması yok. `ADMIN_EMAILS`'e henüz kayıt olunmamış bir adres yazarsan, o adresle ilk kayıt olan kişi yönetici olur. Listeye yalnızca **zaten kayıt olduğun** adresleri ekle.
+> Yönetici yetkisi yalnızca e-postası doğrulanmış hesaplara verilir; başkası senin adresinle kayıt olsa bile doğrulama bağlantısı sana geleceği için yönetici olamaz.
 3. **`/admin`** panelinde bekleyen başvurular listelenir:
    - **Approve & publish:** Profil yayına çıkar. "Also mark identity as verified" kutusunu işaretlersen mavi rozet de verilir.
    - **Reject:** Yazdığın gerekçe başvuru sahibine profilinde gösterilir. Kişi profilini düzeltip kaydedince başvuru otomatik olarak yeniden **Pending**'e düşer.
    - **Approved** sekmesinden yayındaki bir profili gerekçe yazarak **Unpublish** edebilirsin.
 4. Onay/ret kararları profilin **History** sayfasına kaydedilir (kim, ne zaman, hangi gerekçeyle).
 
-> Başvuru sahiplerine şu an e-posta gönderilmiyor; durumu sitede, profillerinde ve **Account** sayfasında görüyorlar.
+> Başvuru sahiplerine karar e-postası gider (Account sayfasından kapatılabilir). Durumu ayrıca profillerinde ve **Account** sayfasında görürler.
 
 Gerekirse veritabanından da işlem yapılabilir (Coolify → MongoDB → **Terminal** → `mongosh`):
 

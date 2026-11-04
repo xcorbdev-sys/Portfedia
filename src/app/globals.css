@@ -428,3 +428,16 @@ a.chip:hover { text-decoration: none; background: var(--primary-soft-2); }
 .app-card__head .thumb { width: 56px; height: 56px; }
 .app-card__meta { font-size: 0.8rem; color: var(--text-3); }
 .menu__badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }
+
+/* ───────────── Auth & account ───────────── */
+.oauth { display: grid; gap: 10px; margin-bottom: 6px; }
+.oauth__btn { width: 100%; gap: 10px; font-weight: 600; }
+.oauth__btn svg { width: 18px; height: 18px; }
+.oauth__or { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 0.8rem; margin: 6px 0 10px; }
+.oauth__or::before, .oauth__or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.input-prefix { display: flex; align-items: stretch; }
+.input-prefix span { display: flex; align-items: center; padding: 0 10px; border: 1px solid var(--border-strong); border-right: 0; border-radius: 9px 0 0 9px; background: var(--surface-2); color: var(--text-3); font-size: 0.85rem; white-space: nowrap; }
+.input-prefix .input { border-radius: 0 9px 9px 0; min-width: 0; }
+.verify-bar { background: var(--warn-soft); border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); font-size: 0.86rem; }
+.verify-bar .container { padding-top: 9px; padding-bottom: 9px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.settings-section { scroll-margin-top: 84px; }
