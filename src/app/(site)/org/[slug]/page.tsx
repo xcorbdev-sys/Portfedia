@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: `/org/${page.slug}` },
     // Empty draft pages are kept out of search engines
     robots: page.status === "draft" && !page.body ? { index: false, follow: true } : undefined,
-    openGraph: { title: page.title, description, images: page.image ? [{ url: page.image.url }] : undefined },
+    openGraph: { title: page.title, description },
   };
 }
 

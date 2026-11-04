@@ -96,7 +96,7 @@ export function ImagePicker({ current, name, label, logo = false }: { current: S
               }
             }}
           />
-          <span className="hint">JPEG, PNG or WebP, up to 2 MB.</span>
+          <span className="hint">JPEG, PNG or WebP, up to 5 MB. Resized to 400×400; location data is removed.</span>
           {current && (
             <label className="check">
               <input type="checkbox" name="removeImage" checked={removed} onChange={(e) => setRemoved(e.target.checked)} /> Remove current image

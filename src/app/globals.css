@@ -451,3 +451,15 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .diff-body span.diff-add { background: var(--ok-soft); color: var(--ok); }
 .diff-body span.diff-del { background: var(--err-soft); color: var(--err); text-decoration: line-through; }
 .chip--muted { background: var(--bg-soft); color: var(--text-2); }
+
+/* ───────────── Notifications ───────────── */
+.bell { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--text-2); }
+.bell:hover { background: var(--bg-soft); color: var(--text); }
+.bell__count { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--err); color: #fff; font-size: 0.66rem; font-weight: 700; display: grid; place-items: center; border: 2px solid var(--bg); }
+.notif-list { list-style: none; padding: 0; margin: 16px 0 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.notif-list li + li { border-top: 1px solid var(--border); }
+.notif-list a { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; color: var(--text); }
+.notif-list a:hover { text-decoration: none; background: var(--surface-2); }
+.notif-list li.is-unread a { background: var(--primary-soft); }
+.notif-list small { display: block; color: var(--text-3); font-size: 0.75rem; margin-top: 2px; }
+.notif-icon { width: 34px; height: 34px; border-radius: 50%; background: var(--bg-soft); color: var(--primary); display: grid; place-items: center; flex-shrink: 0; }

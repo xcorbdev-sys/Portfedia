@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description:
     "Reliable, connected and continuously updated profiles of people, companies, investors and institutions. Portfedia helps you understand the business world better.",
   openGraph: { siteName: "Portfedia", locale: "en_US", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

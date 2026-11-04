@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["mongoose"],
+  serverExternalPackages: ["mongoose", "sharp"],
   experimental: {
-    serverActions: { bodySizeLimit: "3mb" },
+    serverActions: { bodySizeLimit: "6mb" },
   },
   async headers() {
     return [

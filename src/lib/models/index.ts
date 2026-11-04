@@ -189,6 +189,21 @@ const ReportSchema = new Schema<any>(
 );
 ReportSchema.index({ status: 1, createdAt: -1 });
 
+/* ───────────── In-app notifications (bell) ───────────── */
+const NotificationSchema = new Schema<any>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    type: { type: String, required: true },
+    text: { type: String, required: true, maxlength: 300 },
+    href: { type: String, default: "/" },
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", default: null },
+    readAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+NotificationSchema.index({ userId: 1, createdAt: -1 });
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 86400 }); // kept for 6 months
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -200,3 +215,4 @@ export const Revision = getModel("Revision", RevisionSchema);
 export const Follow = getModel("Follow", FollowSchema);
 export const Token = getModel("Token", TokenSchema);
 export const Report = getModel("Report", ReportSchema);
+export const Notification = getModel("Notification", NotificationSchema);

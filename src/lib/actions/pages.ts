@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "../auth";
-import { canView } from "../visibility";
+import { canView, isPublic } from "../visibility";
+import { notify, notifyFollowers } from "../notifications";
 import { getPageBySlug, PermissionError, savePersonPage, saveOrgPage, toggleFollow, type PersonInput } from "../pages";
 import { saveImage, UploadError } from "../storage";
 import { bool, email, handle, httpUrl, str, year } from "../validate";
@@ -15,10 +16,10 @@ import type { SourceRef, StoredImage } from "../types";
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
 
-async function imageFrom(fd: FormData): Promise<StoredImage | null | undefined> {
+async function imageFrom(fd: FormData, kind: "photo" | "logo"): Promise<StoredImage | null | undefined> {
   if (bool(fd.get("removeImage"))) return null;
   const f = fd.get("image");
-  if (f instanceof File && f.size > 0) return saveImage(f);
+  if (f instanceof File && f.size > 0) return saveImage(f, kind);
   return undefined;
 }
 
@@ -89,7 +90,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
 
   let image: StoredImage | null | undefined;
   try {
-    image = await imageFrom(fd);
+    image = await imageFrom(fd, "photo");
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
     throw err;
@@ -124,6 +125,9 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     image,
   });
 
+  if (isPublic(page)) {
+    await notifyFollowers(page._id, user.id, { type: "page_update", text: `${page.title} updated their profile.`, href: `/${page.slug}` });
+  }
   revalidatePath(`/${page.slug}`);
   for (const e of page.experiences) revalidatePath(`/org/${e.orgSlug}`);
   for (const e of page.educations) revalidatePath(`/org/${e.schoolSlug}`);
@@ -149,7 +153,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
 
   let image: StoredImage | null | undefined;
   try {
-    image = await imageFrom(fd);
+    image = await imageFrom(fd, "logo");
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
     throw err;
@@ -178,6 +182,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,
     });
     pageSlug = page.slug;
+    await notifyFollowers(page._id, user.id, { type: "page_update", text: `The ${page.title} page was updated.`, href: `/org/${page.slug}` });
   } catch (err) {
     if (err instanceof PermissionError) return { error: err.message };
     throw err;
@@ -194,6 +199,9 @@ export async function toggleFollowAction(fd: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(href)}`);
   if (!canView(page, user)) return;
-  await toggleFollow(user.id, page._id);
+  const nowFollowing = await toggleFollow(user.id, page._id);
+  if (nowFollowing && page.type === "person" && page.ownerId && page.ownerId !== user.id) {
+    await notify([page.ownerId], { type: "follower", text: `${user.name} started following you.`, href: `/${page.slug}`, pageId: page._id });
+  }
   revalidatePath(href);
 }

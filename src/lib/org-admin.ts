@@ -4,6 +4,7 @@ import { connectDB } from "./db";
 import { Page, Revision, User } from "./models";
 import { consumeToken, createToken, peekToken } from "./tokens";
 import { sendEmail } from "./email";
+import { notifyFollowers, notifyOwnerOfPage } from "./notifications";
 import { siteUrl } from "./site";
 import { checkWorkEmail, claimDomainFor, emailMatchesDomain } from "./claim-rules";
 import { PUBLIC_FILTER } from "./visibility";
@@ -73,6 +74,11 @@ export async function confirmOrgClaim(user: SessionUser, raw: string): Promise<{
     delta: 0,
   });
   if (firstClaim) {
+    await notifyFollowers(String(page._id), user.id, {
+      type: "claimed",
+      text: `${page.title} is now managed by the organization.`,
+      href: `/org/${page.slug}`,
+    });
     // Moderators are told about every claim so mistakes can be undone quickly
     for (const to of await moderatorEmails()) {
       await sendEmail({
@@ -153,6 +159,11 @@ export async function decidePosition(
   const ok = await setVerification(personSlug, index, org.slug, decision, "org");
   if (!ok) return "This position no longer exists.";
   if (decision !== "unverified") {
+    await notifyOwnerOfPage(personSlug, {
+      type: "position",
+      text: decision === "verified" ? `${org.title} verified your position. ✓` : `${org.title} could not confirm a position on your profile.`,
+      href: `/${personSlug}`,
+    });
     const person = await Page.findOne({ slug: personSlug }, { ownerId: 1, title: 1 }).lean<{ ownerId: unknown; title: string }>();
     const owner = person?.ownerId ? await User.findById(person.ownerId, { email: 1, name: 1, emailPrefs: 1 }).lean<{ email: string; name: string; emailPrefs?: { profileUpdates?: boolean } }>() : null;
     if (owner && owner.emailPrefs?.profileUpdates !== false) {

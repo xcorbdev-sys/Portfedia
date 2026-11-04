@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, isModerator, safeNext } from "../auth";
 import { decideApplication, getOwnerContact } from "../pages";
 import { sendEmail } from "../email";
+import { notify } from "../notifications";
 import { siteUrl } from "../site";
 import type { PageDoc } from "../types";
 import { bool, str } from "../validate";
@@ -17,6 +18,14 @@ async function moderator() {
 }
 
 async function notifyOwner(page: PageDoc) {
+  if (page.ownerId) {
+    await notify([page.ownerId], {
+      type: "application",
+      text: page.status === "published" ? "Your profile was approved and is now live." : `Your profile needs changes: ${page.review.note}`,
+      href: page.status === "published" ? `/${page.slug}` : "/edit",
+      pageId: page._id,
+    });
+  }
   const owner = await getOwnerContact(page.ownerId);
   if (!owner?.notify) return;
   const first = owner.name.split(" ")[0];

@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import sharp from "sharp";
 import type { StoredImage } from "./types";
 import { sniffImage } from "./storage-sniff";
 
@@ -14,7 +15,8 @@ export { sniffImage };
  * and served from /media/...
  */
 
-export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const OUTPUT_SIZE = 400;
 const LOCAL_DIR = path.join(process.cwd(), "uploads");
 
 const r2Configured = () =>
@@ -41,12 +43,26 @@ function r2(): S3Client {
 
 export class UploadError extends Error {}
 
-export async function saveImage(file: File): Promise<StoredImage> {
-  if (file.size > MAX_IMAGE_BYTES) throw new UploadError("Images must be 2 MB or smaller.");
-  const buf = new Uint8Array(await file.arrayBuffer());
-  const kind = sniffImage(buf);
-  if (!kind) throw new UploadError("Only JPEG, PNG or WebP images are allowed.");
-  const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kind.ext}`;
+/**
+ * Validates, resizes and re-encodes an upload: 400×400 WebP (photos are cropped to a square,
+ * logos fit inside). Re-encoding also strips metadata such as GPS coordinates from phone photos.
+ */
+export async function saveImage(file: File, kind: "photo" | "logo" = "photo"): Promise<StoredImage> {
+  if (file.size > MAX_IMAGE_BYTES) throw new UploadError("Images must be 5 MB or smaller.");
+  const input = new Uint8Array(await file.arrayBuffer());
+  if (!sniffImage(input)) throw new UploadError("Only JPEG, PNG or WebP images are allowed.");
+  let buf: Uint8Array;
+  try {
+    buf = await sharp(input, { limitInputPixels: 50_000_000 })
+      .rotate() // respect EXIF orientation before it is stripped
+      .resize(OUTPUT_SIZE, OUTPUT_SIZE, kind === "photo" ? { fit: "cover", position: "attention" } : { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+  } catch {
+    throw new UploadError("This image could not be read. Please try another file.");
+  }
+  const kindInfo = { mime: "image/webp", ext: "webp" };
+  const key = `images/${new Date().getFullYear()}/${randomBytes(12).toString("hex")}.${kindInfo.ext}`;
 
   if (r2Configured()) {
     await r2().send(
@@ -54,7 +70,7 @@ export async function saveImage(file: File): Promise<StoredImage> {
         Bucket: process.env.R2_BUCKET,
         Key: key,
         Body: buf,
-        ContentType: kind.mime,
+        ContentType: kindInfo.mime,
         CacheControl: "public, max-age=31536000, immutable",
       }),
     );

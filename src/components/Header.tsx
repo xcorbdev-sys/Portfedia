@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ClipboardCheck, LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
+import { Bell, ClipboardCheck, LogOut, Menu, Plus, Search, Settings, User } from "lucide-react";
+import { unreadCount } from "@/lib/notifications";
 import { getCurrentUser, isModerator } from "@/lib/auth";
 import { countPendingApplications, getPersonPageOf } from "@/lib/pages";
 import { logoutAction } from "@/lib/actions/auth";
@@ -26,6 +27,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
   const user = await getCurrentUser();
   const myPage = user ? await getPersonPageOf(user.id) : null;
   const pending = isModerator(user) ? await countPendingApplications() : 0;
+  const unread = user ? await unreadCount(user.id) : 0;
   return (
     <header className="site-header">
       <MenuCloser />
@@ -44,6 +46,12 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
               <input id="hq" name="q" type="search" placeholder="Search Portfedia..." autoComplete="off" />
               <input type="hidden" name="go" value="1" />
             </form>
+          )}
+          {user && (
+            <Link href="/notifications" className="bell" aria-label={unread ? `Notifications (${unread} unread)` : "Notifications"}>
+              <Bell size={19} />
+              {unread > 0 && <span className="bell__count">{unread > 99 ? "99+" : unread}</span>}
+            </Link>
           )}
           {user ? (
             <details className="menu">
