@@ -5,9 +5,11 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { saveOrgAction } from "@/lib/actions/pages";
 import type { PageDoc } from "@/lib/types";
 import { FormError } from "../ui";
+import { OrgMoreStep } from "./OrgMoreStep";
 import { AddButton, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
 
-const STEPS = ["Basic Info", "Details", "Sources & Submit"];
+const STEPS = ["Basic Info", "Details", "More", "Sources & Submit"];
+const LAST = STEPS.length - 1;
 const ROUNDS = ["Pre-seed", "Seed", "Series A", "Series B", "Series C", "Series D+", "Grant", "Debt", "IPO", "Acquisition", "Other"];
 type Round = { round: string; year: string; amount: string; investors: string };
 
@@ -19,6 +21,7 @@ export function OrgForm({
   onBackToType,
   websiteLocked = false,
   moderator = false,
+  canManageJobs = false,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -26,6 +29,7 @@ export function OrgForm({
   /** The website decides who can claim the page, so only the organization or moderators may change it */
   websiteLocked?: boolean;
   moderator?: boolean;
+  canManageJobs?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveOrgAction, undefined);
   const [step, setStep] = useState(0);
@@ -185,6 +189,14 @@ export function OrgForm({
 
       <div className="step form" hidden={step !== 2} ref={(el) => { stepRefs.current[2] = el; }}>
         <div>
+          <h2>More</h2>
+          <p className="muted small">Products, leadership, offices, history and more. Everything here is optional.</p>
+        </div>
+        <OrgMoreStep page={page} canManageJobs={canManageJobs} />
+      </div>
+
+      <div className="step form" hidden={step !== LAST} ref={(el) => { stepRefs.current[LAST] = el; }}>
+        <div>
           <h2>Sources &amp; Submit</h2>
           <p className="muted small">Pages with reliable sources are trusted more by readers.</p>
         </div>
@@ -236,7 +248,7 @@ export function OrgForm({
         ) : (
           <span />
         )}
-        {step < 2 ? (
+        {step < LAST ? (
           // Distinct keys: React must not reuse this element as the submit button, or the
           // click that moves to the last step would also submit the form.
           <button key="next" type="button" className="btn btn--primary" onClick={() => go(step + 1)}>

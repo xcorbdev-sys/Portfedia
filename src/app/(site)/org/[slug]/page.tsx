@@ -4,7 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditOrg, getInvestments, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
+import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrgSpans, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
@@ -13,6 +13,10 @@ import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
 import { EntityGrid, PersonRows } from "@/components/EntityCards";
 import { FundingTable, InvestmentsList } from "@/components/Funding";
+import {
+  AcquisitionsSection, AlumniEmployersSection, GroupSection, JobsSection, LeadershipSection, MilestonesSection, OfficesSection, PressSection, ProductsSection, TrendSection,
+} from "@/components/OrgSections";
+import { findRenamedPage } from "@/lib/account";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -45,21 +49,32 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 export default async function OrgPage({ params }: Props) {
   const { slug } = await params;
   const page = await load(slug);
-  if (!page) notFound();
+  if (!page) {
+    const moved = await findRenamedPage(slug); // former names and old addresses
+    if (moved) permanentRedirect(pageHref(moved.type, moved.slug));
+    notFound();
+  }
   if (page.type === "person") permanentRedirect(`/${page.slug}`);
 
   const user = await getCurrentUser();
   const investorSlugs = page.fundingRounds.flatMap((r) => r.investors.map((i) => i.slug));
-  const [existing, backlinks, people, alumni, following, investments] = await Promise.all([
-    existingPages([...page.outLinks.map((l) => l.slug), ...investorSlugs]),
+  const relatedSlugs = [...page.leadership.map((l) => l.slug), ...page.acquisitions.map((a) => a.slug), page.parent?.slug ?? ""].filter(Boolean);
+  const [existing, backlinks, people, alumni, following, investments, relations, spans, alumniEmployers] = await Promise.all([
+    existingPages([...page.outLinks.map((l) => l.slug), ...investorSlugs, ...relatedSlugs]),
     getBacklinks(page.slug),
     getPeopleOfOrg(page.slug),
     page.type === "school" ? getAlumni(page.slug) : Promise.resolve([]),
     user ? isFollowing(user.id, page._id) : Promise.resolve(false),
     getInvestments(page.slug),
+    getOrgRelations(page.slug),
+    getOrgSpans(page.slug),
+    page.type === "school" ? getAlumniEmployers(page.slug) : Promise.resolve([]),
   ]);
   const canEdit = canEditOrg(user, page);
-  const reserved = ["overview", "about", "funding", "investments", "key-people", "people", "former-people", "alumni", "connections", "sources"];
+  const reserved = [
+    "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",
+    "trend", "key-people", "people", "former-people", "alumni", "alumni-work", "connections", "sources",
+  ];
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
   const isSchool = page.type === "school";
@@ -70,8 +85,16 @@ export default async function OrgPage({ params }: Props) {
   const nav = [{ id: "overview", label: "Overview" }];
   if (article.leadHtml.trim()) nav.push({ id: "about", label: "About" });
   for (const t of article.toc) if (t.level === 2) nav.push({ id: t.id, label: t.title });
+  if (page.products.length) nav.push({ id: "products", label: "Products" });
+  if (page.leadership.length) nav.push({ id: "leadership", label: "Leadership" });
+  if (page.status === "claimed" && page.jobs.length) nav.push({ id: "jobs", label: "Open Positions" });
   if (page.fundingRounds.length) nav.push({ id: "funding", label: "Funding" });
+  if (page.acquisitions.length || relations.acquiredBy.length) nav.push({ id: "acquisitions", label: "Acquisitions" });
   if (investments.length) nav.push({ id: "investments", label: "Investments" });
+  if (page.parent || relations.subsidiaries.length) nav.push({ id: "group", label: "Group" });
+  if (page.milestones.length) nav.push({ id: "milestones", label: "Milestones" });
+  if (page.offices.length) nav.push({ id: "offices", label: "Offices" });
+  if (page.press.length) nav.push({ id: "press", label: "In the Press" });
   if (keyPeople.length) nav.push({ id: "key-people", label: "Key People" });
   if (people.current.length > keyPeople.length) nav.push({ id: "people", label: "All People" });
   if (people.former.length) nav.push({ id: "former-people", label: "Former People" });
@@ -125,7 +148,11 @@ export default async function OrgPage({ params }: Props) {
               <h1 className="p-name">
                 {page.title} {verified && <VerifiedBadge size={24} label="Verified organization" />}
               </h1>
-              <div className="p-sub">{ib.sector || ib.kind || (isSchool ? "Educational institution" : "Organization")}</div>
+              <div className="p-sub">
+                {ib.sector || ib.kind || (isSchool ? "Educational institution" : "Organization")}
+                {page.ticker && <span className="pill" style={{ marginLeft: 8 }}>{[page.ticker.exchange, page.ticker.symbol].filter(Boolean).join(": ")}</span>}
+              </div>
+              {page.formerNames.length > 0 && <div className="small muted" style={{ marginTop: -6, marginBottom: 8 }}>Formerly {page.formerNames.join(", ")}</div>}
             </div>
             <div className="p-head__body">
               {page.tags.length > 0 && (
@@ -166,18 +193,28 @@ export default async function OrgPage({ params }: Props) {
           )}
           {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
 
+          <ProductsSection page={page} />
+          <LeadershipSection page={page} existing={existing} />
+          <JobsSection page={page} />
           {page.fundingRounds.length > 0 && (
             <section className="p-section" id="funding">
               <h2>Funding</h2>
               <FundingTable rounds={page.fundingRounds} existing={existing} />
             </section>
           )}
+          <AcquisitionsSection page={page} existing={existing} acquiredBy={relations.acquiredBy} />
           {investments.length > 0 && (
             <section className="p-section" id="investments">
               <h2>Investments</h2>
               <InvestmentsList items={investments} />
             </section>
           )}
+          <GroupSection page={page} existing={existing} subsidiaries={relations.subsidiaries} />
+          <MilestonesSection page={page} />
+          <OfficesSection page={page} />
+          <PressSection page={page} />
+          <TrendSection spans={spans} />
+          {page.type === "school" && <AlumniEmployersSection rows={alumniEmployers} />}
 
           <div className="two-cards">
             <div className="card" id="key-people">
@@ -203,6 +240,8 @@ export default async function OrgPage({ params }: Props) {
                     <Fact label="Headquarters">{ib.headquarters}</Fact>
                     <Fact label="Sector">{ib.sector}</Fact>
                     <Fact label="Employees">{ib.employees}</Fact>
+                    <Fact label="Parent">{page.parent ? (existing.get(page.parent.slug) ? <Link href={`/org/${page.parent.slug}`}>{page.parent.title}</Link> : page.parent.title) : ""}</Fact>
+                    <Fact label="Stock">{page.ticker ? [page.ticker.exchange, page.ticker.symbol].filter(Boolean).join(": ") : ""}</Fact>
                     <Fact label="Website">
                       {website && <a href={ib.website} rel="nofollow ugc noopener" className="external">{website}</a>}
                     </Fact>

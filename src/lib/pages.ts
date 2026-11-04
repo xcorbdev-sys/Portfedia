@@ -7,7 +7,7 @@ import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  Award, Education, Experience, FundingRound, LanguageLevel, OpenTo, OrgInfobox, Patent, Project, Publication, Talk, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
+  Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 
 /* ───────────── Mapping ───────────── */
@@ -45,6 +45,16 @@ function toPage(d: any): PageDoc {
     volunteering: d.volunteering ?? [],
     languageLevels: d.languageLevels ?? [],
     openTo: d.openTo ?? [],
+    products: d.products ?? [],
+    offices: d.offices ?? [],
+    parent: d.parent?.slug ? { title: d.parent.title, slug: d.parent.slug } : null,
+    acquisitions: d.acquisitions ?? [],
+    leadership: d.leadership ?? [],
+    formerNames: d.formerNames ?? [],
+    milestones: d.milestones ?? [],
+    press: d.press ?? [],
+    jobs: d.jobs ?? [],
+    ticker: d.ticker?.symbol ? { exchange: d.ticker.exchange ?? "", symbol: d.ticker.symbol } : null,
     verified: Boolean(d.verified),
     review: {
       submittedAt: d.review?.submittedAt ?? null,
@@ -231,7 +241,11 @@ export async function searchPages({ q, types, sectors, limit = 40 }: SearchParam
   const base: Record<string, unknown> = { ...PUBLIC_FILTER };
   if (key) {
     const rx = { $regex: `(^| )${escapeRegex(key)}` };
-    base.$or = [{ titleKey: rx }, { tags: { $regex: escapeRegex(q.trim()), $options: "i" } }];
+    base.$or = [
+      { titleKey: rx },
+      { tags: { $regex: escapeRegex(q.trim()), $options: "i" } },
+      { formerNames: { $regex: escapeRegex(q.trim()), $options: "i" } },
+    ];
   }
   const filter: Record<string, unknown> = { ...base };
   if (types?.length) filter.type = { $in: types };
@@ -635,6 +649,17 @@ export interface OrgInput {
   body: string;
   sources: SourceRef[];
   fundingRounds: FundingRound[];
+  products: Project[];
+  offices: Office[];
+  parent: LinkedName | null;
+  acquisitions: Acquisition[];
+  leadership: Leader[];
+  formerNames: string[];
+  milestones: Milestone[];
+  press: PressItem[];
+  /** undefined = keep (only the organization's admins and moderators may change job listings) */
+  jobs?: Job[];
+  ticker: Ticker | null;
   editSummary: string;
   image?: StoredImage | null;
   /** Moderators only */
@@ -675,6 +700,16 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     body: input.body,
     sources: input.sources,
     fundingRounds: input.fundingRounds,
+    products: input.products,
+    offices: input.offices,
+    parent: input.parent,
+    acquisitions: input.acquisitions,
+    leadership: input.leadership,
+    formerNames: input.formerNames,
+    milestones: input.milestones,
+    press: input.press,
+    ticker: input.ticker,
+    ...(input.jobs !== undefined ? { jobs: input.jobs } : {}),
     outLinks: extractWikiLinks(input.body),
   };
 
@@ -689,6 +724,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   if (!canEditOrg(user, page)) throw new PermissionError("You don't have permission to edit this page");
 
   const prevSize = page.body?.length ?? 0;
+  const prevProductImages = ((page.products ?? []) as Project[]).map((x) => x.image).filter((x): x is StoredImage => Boolean(x?.key));
   const isMod = user.role === "admin" || user.role === "moderator";
   const prevWebsite: string = page.infobox?.website ?? "";
   // The website decides which email domain may claim the page, so once set it is locked:
@@ -708,6 +744,12 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     page.protectedReason = input.protectDays > 0 ? (input.protectReason ?? "") : "";
   }
   page.set({ ...content, type: input.type, status: page.status === "claimed" ? "claimed" : input.body ? "published" : page.status });
+  // Former names keep working as addresses (/org/old-name redirects here) when they are free
+  for (const name of input.formerNames) {
+    const old = slugify(name);
+    if (!old || old === page.slug || isReservedSlug(old) || (page.oldSlugs ?? []).includes(old)) continue;
+    if (!(await Page.exists({ $or: [{ slug: old }, { oldSlugs: old }] }))) page.oldSlugs = [...(page.oldSlugs ?? []), old].slice(-20);
+  }
   page.revisionCount = (page.revisionCount ?? 0) + 1;
   await page.save();
 
@@ -721,7 +763,62 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     delta: input.body.length - prevSize,
   });
   if (oldImage && oldImage.key !== input.image?.key) await deleteImage(oldImage);
+  const keptProducts = new Set(input.products.map((x) => x.image?.key).filter(Boolean));
+  for (const img of prevProductImages) if (!keptProducts.has(img.key)) await deleteImage(img);
   return toPage(page.toObject());
+}
+
+/* ───────────── Organization relations ───────────── */
+
+export async function getOrgRelations(slug: string) {
+  await connectDB();
+  const [subsidiaries, acquirers] = await Promise.all([
+    Page.find({ "parent.slug": slug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).sort({ title: 1 }).limit(100).lean(),
+    Page.find({ "acquisitions.slug": slug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, acquisitions: 1 }).limit(10).lean(),
+  ]);
+  return {
+    subsidiaries: subsidiaries.map((d) => toCard(d)),
+    acquiredBy: acquirers.map((d) => {
+      const a = (d.acquisitions as Acquisition[]).find((x) => x.slug === slug);
+      return { ...toCard(d), detail: [a?.year, a?.amount].filter(Boolean).join(" · ") };
+    }),
+  };
+}
+
+/** Career spans at an organization (for the "people by year" chart). */
+export async function getOrgSpans(slug: string) {
+  await connectDB();
+  const docs = await Page.find({ type: "person", "experiences.orgSlug": slug, ...PUBLIC_FILTER }, { experiences: 1 }).limit(2000).lean<{ experiences: Experience[] }[]>();
+  return docs.flatMap((d) =>
+    d.experiences.filter((e) => e.orgSlug === slug && e.verification !== "rejected").map((e) => ({ start: e.startYear ?? null, end: e.endYear ?? null, current: e.current })),
+  );
+}
+
+/** Where a school's alumni work now (#47). */
+export async function getAlumniEmployers(schoolSlug: string) {
+  await connectDB();
+  const rows = await Page.aggregate([
+    { $match: { type: "person", "educations.schoolSlug": schoolSlug, ...PUBLIC_FILTER } },
+    { $unwind: "$experiences" },
+    { $match: { "experiences.current": true, "experiences.verification": { $ne: "rejected" } } },
+    { $group: { _id: "$experiences.orgSlug", title: { $first: "$experiences.orgTitle" }, count: { $sum: 1 } } },
+    { $sort: { count: -1, title: 1 } },
+    { $limit: 12 },
+  ]);
+  return rows.map((r) => ({ slug: r._id as string, title: r.title as string, count: r.count as number }));
+}
+
+/** All open positions of organizations that manage their page (#44). */
+export async function listJobs(limit = 200) {
+  await connectDB();
+  const rows = await Page.aggregate([
+    { $match: { type: { $in: ["org", "school"] }, status: "claimed", "jobs.0": { $exists: true } } },
+    { $unwind: "$jobs" },
+    { $sort: { "jobs.postedAt": -1 } },
+    { $limit: limit },
+    { $project: { slug: 1, title: 1, image: 1, type: 1, job: "$jobs" } },
+  ]);
+  return rows.map((r) => ({ org: { slug: r.slug as string, title: r.title as string, image: r.image?.url ? (r.image as StoredImage) : null }, job: r.job as Job }));
 }
 
 /** GDPR / KVKK "right to be forgotten": user, profile, all revisions, follows and sessions are deleted. */

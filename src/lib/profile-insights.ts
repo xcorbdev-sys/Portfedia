@@ -69,3 +69,17 @@ export function buildTimeline(p: PageDoc, now = new Date().getFullYear()) {
   for (let y = Math.ceil(min / step) * step; y <= max; y += step) ticks.push(y);
   return { min, max, span, bars, ticks: ticks.map((y) => ({ year: y, left: ((y - min) / span) * 100 })) };
 }
+
+/* ───────────── People on Portfedia by year, for an organization (#45) ───────────── */
+
+export function employeeTrend(spans: { start: number | null; end: number | null; current: boolean }[], now = new Date().getFullYear(), years = 12) {
+  const valid = spans.filter((s) => s.start);
+  if (valid.length < 2) return null;
+  const first = Math.max(now - years + 1, Math.min(...valid.map((s) => s.start!)));
+  const out: { year: number; count: number }[] = [];
+  for (let y = first; y <= now; y++) {
+    out.push({ year: y, count: valid.filter((s) => s.start! <= y && (s.current ? now : (s.end ?? s.start!)) >= y).length });
+  }
+  const max = Math.max(...out.map((o) => o.count));
+  return max > 0 ? { points: out, max } : null;
+}

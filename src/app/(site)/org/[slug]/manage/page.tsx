@@ -5,6 +5,7 @@ import { Check, RotateCcw, X } from "lucide-react";
 import { isModerator, requireUser } from "@/lib/auth";
 import { getPageBySlug } from "@/lib/pages";
 import { claimDomainOf, listOrgAdmins, listPositions } from "@/lib/org-admin";
+import { siteUrl } from "@/lib/site";
 import { decidePositionAction, removeOrgAdminAction } from "@/lib/actions/org";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { InviteAdminForm } from "@/components/forms/OrgAdminForms";
@@ -92,6 +93,18 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
               ))}
             </ul>
           )}
+        </div>
+      </section>
+
+      <section className="card" id="badge" style={{ marginTop: 16 }}>
+        <div className="card__body">
+          <div className="card__title">Badge for your website</div>
+          <p className="small muted">Show visitors that your organization is verified on Portfedia. Paste this HTML into your website.</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/org-badge/${slug}`} alt={`${page.title} on Portfedia`} height={44} style={{ display: "block", marginBottom: 10 }} />
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", fontSize: "0.78rem" }}>
+            {`<a href="${siteUrl()}/org/${slug}" target="_blank" rel="noopener"><img src="${siteUrl()}/org-badge/${slug}" alt="${page.title} on Portfedia" height="44"></a>`}
+          </pre>
         </div>
       </section>
 

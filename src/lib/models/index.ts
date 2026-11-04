@@ -137,6 +137,20 @@ const PageSchema = new Schema<any>(
     volunteering: { type: [new Schema<any>({ org: String, role: String, startYear: Number, endYear: Number, description: String }, { _id: false })], default: [] },
     languageLevels: { type: [new Schema<any>({ name: String, level: String }, { _id: false })], default: [] },
     openTo: { type: [String], default: [] },
+    // Organization: structure, history and more
+    products: {
+      type: [new Schema<any>({ id: String, title: String, url: String, year: Number, description: String, image: { type: new Schema<any>({ key: String, url: String, hash: String }, { _id: false }), default: null } }, { _id: false })],
+      default: [],
+    },
+    offices: { type: [new Schema<any>({ city: String, country: String, address: String, kind: String }, { _id: false })], default: [] },
+    parent: { type: new Schema<any>({ title: String, slug: String }, { _id: false }), default: null },
+    acquisitions: { type: [new Schema<any>({ title: String, slug: String, year: Number, amount: String }, { _id: false })], default: [] },
+    leadership: { type: [new Schema<any>({ name: String, slug: String, role: String, kind: String }, { _id: false })], default: [] },
+    formerNames: { type: [String], default: [] },
+    milestones: { type: [new Schema<any>({ year: Number, text: String }, { _id: false })], default: [] },
+    press: { type: [new Schema<any>({ title: String, outlet: String, year: Number, url: String }, { _id: false })], default: [] },
+    jobs: { type: [new Schema<any>({ id: String, title: String, location: String, type: String, url: String, postedAt: Date }, { _id: false })], default: [] },
+    ticker: { type: new Schema<any>({ exchange: String, symbol: String }, { _id: false }), default: null },
     // Organizations: funding rounds; investors are linked to their pages by slug
     fundingRounds: {
       type: [
@@ -170,7 +184,10 @@ PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
 PageSchema.index({ oldSlugs: 1 });
 PageSchema.index({ orgAdmins: 1 });
 PageSchema.index({ "image.hash": 1 }, { sparse: true });
-PageSchema.index({ "fundingRounds.investors.slug": 1 }); // "Investments" of an investor
+PageSchema.index({ "fundingRounds.investors.slug": 1 });
+PageSchema.index({ "parent.slug": 1 }); // subsidiaries
+PageSchema.index({ "acquisitions.slug": 1 }); // "acquired by"
+PageSchema.index({ "jobs.postedAt": -1 }); // /jobs // "Investments" of an investor
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });

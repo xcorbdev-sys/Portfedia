@@ -69,8 +69,26 @@ export function ListEditor({ name, label, hint, addLabel, fields, initial, blank
 type ProjectRow = { id: string; title: string; url: string; year: string; description: string; imageKey: string; imageUrl: string; removeImage: boolean; preview: string };
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-/** Projects with an optional image each (uploaded as projectImage_<id>). */
-export function ProjectsEditor({ initial }: { initial: PageDoc["projects"] }) {
+/** Cards with an optional image each (projects, products); images are uploaded as <filePrefix><id>. */
+export function ProjectsEditor({
+  initial,
+  field = "projects",
+  filePrefix = "projectImage_",
+  label = "Projects",
+  hint = "Show your best work: products you built, research, campaigns, open-source projects…",
+  addLabel = "Add project",
+  namePlaceholder = "Project name *",
+  descPlaceholder = "What is it and what was your role?",
+}: {
+  initial: PageDoc["projects"];
+  field?: string;
+  filePrefix?: string;
+  label?: string;
+  hint?: string;
+  addLabel?: string;
+  namePlaceholder?: string;
+  descPlaceholder?: string;
+}) {
   const list = useList<ProjectRow>(
     initial.map((p) => ({ id: p.id || newId(), title: p.title, url: p.url, year: p.year ? String(p.year) : "", description: p.description, imageKey: p.image?.key ?? "", imageUrl: p.image?.url ?? "", removeImage: false, preview: "" })),
     () => ({ id: newId(), title: "", url: "", year: "", description: "", imageKey: "", imageUrl: "", removeImage: false, preview: "" }),
@@ -78,21 +96,21 @@ export function ProjectsEditor({ initial }: { initial: PageDoc["projects"] }) {
   const [, force] = useState(0);
   return (
     <div className="field">
-      <span className="label">Projects</span>
-      <span className="hint">Show your best work: products you built, research, campaigns, open-source projects…</span>
-      <input type="hidden" name="projects" value={JSON.stringify(list.items.map(({ preview, imageUrl, ...r }) => (void preview, void imageUrl, r)))} />
+      <span className="label">{label}</span>
+      <span className="hint">{hint}</span>
+      <input type="hidden" name={field} value={JSON.stringify(list.items.map(({ preview, imageUrl, ...r }) => (void preview, void imageUrl, r)))} />
       {list.items.map((p, i) => (
         <div key={p.id} className="repeat-item">
           <div className="repeat-item__head">
-            <span>Project {i + 1}</span>
-            <RemoveButton onClick={() => list.remove(i)} label={`Remove project ${i + 1}`} />
+            <span>{label} {i + 1}</span>
+            <RemoveButton onClick={() => list.remove(i)} label={`Remove ${label.toLowerCase()} ${i + 1}`} />
           </div>
           <div className="project-edit">
             <label className="project-edit__img" title="Upload image">
               {p.preview || (p.imageUrl && !p.removeImage) ? <img src={p.preview || p.imageUrl} alt="" /> : <Upload size={20} />}
               <input
                 type="file"
-                name={`projectImage_${p.id}`}
+                name={`${filePrefix}${p.id}`}
                 accept="image/jpeg,image/png,image/webp"
                 className="visually-hidden"
                 onChange={(e) => {
@@ -104,11 +122,11 @@ export function ProjectsEditor({ initial }: { initial: PageDoc["projects"] }) {
             </label>
             <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
               <div className="list-row">
-                <input className="input" value={p.title} onChange={(e) => list.update(i, { title: e.target.value })} placeholder="Project name *" maxLength={120} aria-label="Project name" />
+                <input className="input" value={p.title} onChange={(e) => list.update(i, { title: e.target.value })} placeholder={namePlaceholder} maxLength={120} aria-label={namePlaceholder} />
                 <input className="input list-row__year" value={p.year} onChange={(e) => list.update(i, { year: e.target.value })} placeholder="Year" inputMode="numeric" pattern="\d{4}" aria-label="Year" />
                 <input className="input" type="url" value={p.url} onChange={(e) => list.update(i, { url: e.target.value })} placeholder="https://…" aria-label="Link" />
               </div>
-              <textarea className="textarea textarea--plain" style={{ minHeight: 60 }} value={p.description} onChange={(e) => list.update(i, { description: e.target.value })} placeholder="What is it and what was your role?" maxLength={600} />
+              <textarea className="textarea textarea--plain" style={{ minHeight: 60 }} value={p.description} onChange={(e) => list.update(i, { description: e.target.value })} placeholder={descPlaceholder} maxLength={600} />
               {(p.imageUrl || p.preview) && (
                 <label className="check">
                   <input type="checkbox" checked={p.removeImage} onChange={(e) => list.update(i, { removeImage: e.target.checked, preview: "" })} /> Remove image
@@ -118,7 +136,7 @@ export function ProjectsEditor({ initial }: { initial: PageDoc["projects"] }) {
           </div>
         </div>
       ))}
-      <AddButton onClick={list.add}>Add project</AddButton>
+      <AddButton onClick={list.add}>{addLabel}</AddButton>
     </div>
   );
 }

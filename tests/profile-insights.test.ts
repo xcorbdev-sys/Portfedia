@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildTimeline, profileCompleteness } from "../src/lib/profile-insights.ts";
+import { buildTimeline, employeeTrend, profileCompleteness } from "../src/lib/profile-insights.ts";
 
 const base = {
   image: null, summary: "", experiences: [], educations: [], body: "", tags: [], languageLevels: [], infobox: {},
@@ -30,4 +30,18 @@ test("timeline positions bars between the first year and now", () => {
   assert.equal(t.bars[0].left, 0);
   assert.ok(Math.abs(t.bars[1].left + t.bars[1].width - 100) < 0.01);
   assert.equal(buildTimeline(base, 2020), null);
+});
+
+test("employee trend counts people active each year", () => {
+  const t = employeeTrend(
+    [
+      { start: 2018, end: 2020, current: false },
+      { start: 2019, end: null, current: true },
+      { start: 2021, end: null, current: true },
+    ],
+    2022,
+  )!;
+  assert.deepEqual(t.points.map((p) => p.count), [1, 2, 2, 2, 2]);
+  assert.equal(t.max, 2);
+  assert.equal(employeeTrend([{ start: 2020, end: null, current: true }], 2022), null);
 });

@@ -106,6 +106,15 @@ export const OPEN_TO = {
 } as const;
 export type OpenTo = keyof typeof OPEN_TO;
 
+export interface Office { city: string; country: string; address: string; kind: string }
+export interface LinkedName { title: string; slug: string }
+export interface Acquisition { title: string; slug: string; year: number | null; amount: string }
+export interface Leader { name: string; slug: string; role: string; kind: "board" | "executive" }
+export interface Milestone { year: number | null; text: string }
+export interface PressItem { title: string; outlet: string; year: number | null; url: string }
+export interface Job { id: string; title: string; location: string; type: string; url: string; postedAt: Date | null }
+export interface Ticker { exchange: string; symbol: string }
+
 export interface OutLink {
   slug: string;
   title: string;
@@ -142,6 +151,16 @@ export interface PageDoc {
   volunteering: Volunteering[];
   languageLevels: LanguageLevel[];
   openTo: OpenTo[];
+  products: Project[];
+  offices: Office[];
+  parent: LinkedName | null;
+  acquisitions: Acquisition[];
+  leadership: Leader[];
+  formerNames: string[];
+  milestones: Milestone[];
+  press: PressItem[];
+  jobs: Job[];
+  ticker: Ticker | null;
   verified: boolean;
   review: ReviewInfo;
   followerCount: number;

@@ -16,7 +16,7 @@ import { slugify } from "../slug";
 import { rateLimit } from "../rate-limit";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
-import type { Award, FundingRound, LanguageLevel, OpenTo, PageDoc, Patent, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
+import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
 import { OPEN_TO } from "../types";
 
 const MAX_BODY = 100_000;
@@ -81,20 +81,59 @@ function parseRows<T>(fd: FormData, name: string, max: number, map: (r: Record<s
 
 const LEVELS = ["Native", "C2", "C1", "B2", "B1", "A2", "A1"];
 
-async function parseProjects(fd: FormData, prev: PageDoc | null): Promise<Project[]> {
-  const prevImages = new Map((prev?.projects ?? []).filter((x) => x.image).map((x) => [x.image!.key, x.image!]));
+/** Cards with an optional image each (profile projects, organization products). */
+async function parseImageCards(fd: FormData, prevItems: Project[], field: string, filePrefix: string, max = 20): Promise<Project[]> {
+  const prevImages = new Map(prevItems.filter((x) => x.image).map((x) => [x.image!.key, x.image!]));
   const out: Project[] = [];
-  for (const r of parseJsonArray(fd.get("projects"), 20)) {
+  for (const r of parseJsonArray(fd.get(field), max)) {
     const title = str(r.title, 120);
     if (!title) continue;
     const id = /^[a-z0-9]{6,16}$/.test(String(r.id)) ? String(r.id) : Math.random().toString(36).slice(2, 10);
-    // Only images this profile already owns may be kept (never trust a client-sent URL)
+    // Only images this page already owns may be kept (never trust a client-sent URL)
     let image = typeof r.imageKey === "string" && !r.removeImage ? (prevImages.get(r.imageKey) ?? null) : null;
-    const file = fd.get(`projectImage_${id}`);
+    const file = fd.get(`${filePrefix}${id}`);
     if (file instanceof File && file.size > 0) image = await saveImage(file, "logo");
     out.push({ id, title, url: httpUrl(r.url), year: yearOrNull(r.year), description: str(r.description, 600), image });
   }
   return out;
+}
+
+const parseProjects = (fd: FormData, prev: PageDoc | null) => parseImageCards(fd, prev?.projects ?? [], "projects", "projectImage_");
+
+const linked = (title: string) => ({ title, slug: slugify(title) });
+
+function parseOrgExtras(fd: FormData) {
+  const parentTitle = str(fd.get("parent"), 160);
+  const exchange = str(fd.get("tickerExchange"), 20).toUpperCase();
+  const symbol = str(fd.get("tickerSymbol"), 20).toUpperCase();
+  return {
+    offices: parseRows<Office>(fd, "offices", 50, (r) =>
+      str(r.city, 80) ? { city: str(r.city, 80), country: str(r.country, 80), address: str(r.address, 200), kind: ["HQ", "Office", "Factory", "R&D", "Store", "Warehouse"].includes(String(r.kind)) ? String(r.kind) : "Office" } : null,
+    ),
+    parent: parentTitle && slugify(parentTitle) ? linked(parentTitle) : null,
+    acquisitions: parseRows<Acquisition>(fd, "acquisitions", 50, (r) => (str(r.title, 160) && slugify(str(r.title, 160)) ? { ...linked(str(r.title, 160)), year: year(r.year), amount: str(r.amount, 60) } : null)),
+    leadership: parseRows<Leader>(fd, "leadership", 40, (r) =>
+      str(r.name, 120) && slugify(str(r.name, 120)) ? { name: str(r.name, 120), slug: slugify(str(r.name, 120)), role: str(r.role, 120), kind: r.kind === "board" ? "board" : "executive" } : null,
+    ),
+    formerNames: String(fd.get("formerNames") ?? "").split(",").map((x) => str(x, 160)).filter(Boolean).slice(0, 10),
+    milestones: parseRows<Milestone>(fd, "milestones", 60, (r) => (str(r.text, 300) ? { year: year(r.year), text: str(r.text, 300) } : null)).sort((a, b) => (a.year ?? 0) - (b.year ?? 0)),
+    press: parseRows<PressItem>(fd, "press", 60, (r) => (str(r.title, 200) && httpUrl(r.url) ? { title: str(r.title, 200), outlet: str(r.outlet, 120), year: year(r.year), url: httpUrl(r.url) } : null)),
+    ticker: symbol ? { exchange, symbol } : null,
+  };
+}
+
+function parseJobs(fd: FormData, prev: PageDoc | null): Job[] {
+  const prevById = new Map((prev?.jobs ?? []).map((j) => [j.id, j]));
+  const seen = new Set<string>();
+  return parseRows<Job>(fd, "jobs", 50, (r) => {
+    const title = str(r.title, 120);
+    if (!title) return null;
+    let id = /^[a-z0-9]{6,16}$/.test(String(r.id)) ? String(r.id) : "";
+    if (!id || seen.has(id)) id = Math.random().toString(36).slice(2, 10);
+    seen.add(id);
+    const type = ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].includes(String(r.type)) ? String(r.type) : "Full-time";
+    return { id, title, location: str(r.location, 120), type, url: httpUrl(r.url), postedAt: prevById.get(id)?.postedAt ?? new Date() };
+  });
 }
 
 function parseSources(v: FormDataEntryValue | null): SourceRef[] {
@@ -260,10 +299,20 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     page: prevOrg,
   });
   if (orgGuard) return { error: orgGuard };
+  const orgExtras = parseOrgExtras(fd);
+  const extrasGuard = await guardContent(user, {
+    texts: [...orgExtras.milestones.map((m) => m.text), ...orgExtras.press.map((x) => x.title), ...orgExtras.leadership.map((l) => `${l.name} ${l.role}`), ...orgExtras.formerNames],
+    newLinks: externalLinks(...orgExtras.press.map((x) => x.url)).filter((l) => !new Set(externalLinks(...(prevOrg?.press ?? []).map((x) => x.url))).has(l)),
+    page: prevOrg,
+  });
+  if (extrasGuard) return { error: extrasGuard };
+  const canManageJobs = user.role !== "user" || Boolean(prevOrg && prevOrg.orgAdmins.includes(user.id));
 
   let image: StoredImage | null | undefined;
+  let products: Project[];
   try {
     image = await imageFrom(fd, "logo");
+    products = await parseImageCards(fd, prevOrg?.products ?? [], "products", "productImage_");
   } catch (err) {
     if (err instanceof UploadError) return { error: err.message };
     throw err;
@@ -288,6 +337,10 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       body: orgBody,
       sources: orgSources,
       fundingRounds: parseFunding(fd.get("fundingRounds")),
+      products,
+      ...orgExtras,
+      // Job listings: only the organization's own admins (and moderators) can publish them
+      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg) : undefined,
       editSummary: str(fd.get("editSummary"), 300),
       image,
       protectDays: fd.has("protectDays") ? Math.max(0, Math.min(365, Number(fd.get("protectDays")) || 0)) : undefined,

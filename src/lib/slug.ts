@@ -28,7 +28,7 @@ export const RESERVED_SLUGS = new Set([
   "people", "companies", "sectors", "collections", "random", "media", "about", "help",
   "privacy", "terms", "sitemap", "robots", "favicon", "admin", "_next", "history",
   "portfedia", "settings", "notifications", "icon", "sitemap-xml", "robots-txt",
-  "forgot-password", "reset-password", "verify-email", "verify-work", "notifications", "inbox", "tag", "jobs", "copyright", "report", "copyright", "report", "claim", "auth",
+  "forgot-password", "reset-password", "verify-email", "verify-work", "notifications", "inbox", "tag", "tags", "jobs", "org-badge", "copyright", "report", "copyright", "report", "claim", "auth",
 ]);
 
 export function isReservedSlug(slug: string): boolean {

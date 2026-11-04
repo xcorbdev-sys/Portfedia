@@ -62,6 +62,16 @@ const FIELD_LABELS: Record<string, string> = {
   volunteering: "Volunteering",
   languageLevels: "Languages",
   openTo: "Open to",
+  products: "Products",
+  offices: "Offices",
+  parent: "Parent organization",
+  acquisitions: "Acquisitions",
+  leadership: "Leadership",
+  formerNames: "Former names",
+  milestones: "Milestones",
+  press: "Press",
+  jobs: "Open positions",
+  ticker: "Stock ticker",
   noindex: "Search engine visibility",
 };
 
@@ -138,7 +148,12 @@ export async function restoreRevision(user: SessionUser, page: PageDoc, revId: s
     for (const k of ["publications", "awards", "talks", "patents", "volunteering", "languageLevels", "openTo"]) if (k in s) fields[k] = s[k];
     if ("projects" in s) fields.projects = (s.projects ?? []).map((x: { image?: { key?: string } }) => ({ ...x, image: x.image?.key && liveKeys.has(x.image.key) ? x.image : null }));
   }
-  else Object.assign(fields, { fundingRounds: s.fundingRounds ?? [] });
+  else {
+    Object.assign(fields, { fundingRounds: s.fundingRounds ?? [] });
+    for (const k of ["offices", "parent", "acquisitions", "leadership", "formerNames", "milestones", "press", "ticker"]) if (k in s) fields[k] = s[k];
+    const liveKeys = new Set((doc.products ?? []).map((x: { image?: { key?: string } }) => x.image?.key).filter(Boolean));
+    if ("products" in s) fields.products = (s.products ?? []).map((x: { image?: { key?: string } }) => ({ ...x, image: x.image?.key && liveKeys.has(x.image.key) ? x.image : null }));
+  }
   const prevSize = doc.body?.length ?? 0;
   doc.set(fields);
   doc.revisionCount = (doc.revisionCount ?? 0) + 1;
