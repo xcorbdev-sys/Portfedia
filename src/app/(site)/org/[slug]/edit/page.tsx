@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { canEditOrg, getPageBySlug } from "@/lib/pages";
+import { canEditOrg, getPageBySlug, isOrgAdmin } from "@/lib/pages";
+import { isModerator } from "@/lib/auth";
 import { OrgForm } from "@/components/forms/OrgForm";
 
 export const metadata: Metadata = { title: "Edit organization", robots: { index: false } };
@@ -21,7 +22,7 @@ export default async function EditOrg({ params }: { params: Promise<{ slug: stri
           Your edit will be saved in the <Link href={`/org/${page.slug}/history`}>page history</Link>. Please only add information you can back up with a source.
         </p>
       </div>
-      <OrgForm page={page} />
+      <OrgForm page={page} websiteLocked={Boolean(page.infobox.website) && !isModerator(user) && !isOrgAdmin(user, page)} moderator={isModerator(user)} />
     </div>
   );
 }

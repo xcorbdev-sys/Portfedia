@@ -4,7 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditOrg, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
+import { canEditOrg, isOrgAdmin, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt, siteUrl } from "@/lib/site";
 import { Breadcrumbs, VerifiedBadge } from "@/components/ui";
@@ -96,6 +96,11 @@ export default async function OrgPage({ params }: Props) {
           <div className="side-nav__meta">
             <Link href={`/org/${page.slug}/history`}>View history</Link>
             {canEdit && <Link href={`/org/${page.slug}/edit`}>Edit page</Link>}
+            {isOrgAdmin(user, page) || (user && (user.role === "admin" || user.role === "moderator")) ? (
+              <Link href={`/org/${page.slug}/manage`}>Manage page</Link>
+            ) : (
+              <Link href={`/org/${page.slug}/claim`}>{page.status === "claimed" ? "Join as admin" : "Claim this page"}</Link>
+            )}
           </div>
         </aside>
 
@@ -188,7 +193,13 @@ export default async function OrgPage({ params }: Props) {
                       {website && <a href={ib.website} rel="nofollow ugc noopener" className="external">{website}</a>}
                     </Fact>
                     <Fact label="Status">
-                      {verified ? <span style={{ color: "var(--ok)" }}>Managed by the organization</span> : "Community maintained"}
+                      {verified ? (
+                        <span style={{ color: "var(--ok)" }}>Managed by the organization</span>
+                      ) : (
+                        <>
+                          Community maintained · <Link href={`/org/${page.slug}/claim`}>Claim</Link>
+                        </>
+                      )}
                     </Fact>
                   </tbody>
                 </table>
@@ -224,6 +235,15 @@ export default async function OrgPage({ params }: Props) {
                 ))}
               </div>
             </section>
+          )}
+          {page.status !== "claimed" && (
+            <div className="cta-band no-print" style={{ marginTop: 26 }}>
+              <div>
+                <h2 style={{ fontSize: "1.05rem" }}>Do you work at {page.title}?</h2>
+                <p className="muted small" style={{ margin: "4px 0 0" }}>Claim this page with your work email to manage it and verify your team.</p>
+              </div>
+              <Link className="btn btn--primary" href={`/org/${page.slug}/claim`}>Claim this page</Link>
+            </div>
           )}
           {page.sources.length > 0 && (
             <section className="p-section" id="sources">

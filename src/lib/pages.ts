@@ -30,6 +30,9 @@ function toPage(d: any): PageDoc {
     educations: d.educations ?? [],
     outLinks: d.outLinks ?? [],
     tags: d.tags ?? [],
+    orgAdmins: (d.orgAdmins ?? []).map(String),
+    claimDomain: d.claimDomain ?? null,
+    websiteChangedAt: d.websiteChangedAt ?? null,
     sources: d.sources ?? [],
     verified: Boolean(d.verified),
     review: {
@@ -491,7 +494,13 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     const same = prevExps.find(
       (p) => p.orgSlug === org.slug && p.role === e.role && p.startYear === e.startYear && p.endYear === e.endYear && p.current === e.current,
     );
-    experiences.push({ ...e, orgSlug: org.slug, orgTitle: org.title, verification: same?.verification ?? "unverified" });
+    experiences.push({
+      ...e,
+      orgSlug: org.slug,
+      orgTitle: org.title,
+      verification: same?.verification ?? "unverified",
+      verifiedVia: same?.verifiedVia ?? null,
+    });
   }
   const educations: Education[] = [];
   for (const e of input.educations) {
@@ -567,14 +576,21 @@ export interface OrgInput {
   sources: SourceRef[];
   editSummary: string;
   image?: StoredImage | null;
+  /** Moderators only */
+  claimDomain?: string;
 }
 
-export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type">): boolean {
+export function canEditOrg(user: SessionUser | null, page: Pick<PageDoc, "status" | "type" | "orgAdmins">): boolean {
   if (!user || page.type === "person") return false;
   if (user.role === "admin" || user.role === "moderator") return true;
-  // Unclaimed organisation pages are community-editable.
-  // Once claimed (phase 2) only the organisation's admins can edit.
-  return page.status !== "claimed";
+  // Claimed pages are edited only by the organization's admins (verified with a work email);
+  // unclaimed pages are maintained by the community.
+  if (page.status === "claimed") return page.orgAdmins.includes(user.id);
+  return true;
+}
+
+export function isOrgAdmin(user: SessionUser | null, page: Pick<PageDoc, "orgAdmins">): boolean {
+  return Boolean(user && page.orgAdmins.includes(user.id));
 }
 
 export class PermissionError extends Error {}
@@ -602,11 +618,20 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   if (!canEditOrg(user, page)) throw new PermissionError("You don't have permission to edit this page");
 
   const prevSize = page.body?.length ?? 0;
+  const isMod = user.role === "admin" || user.role === "moderator";
+  const prevWebsite: string = page.infobox?.website ?? "";
+  // The website decides which email domain may claim the page, so once set it is locked:
+  // only moderators and the organization's own admins can change it.
+  if (prevWebsite && input.infobox.website !== prevWebsite && !isMod && !page.orgAdmins?.map(String).includes(user.id)) {
+    throw new PermissionError("The website can only be changed by the organization or a moderator. Use Report if it is wrong.");
+  }
+  if (input.infobox.website !== prevWebsite) page.websiteChangedAt = new Date();
   let oldImage: StoredImage | null = null;
   if (input.image !== undefined) {
     oldImage = page.image?.url ? { key: page.image.key, url: page.image.url } : null;
     page.image = input.image;
   }
+  if (isMod && input.claimDomain !== undefined) page.claimDomain = input.claimDomain || null;
   page.set({ ...content, type: input.type, status: page.status === "claimed" ? "claimed" : input.body ? "published" : page.status });
   page.revisionCount = (page.revisionCount ?? 0) + 1;
   await page.save();
@@ -639,6 +664,9 @@ export async function deleteAccount(userId: string): Promise<void> {
     await Follow.deleteMany({ pageId: page._id });
     await Page.deleteOne({ _id: page._id });
   }
+  // Leave organization pages this user managed; pages without admins go back to community editing
+  await Page.updateMany({ orgAdmins: oid }, { $pull: { orgAdmins: oid } });
+  await Page.updateMany({ type: { $in: ["org", "school"] }, status: "claimed", orgAdmins: { $size: 0 } }, { $set: { status: "published" } });
   // Undo this user's follows so counters stay correct
   const follows = await Follow.find({ userId: oid }, { pageId: 1 }).lean();
   for (const f of follows) await Page.updateOne({ _id: f.pageId, followerCount: { $gt: 0 } }, { $inc: { followerCount: -1 } });

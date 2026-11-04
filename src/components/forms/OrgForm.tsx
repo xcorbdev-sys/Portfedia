@@ -14,10 +14,15 @@ export function OrgForm({
   page,
   defaultTitle = "",
   onBackToType,
+  websiteLocked = false,
+  moderator = false,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
   onBackToType?: () => void;
+  /** The website decides who can claim the page, so only the organization or moderators may change it */
+  websiteLocked?: boolean;
+  moderator?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveOrgAction, undefined);
   const [step, setStep] = useState(0);
@@ -122,7 +127,15 @@ export function OrgForm({
           </div>
           <div className="field">
             <label htmlFor="website">Website</label>
-            <input id="website" name="website" className="input" maxLength={300} defaultValue={ib.website} placeholder="https://example.com" />
+            {websiteLocked ? (
+              <>
+                <input id="website" className="input" value={ib.website} disabled />
+                <input type="hidden" name="website" value={ib.website} />
+                <span className="hint">Locked: the website decides who can claim this page. Use Report if it is wrong.</span>
+              </>
+            ) : (
+              <input id="website" name="website" className="input" maxLength={300} defaultValue={ib.website} placeholder="https://example.com" />
+            )}
           </div>
         </div>
         <div className="field">
@@ -145,6 +158,13 @@ export function OrgForm({
           <p className="muted small">Pages with reliable sources are trusted more by readers.</p>
         </div>
         <SourcesEditor initial={page?.sources ?? []} />
+        {moderator && (
+          <div className="field">
+            <label htmlFor="claimDomain">Claim domain (moderators)</label>
+            <input id="claimDomain" name="claimDomain" className="input" maxLength={120} defaultValue={page?.claimDomain ?? ""} placeholder="e.g. northwind.com" />
+            <span className="hint">Overrides the website domain for claiming and work-email verification.</span>
+          </div>
+        )}
         <div className="field">
           <label htmlFor="editSummary">Edit summary</label>
           <input id="editSummary" name="editSummary" className="input" maxLength={300} placeholder={page ? "e.g. Updated headquarters" : "Page created"} />

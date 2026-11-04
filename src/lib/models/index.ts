@@ -31,7 +31,11 @@ UserSchema.index({ linkedinId: 1 }, { unique: true, partialFilterExpression: { l
 /* ───────────── One-time tokens (email verification, password reset, email change, OAuth signup) ───────────── */
 const TokenSchema = new Schema<any>({
   tokenHash: { type: String, required: true, unique: true },
-  type: { type: String, enum: ["verify_email", "reset_password", "change_email", "oauth_signup", "oauth_state"], required: true },
+  type: {
+    type: String,
+    enum: ["verify_email", "reset_password", "change_email", "oauth_signup", "oauth_state", "claim_org", "verify_work"],
+    required: true,
+  },
   userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
   data: { type: Schema.Types.Mixed, default: {} },
   expiresAt: { type: Date, required: true },
@@ -59,6 +63,8 @@ const ExperienceSchema = new Schema<any>(
     current: { type: Boolean, default: false },
     description: { type: String, default: "" },
     verification: { type: String, enum: ["unverified", "verified", "rejected"], default: "unverified" },
+    // How it was verified: by an organization admin, or by the person with their work email
+    verifiedVia: { type: String, enum: ["org", "work_email", null], default: null },
   },
   { _id: false },
 );
@@ -107,6 +113,10 @@ const PageSchema = new Schema<any>(
     educations: { type: [EducationSchema], default: [] },
     outLinks: { type: [new Schema<any>({ slug: String, title: String }, { _id: false })], default: [] },
     tags: { type: [String], default: [] },
+    // Organization ownership (claimed with a work email)
+    orgAdmins: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
+    claimDomain: { type: String, default: null }, // set by moderators; overrides the website domain
+    websiteChangedAt: { type: Date, default: null },
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
     verified: { type: Boolean, default: false }, // kimlik/kuruluş doğrulandı (yönetici işaretler)
     followerCount: { type: Number, default: 0 },
@@ -123,6 +133,7 @@ PageSchema.index(
 PageSchema.index({ "experiences.orgSlug": 1 }); // "Burada çalışanlar"
 PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
 PageSchema.index({ oldSlugs: 1 });
+PageSchema.index({ orgAdmins: 1 });
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });

@@ -27,6 +27,7 @@ export interface Experience {
   current: boolean;
   description?: string;
   verification: Verification;
+  verifiedVia?: "org" | "work_email" | null;
 }
 
 export interface Education {
@@ -91,6 +92,9 @@ export interface PageDoc {
   educations: Education[];
   outLinks: OutLink[];
   tags: string[];
+  orgAdmins: string[];
+  claimDomain: string | null;
+  websiteChangedAt: Date | null;
   sources: SourceRef[];
   verified: boolean;
   review: ReviewInfo;

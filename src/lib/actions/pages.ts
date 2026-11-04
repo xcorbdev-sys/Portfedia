@@ -175,6 +175,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       sources: parseSources(fd.get("sources")),
       editSummary: str(fd.get("editSummary"), 300),
       image,
+      claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,
     });
     pageSlug = page.slug;
   } catch (err) {

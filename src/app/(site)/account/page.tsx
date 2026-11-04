@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { getPersonPageOf } from "@/lib/pages";
+import { getPageBySlug, getPersonPageOf } from "@/lib/pages";
+import { claimDomainOf } from "@/lib/org-admin";
+import { WorkVerifyForm } from "@/components/forms/OrgAdminForms";
 import { siteUrl } from "@/lib/site";
 import {
   ChangeEmailForm, ChangePasswordForm, DeleteAccountForm, EmailPrefsForm, ResendVerificationButton, SlugForm,
@@ -29,6 +31,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const page = await getPersonPageOf(user.id);
   const { reset } = await searchParams;
   const host = siteUrl().replace(/^https?:\/\//, "");
+  // Domain each position can be verified with (work email at that organization)
+  const positions = page
+    ? await Promise.all(
+        page.experiences.map(async (e, index) => {
+          const org = await getPageBySlug(e.orgSlug);
+          return { e, index, domain: org ? claimDomainOf(org) : null };
+        }),
+      )
+    : [];
 
   return (
     <div className="narrow">
@@ -58,6 +69,28 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           </p>
         )}
       </Section>
+
+      {positions.length > 0 && (
+        <Section id="positions" title="Verify your positions">
+          <p className="small muted">
+            Confirm a work email at the organization to get a ✓ on a position. Organizations that manage their page can also verify you.
+          </p>
+          {positions.map(({ e, index, domain }) => (
+            <div key={index} style={{ padding: "12px 0", borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+                <span>
+                  <b>{e.orgTitle}</b> {e.role && <span className="muted">· {e.role}</span>}
+                </span>
+                <span className={`status-pill status-pill--${e.verification === "verified" ? "published" : e.verification === "rejected" ? "rejected" : "pending"}`}>
+                  {e.verification === "verified" ? "Verified" : e.verification === "rejected" ? "Rejected by organization" : "Not verified"}
+                </span>
+              </div>
+              {e.verification !== "verified" &&
+                (domain?.ok ? <WorkVerifyForm index={index} domain={domain.domain} /> : <p className="small muted" style={{ margin: 0 }}>{domain?.reason ?? "Organization not found."}</p>)}
+            </div>
+          ))}
+        </Section>
+      )}
 
       <Section id="email" title="Email address">
         <p style={{ margin: "0 0 12px" }}>

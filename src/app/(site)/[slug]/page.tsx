@@ -180,7 +180,11 @@ export default async function PersonPage({ params }: Props) {
                       <div className="timeline__title">
                         <Link href={`/org/${e.orgSlug}`}><b>{e.orgTitle}</b></Link>
                         {e.role && <span> · {e.role}</span>}
-                        {e.verification === "verified" && <span className="badge-ok" title="Confirmed by the organization">✓ Verified</span>}
+                        {e.verification === "verified" && (
+                          <span className="badge-ok" title={e.verifiedVia === "work_email" ? "Verified with a work email" : "Confirmed by the organization"}>
+                            ✓ Verified
+                          </span>
+                        )}
                       </div>
                       {e.description && <div className="timeline__desc">{e.description}</div>}
                     </div>
@@ -283,6 +287,11 @@ export default async function PersonPage({ params }: Props) {
                   <Fact label="Expertise">{ib.skills}</Fact>
                 </tbody>
               </table>
+              {exps.some((e) => e.verification === "verified") && (
+                <p className="small" style={{ margin: "12px 0 0", color: "var(--ok)" }}>
+                  ✓ {exps.filter((e) => e.verification === "verified").length} of {exps.length} positions verified
+                </p>
+              )}
             </div>
           </div>
           {hasLinks && (

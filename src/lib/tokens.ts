@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { connectDB } from "./db";
 import { Token } from "./models";
 
-export type TokenType = "verify_email" | "reset_password" | "change_email" | "oauth_signup" | "oauth_state";
+export type TokenType = "verify_email" | "reset_password" | "change_email" | "oauth_signup" | "oauth_state" | "claim_org" | "verify_work";
 
 const hash = (raw: string) => createHash("sha256").update(raw).digest("hex");
 
