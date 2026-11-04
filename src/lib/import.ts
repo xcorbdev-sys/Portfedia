@@ -5,7 +5,7 @@ import { csvRecords } from "./csv";
 import { ensureOrgPage } from "./pages";
 import { extractWikiLinks } from "./wikitext";
 import { httpUrl, str, year } from "./validate";
-import type { SessionUser } from "./types";
+import type { SessionUser, SourceRef } from "./types";
 
 
 export interface ImportResult {
@@ -31,79 +31,95 @@ export async function importOrganizations(user: SessionUser, csv: string, overwr
   await connectDB();
   for (const [i, r] of rows.entries()) {
     const rowNo = i + 2; // + header, 1-based
-    const name = str(r.name ?? r.title, 160);
-    if (name.length < 2) {
-      result.skipped.push({ row: rowNo, name, reason: "Missing name" });
-      continue;
-    }
-    const type = /^(institution|school|university|education)/i.test(r.type ?? "") ? "school" : "org";
-    let ref;
-    try {
-      ref = await ensureOrgPage({ title: name, type }, user.id);
-    } catch (err) {
-      result.skipped.push({ row: rowNo, name, reason: (err as Error).message });
-      continue;
-    }
-    const page = await Page.findOne({ slug: ref.slug });
-    if (!page) continue;
-    if (page.status === "claimed") {
-      result.skipped.push({ row: rowNo, name, reason: "Claimed by the organization" });
-      continue;
-    }
-    const wasEmpty = !page.body && !page.summary && !page.infobox?.sector;
-    const incoming = {
-      sector: str(r.sector, 80),
-      founded: year(r.founded),
-      headquarters: str(r.headquarters ?? r.hq, 120),
-      employees: str(r.employees, 40),
-      website: httpUrl(r.website),
-      kind: str(r.kind ?? r["legal form"], 60),
-    };
-    const infobox = { ...(page.infobox ?? {}) };
-    let changed = false;
-    for (const [k, v] of Object.entries(incoming)) {
-      if (v && (overwrite || !infobox[k])) {
-        if (k === "website" && infobox.website !== v) page.websiteChangedAt = null; // moderator-provided: claimable right away
-        infobox[k] = v;
-        changed = true;
-      }
-    }
-    page.infobox = infobox;
-    const summary = str(r.summary, 400);
-    if (summary && (overwrite || !page.summary)) {
-      page.summary = summary;
-      changed = true;
-    }
-    const tags = (r.tags ?? "").split(/[;|]/).map((t) => str(t, 30)).filter(Boolean).slice(0, 8);
-    if (tags.length && (overwrite || !page.tags?.length)) {
-      page.tags = tags;
-      changed = true;
-    }
-    const about = (r.about ?? "").slice(0, 20000);
-    if (about && (overwrite || !page.body)) {
-      page.body = about;
-      page.outLinks = extractWikiLinks(about);
-      changed = true;
-    }
-    if (!changed) {
-      result.skipped.push({ row: rowNo, name, reason: "Nothing new to add" });
-      continue;
-    }
-    if (page.status === "draft" && (page.body || page.summary)) page.status = "published";
-    page.type = type;
-    page.revisionCount = (page.revisionCount ?? 0) + 1;
-    await page.save();
-    await Revision.create({
-      pageId: page._id,
-      authorId: user.id,
-      authorName: user.name,
-      editSummary: "Imported from CSV",
-      snapshot: { title: page.title, summary: page.summary, tags: page.tags, infobox: page.infobox, body: page.body, sources: page.sources, outLinks: page.outLinks, fundingRounds: page.fundingRounds },
-      size: page.body?.length ?? 0,
-      delta: 0,
-    });
-    if (wasEmpty) result.created++;
-    else result.updated++;
+    const res = await upsertOrganization(user, r, { overwrite, editSummary: "Imported from CSV" });
+    if (res.status === "skipped") result.skipped.push({ row: rowNo, name: res.name, reason: res.reason });
+    else result[res.status]++;
   }
   return result;
+}
+
+export type UpsertResult =
+  | { status: "created" | "updated"; name: string; slug: string; type: "org" | "school" }
+  | { status: "skipped"; name: string; reason: string; slug?: string; type?: "org" | "school" };
+
+/**
+ * Creates or fills in one organization page. `r` uses the CSV column names
+ * (name, type, sector, founded, headquarters, employees, website, kind, summary, tags, about).
+ * Existing values are only filled in unless `overwrite` is set; claimed pages are never changed.
+ */
+export async function upsertOrganization(
+  user: SessionUser,
+  r: Record<string, string | undefined>,
+  opts: { overwrite: boolean; editSummary: string; source?: SourceRef },
+): Promise<UpsertResult> {
+  await connectDB();
+  const name = str(r.name ?? r.title, 160);
+  if (name.length < 2) return { status: "skipped", name, reason: "Missing name" };
+  const type = /^(institution|school|university|education)/i.test(r.type ?? "") ? "school" : "org";
+  const overwrite = opts.overwrite;
+  let ref;
+  try {
+    ref = await ensureOrgPage({ title: name, type }, user.id);
+  } catch (err) {
+    return { status: "skipped", name, reason: (err as Error).message };
+  }
+  const page = await Page.findOne({ slug: ref.slug });
+  if (!page) return { status: "skipped", name, reason: "Page could not be created" };
+  const pageType = page.type as "org" | "school";
+  if (page.status === "claimed") return { status: "skipped", name, reason: "Claimed by the organization", slug: page.slug, type: pageType };
+  const wasEmpty = !page.body && !page.summary && !page.infobox?.sector;
+  const incoming = {
+    sector: str(r.sector, 80),
+    founded: year(r.founded),
+    headquarters: str(r.headquarters ?? r.hq, 120),
+    employees: str(r.employees, 40),
+    website: httpUrl(r.website),
+    kind: str(r.kind ?? r["legal form"], 60),
+  };
+  const infobox = { ...(page.infobox ?? {}) };
+  let changed = false;
+  for (const [k, v] of Object.entries(incoming)) {
+    if (v && (overwrite || !infobox[k])) {
+      if (k === "website" && infobox.website !== v) page.websiteChangedAt = null; // moderator-provided: claimable right away
+      infobox[k] = v;
+      changed = true;
+    }
+  }
+  page.infobox = infobox;
+  const summary = str(r.summary, 400);
+  if (summary && (overwrite || !page.summary)) {
+    page.summary = summary;
+    changed = true;
+  }
+  const tags = (r.tags ?? "").split(/[;|]/).map((t) => str(t, 30)).filter(Boolean).slice(0, 8);
+  if (tags.length && (overwrite || !page.tags?.length)) {
+    page.tags = tags;
+    changed = true;
+  }
+  const about = (r.about ?? "").slice(0, 20000);
+  if (about && (overwrite || !page.body)) {
+    page.body = about;
+    page.outLinks = extractWikiLinks(about);
+    changed = true;
+  }
+  const sources = (page.sources ?? []) as SourceRef[];
+  if (opts.source && !sources.some((s) => s.url === opts.source!.url)) {
+    page.sources = [...sources, opts.source];
+    changed = true;
+  }
+  if (!changed) return { status: "skipped", name, reason: "Nothing new to add", slug: page.slug, type: pageType };
+  if (page.status === "draft" && (page.body || page.summary)) page.status = "published";
+  page.type = type;
+  page.revisionCount = (page.revisionCount ?? 0) + 1;
+  await page.save();
+  await Revision.create({
+    pageId: page._id,
+    authorId: user.id,
+    authorName: user.name,
+    editSummary: opts.editSummary,
+    snapshot: { title: page.title, summary: page.summary, tags: page.tags, infobox: page.infobox, body: page.body, sources: page.sources, outLinks: page.outLinks, fundingRounds: page.fundingRounds },
+    size: page.body?.length ?? 0,
+    delta: 0,
+  });
+  return { status: wasEmpty ? "created" : "updated", name, slug: page.slug, type };
 }

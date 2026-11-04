@@ -6,6 +6,7 @@ import { getCurrentUser, isModerator } from "../auth";
 import { importOrganizations, type ImportResult } from "../import";
 import { deleteCollection, saveCollection } from "../collections";
 import { bool, httpUrl, str } from "../validate";
+import { pageHref } from "../wikitext";
 
 async function moderator() {
   const user = await getCurrentUser();
@@ -27,6 +28,42 @@ export async function importCsvAction(_: ImportState, fd: FormData): Promise<Imp
   const result = await importOrganizations(user, text, bool(fd.get("overwrite")));
   revalidatePath("/companies");
   return { result };
+}
+
+/** Adds one organization from Wikidata (company facts only; people are refused). */
+export async function wikidataImportAction(fd: FormData): Promise<void> {
+  const user = await moderator();
+  const qid = str(fd.get("qid"), 20);
+  const back = (msg: string) => `/admin?section=import&wd=${encodeURIComponent(str(fd.get("wd"), 100))}&error=${encodeURIComponent(msg)}#wikidata`;
+  const { fetchOrganization } = await import("../wikidata");
+  const { upsertOrganization } = await import("../import");
+  let parsed;
+  try {
+    parsed = await fetchOrganization(qid);
+  } catch {
+    redirect(back("Wikidata could not be reached. Please try again in a minute."));
+  }
+  if (!parsed.ok) redirect(back(parsed.reason));
+  const o = parsed.org;
+  const res = await upsertOrganization(
+    user,
+    {
+      name: o.name,
+      type: o.type === "school" ? "institution" : "company",
+      sector: o.sector,
+      founded: o.founded ? String(o.founded) : "",
+      headquarters: o.headquarters,
+      employees: o.employees,
+      website: o.website,
+      summary: o.summary,
+    },
+    { overwrite: false, editSummary: `Imported from Wikidata (${o.qid})`, source: { title: `Wikidata: ${o.name} (${o.qid})`, url: o.sourceUrl } },
+  );
+  if (res.status === "skipped" && !res.slug) redirect(back(res.reason));
+  const href = pageHref(res.type ?? "org", res.slug!);
+  revalidatePath(href);
+  revalidatePath("/companies");
+  redirect(`${href}?imported=${res.status}`);
 }
 
 export type CollectionState = { error?: string; ok?: string } | undefined;

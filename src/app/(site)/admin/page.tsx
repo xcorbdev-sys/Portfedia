@@ -13,7 +13,7 @@ import { AdminImport } from "@/components/AdminImport";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
-type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string };
+type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string; wd?: string };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
@@ -37,7 +37,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {section === "applications" && <Applications tab={sp.tab} pendingCount={pendingApps} />}
       {section === "reports" && <Reports tab={sp.tab} reason={sp.reason} />}
       {section === "users" && <Users q={sp.q ?? ""} />}
-      {section === "import" && <AdminImport />}
+      {section === "import" && <AdminImport wd={sp.wd ?? ""} />}
     </div>
   );
 }
