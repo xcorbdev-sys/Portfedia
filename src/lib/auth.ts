@@ -6,7 +6,7 @@ import { cache } from "react";
 import { connectDB } from "./db";
 import { Session, User } from "./models";
 import type { SessionUser } from "./types";
-import { adminEmailList } from "./admins";
+import { adminEmailList, OWNER_EMAILS } from "./admins";
 
 const COOKIE = "pf_session";
 const SESSION_DAYS = 30;
@@ -77,8 +77,11 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   }>();
   if (!user || user.bannedAt) return null; // suspended accounts are signed out everywhere
   const emailVerified = Boolean(user.emailVerifiedAt);
-  // ADMIN_EMAILS only applies to verified addresses: nobody can become admin by signing up with an unclaimed email
-  const role = emailVerified && adminEmails().has(user.email) ? "admin" : user.role;
+  // ADMIN_EMAILS only applies to verified addresses: nobody can become admin by signing up with an unclaimed email.
+  // The owner's address (OWNER_EMAILS) is admin as soon as its account exists: the owner has already
+  // registered it, a second account with the same email can't be created, and changing an account's
+  // email to it needs a link sent to that inbox.
+  const role = OWNER_EMAILS.includes(user.email) || (emailVerified && adminEmails().has(user.email)) ? "admin" : user.role;
   return {
     id: String(user._id),
     name: user.name,
