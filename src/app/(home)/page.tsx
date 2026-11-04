@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-react";
-import { cachedCollections, cachedHomeData } from "@/lib/cached";
+import { cachedHomeData } from "@/lib/cached";
 import { EntityGrid } from "@/components/EntityCards";
 import { HeroArt, NODES } from "@/components/HeroArt";
 import { pageHref } from "@/lib/wikitext";
@@ -18,7 +18,7 @@ const HERO_IMAGE = ["hero.webp", "hero.png"].find((f) => existsSync(join(process
 export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   await connection(); // always run at request time
   const { deleted } = await searchParams;
-  const [data, collections] = await Promise.all([cachedHomeData(), cachedCollections()]);
+  const data = await cachedHomeData();
   return (
     <>
       <section className="hero">
@@ -68,7 +68,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         </div>
         <div className="container stats">
           <div className="stat"><User /><div><b>{fmt(data.stats.people)}</b><span>People Profiles</span></div></div>
-          <div className="stat"><Building2 /><div><b>{fmt(data.stats.orgs)}</b><span>Company Profiles</span></div></div>
+          <div className="stat"><Building2 /><div><b>{fmt(data.stats.orgs)}</b><span>Companies &amp; SaaS</span></div></div>
           <div className="stat"><Layers /><div><b>{fmt(data.stats.sectors)}</b><span>Sectors</span></div></div>
           <div className="stat"><FileText /><div><b>Up to date</b><span>Sourced content</span></div></div>
         </div>
@@ -78,24 +78,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <FeaturedTabs
           people={<EntityGrid items={data.featuredPeople} />}
           companies={<EntityGrid items={data.featuredOrgs} />}
-          collections={
-            <ul className="entity-grid">
-              {collections.slice(0, 8).map((c) => (
-                <li key={c.slug}>
-                  <Link href={`/collections/${c.slug}`} className="entity">
-                    <span className="thumb"><Layers size={20} /></span>
-                    <span style={{ minWidth: 0 }}>
-                      <span className="entity__name">{c.title}</span>
-                      <span className="entity__sub">{c.count} profiles</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          }
+          saas={<EntityGrid items={data.featuredSaas} />}
           hasPeople={data.featuredPeople.length > 0}
           hasCompanies={data.featuredOrgs.length > 0}
-          hasCollections={collections.length > 0}
+          hasSaas={data.featuredSaas.length > 0}
         />
         <div className="cta-band" style={{ marginTop: 36 }}>
           <div>

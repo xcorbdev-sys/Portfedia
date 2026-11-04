@@ -55,6 +55,7 @@ function photo(color) {
 /** Creates an organization page through the regular four-step form. */
 async function createOrg(page, o) {
   await page.goto(`${BASE}/create?type=${o.type || "org"}&title=${encodeURIComponent(o.name)}`);
+  if (o.kind) await page.selectOption("#type", o.kind);
   await page.fill("#sector", o.sector);
   await page.fill("#tags", o.tags);
   await page.fill("#summary", o.summary);
@@ -539,6 +540,13 @@ async function createProfile(p, opts) {
   await elif.click('button:has-text("Save changes")');
   await elif.waitForURL(`${BASE}/org/sahin-consulting`);
   check("leadership name links to the profile", (await elif.locator('#leadership a[href="/elif-sahin"]').count()) === 1);
+
+  // ── Universities and schools have their own Education section
+  await createOrg(admin, { kind: "school", name: "Ankara Technical University", sector: "Education", tags: "University", summary: "A public university", founded: "1956", hq: "Ankara", employees: "1,001–5,000", website: "https://atu.example" });
+  await anon.goto(`${BASE}/education`);
+  check("universities are listed under Education", (await anon.locator('a[href="/org/ankara-technical-university"]').count()) === 1);
+  await anon.goto(`${BASE}/companies`);
+  check("universities are not listed as companies", (await anon.locator('a[href="/org/ankara-technical-university"]').count()) === 0);
 
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {

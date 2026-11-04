@@ -22,8 +22,8 @@ const NAV = [
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
   { href: "/saas", label: "SaaS" },
+  { href: "/education", label: "Education" },
   { href: "/sectors", label: "Sectors" },
-  { href: "/collections", label: "Collections" },
 ];
 
 /** The Portfedia mark: a serif P with a turning page, on a blue tile. */

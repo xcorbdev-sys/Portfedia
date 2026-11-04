@@ -434,12 +434,12 @@ export async function setGlobeSlugs(input: string[]): Promise<{ saved: string[];
 
 export async function homeData() {
   await connectDB();
-  const [people, orgs, sectors, featuredPeople, featuredOrgs, globePeople] = await Promise.all([
+  const [people, orgs, sectors, featuredPeople, featuredOrgs, globePeople, featuredSaas] = await Promise.all([
     Page.countDocuments({ type: "person", ...PUBLIC_FILTER }),
-    Page.countDocuments({ type: { $in: ["org", "school"] } }),
+    Page.countDocuments({ type: "org", ...PUBLIC_FILTER }),
     Page.distinct("infobox.sector", { "infobox.sector": { $nin: [null, ""] }, ...PUBLIC_FILTER }),
     Page.find({ type: "person", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
-    Page.find({ type: { $in: ["org", "school"] }, body: { $ne: "" } }, { ...CARD_FIELDS, status: 1 })
+    Page.find({ type: "org", category: { $ne: "saas" }, body: { $ne: "" }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 })
       .sort({ followerCount: -1, updatedAt: -1 })
       .limit(8)
       .lean(),
@@ -451,11 +451,13 @@ export async function homeData() {
             .then((rows) => slugs.map((s) => rows.find((r) => r.slug === s)).filter(Boolean))
         : [],
     ),
+    Page.find({ type: "org", category: "saas", ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).sort({ followerCount: -1, updatedAt: -1 }).limit(8).lean(),
   ]);
   return {
     stats: { people, orgs, sectors: sectors.length },
     featuredPeople: featuredPeople.map((d) => toCard(d)),
     featuredOrgs: featuredOrgs.map((d) => toCard(d)),
+    featuredSaas: featuredSaas.map((d) => toCard(d)),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     globePeople: (globePeople as any[]).map((d) => ({
       slug: d.slug as string,

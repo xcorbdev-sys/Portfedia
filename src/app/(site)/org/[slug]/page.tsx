@@ -118,7 +118,7 @@ export default async function OrgPage({ params }: Props) {
   return (
     <div className="container" style={brand ? ({ "--primary": brand, "--primary-hover": brand } as React.CSSProperties) : undefined}>
       <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, isSaas ? { label: "SaaS Projects", href: "/saas" } : { label: isSchool ? "Institutions" : "Companies", href: "/companies" }, { label: page.title }]}
+        items={[{ label: "Home", href: "/" }, isSaas ? { label: "SaaS Projects", href: "/saas" } : isSchool ? { label: "Education", href: "/education" } : { label: "Companies", href: "/companies" }, { label: page.title }]}
       />
       <div className="profile profile--org">
         <aside className="side-nav" aria-label="Sections">
@@ -418,7 +418,7 @@ export default async function OrgPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(organizationLd(page)) }} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: ldJson(breadcrumbLd([{ name: "Companies", path: "/companies" }, { name: page.title, path: `/org/${page.slug}` }])) }}
+        dangerouslySetInnerHTML={{ __html: ldJson(breadcrumbLd([isSaas ? { name: "SaaS Projects", path: "/saas" } : isSchool ? { name: "Education", path: "/education" } : { name: "Companies", path: "/companies" }, { name: page.title, path: `/org/${page.slug}` }])) }}
       />
     </div>
   );

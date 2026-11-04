@@ -4,26 +4,26 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 
-type Tab = "people" | "companies" | "collections";
+type Tab = "people" | "companies" | "saas";
 
 export function FeaturedTabs({
   people,
   companies,
-  collections,
+  saas,
   hasPeople,
   hasCompanies,
-  hasCollections,
+  hasSaas,
 }: {
   people: React.ReactNode;
   companies: React.ReactNode;
-  collections: React.ReactNode;
+  saas: React.ReactNode;
   hasPeople: boolean;
   hasCompanies: boolean;
-  hasCollections: boolean;
+  hasSaas: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("people");
-  const empty = tab === "people" ? !hasPeople : tab === "companies" ? !hasCompanies : !hasCollections;
-  const viewAll = tab === "people" ? "/people" : tab === "companies" ? "/companies" : "/collections";
+  const empty = tab === "people" ? !hasPeople : tab === "companies" ? !hasCompanies : !hasSaas;
+  const viewAll = tab === "people" ? "/people" : tab === "companies" ? "/companies" : "/saas";
   return (
     <>
       <div className="section__head">
@@ -35,7 +35,7 @@ export function FeaturedTabs({
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === "people"} onClick={() => setTab("people")}>People</button>
         <button role="tab" aria-selected={tab === "companies"} onClick={() => setTab("companies")}>Companies</button>
-        <button role="tab" aria-selected={tab === "collections"} onClick={() => setTab("collections")}>Collections</button>
+        <button role="tab" aria-selected={tab === "saas"} onClick={() => setTab("saas")}>SaaS</button>
       </div>
       <div role="tabpanel">
         {empty ? (
@@ -47,7 +47,7 @@ export function FeaturedTabs({
         ) : tab === "companies" ? (
           companies
         ) : (
-          collections
+          saas
         )}
       </div>
     </>
