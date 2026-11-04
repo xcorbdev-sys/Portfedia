@@ -24,6 +24,8 @@ services:
       COMPANY_KEP: ${COMPANY_KEP:-}
       EU_REPRESENTATIVE: ${EU_REPRESENTATIVE:-}
       PWNED_CHECK: ${PWNED_CHECK:-}
+      # Paid plans (Pro/Business, /pricing): off until set to "on"; while off every feature is free
+      PAID_PLANS: ${PAID_PLANS:-}
       # Virus scanning of uploads: start with `docker compose --profile security up` and set CLAMAV_HOST=clamav
       CLAMAV_HOST: ${CLAMAV_HOST:-}
       # Only for tests: a stand-in for the Wikidata API

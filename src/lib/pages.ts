@@ -906,6 +906,16 @@ export async function listJobs(limit = 200) {
 /* ───────────── Plans (#96, #97) and page views ───────────── */
 
 /** Plans are given by admins until payments exist; `until` = null means no end date. */
+/** Paid plans are switched on with PAID_PLANS=on. Until then Portfedia is free and every feature is open to everyone. */
+export function paidPlansEnabled(): boolean {
+  return (process.env.PAID_PLANS ?? "").trim().toLowerCase() === "on";
+}
+
+/** True when a plan feature may be used: always while paid plans are off, otherwise with an active plan. */
+export function featureUnlocked(plan: Plan | undefined | null, name: "pro" | "business"): boolean {
+  return !paidPlansEnabled() || planActive(plan, name);
+}
+
 export function planActive(plan: Plan | undefined | null, name: "pro" | "business"): boolean {
   return Boolean(plan && plan.name === name && (!plan.until || new Date(plan.until).getTime() > Date.now()));
 }

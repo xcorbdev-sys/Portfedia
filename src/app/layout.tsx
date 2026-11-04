@@ -7,6 +7,7 @@ import { NavProgress } from "@/components/NavProgress";
 import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
+import { paidPlansEnabled } from "@/lib/pages";
 
 // Wordmark typeface: Merriweather Black (SIL Open Font License), bundled so builds need no network
 const logoFont = localFont({ src: "./fonts/merriweather-latin-900-normal.woff2", weight: "900", variable: "--font-logo", display: "swap" });
@@ -49,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/jobs">Jobs</Link>
               <Link href="/events">Events</Link>
               <Link href="/investors">Investors</Link>
-              <Link href="/pricing">Pricing</Link>
+              {paidPlansEnabled() && <Link href="/pricing">Pricing</Link>}
               <Link href="/help">Help</Link>
               <Link href="/random" prefetch={false}>Random profile</Link>
               <Link href="/terms">Terms</Link>

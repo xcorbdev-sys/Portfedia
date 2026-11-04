@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MIN_AGE } from "@/lib/age";
 import { LEGAL_UPDATED, operator } from "@/lib/legal";
+import { paidPlansEnabled } from "@/lib/pages";
 
 export const metadata: Metadata = { title: "Terms of Use", description: "The rules for using Portfedia." };
 
 export default async function TermsPage() {
   await connection();
   const o = operator();
+  const paid = paidPlansEnabled();
   return (
     <div className="narrow prose">
       <h1>Terms of Use</h1>
@@ -73,13 +75,25 @@ export default async function TermsPage() {
         suspend, after a warning, accounts that repeatedly publish illegal content or repeatedly send unfounded reports.
       </p>
 
-      <h2>6. Paid plans</h2>
-      <p>
-        Pro and Business plans add optional features (see <Link href="/pricing">Pricing</Link>). They never change what a page says.
-        Before you buy, we send you the price including taxes, the term and the contract in writing. If you are a consumer you have a
-        14-day right of withdrawal under the Turkish Distance Contracts Regulation and EU consumer law; if you ask us to start the plan
-        right away, you agree that the right ends once the service has been fully provided, as the law allows.
-      </p>
+      {paid ? (
+        <>
+          <h2>6. Paid plans</h2>
+          <p>
+            Pro and Business plans add optional features (see <Link href="/pricing">Pricing</Link>). They never change what a page says.
+            Before you buy, we send you the price including taxes, the term and the contract in writing. If you are a consumer you have a
+            14-day right of withdrawal under the Turkish Distance Contracts Regulation and EU consumer law; if you ask us to start the plan
+            right away, you agree that the right ends once the service has been fully provided, as the law allows.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>6. Price</h2>
+          <p>
+            Portfedia is free of charge. If we introduce paid plans, we will announce them at least 30 days in advance. Reading
+            Portfedia and having a profile or an organization page will always stay free.
+          </p>
+        </>
+      )}
 
       <h2>7. Ending your account</h2>
       <p>

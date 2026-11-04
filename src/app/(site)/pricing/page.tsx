@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { paidPlansEnabled } from "@/lib/pages";
 import { Breadcrumbs } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Pricing", description: "Portfedia is free for everyone. Pro and Business add statistics and visibility." };
@@ -26,7 +29,9 @@ const TIERS = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  await connection();
+  if (!paidPlansEnabled()) notFound(); // Portfedia is free until paid plans are switched on
   const contact = process.env.CONTACT_EMAIL || "hello@portfedia.com";
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>

@@ -14,7 +14,7 @@ import { slugify } from "@/lib/slug";
 import { buildTimeline } from "@/lib/profile-insights";
 import { listTestimonials } from "@/lib/feedback";
 import { hasThanked, mutualConnections } from "@/lib/social";
-import { getPersonPageOf, getUserPlan, planActive } from "@/lib/pages";
+import { featureUnlocked, getPersonPageOf, getUserPlan } from "@/lib/pages";
 import { countView } from "@/lib/views";
 import { StatsCard } from "@/components/StatsCard";
 import { Users as UsersIcon } from "lucide-react";
@@ -110,7 +110,7 @@ export default async function PersonPage({ params }: Props) {
   const mutual = mutualConnections(viewerPage, page);
   const ownerViewing = Boolean(user && user.id === page.ownerId);
   await countView(page._id, ownerViewing || Boolean(user && (user.role === "admin" || user.role === "moderator")));
-  const ownerPro = ownerViewing ? planActive(await getUserPlan(user!.id), "pro") : false;
+  const ownerPro = ownerViewing ? featureUnlocked(await getUserPlan(user!.id), "pro") : false;
   const isOwner = Boolean(user && (user.id === page.ownerId || user.role === "admin"));
   const reserved = [
     "overview", "biography", "timeline", "career", "education", "projects", "publications", "awards", "talks", "patents", "volunteering",

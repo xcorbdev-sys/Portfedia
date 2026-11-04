@@ -20,7 +20,7 @@ import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
 import { OPEN_TO, ORG_CATEGORIES, type OrgCategory } from "../types";
-import { planActive } from "../pages";
+import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -364,7 +364,8 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (extrasGuard) return { error: extrasGuard };
   const canManageJobs = user.role !== "user" || Boolean(prevOrg && prevOrg.orgAdmins.includes(user.id));
-  const business = Boolean(prevOrg && planActive(prevOrg.plan, "business") && canManageJobs);
+  const business = Boolean(prevOrg && featureUnlocked(prevOrg.plan, "business") && canManageJobs);
+  const featuredJobs = Boolean(business && prevOrg && paidPlansEnabled() && planActive(prevOrg.plan, "business"));
 
   let image: StoredImage | null | undefined;
   let products: Project[];
@@ -400,7 +401,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       products,
       ...orgExtras,
       // Job listings: only the organization's own admins (and moderators) can publish them
-      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: business && j.featured })) : undefined,
+      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: featuredJobs && j.featured })) : undefined,
       ...parseCategory(fd),
       // #97: brand colour is a Business-plan feature
       brandColor: business && fd.has("brandColor") ? (/^#[0-9a-f]{6}$/i.test(String(fd.get("brandColor"))) ? String(fd.get("brandColor")) : "") : undefined,

@@ -49,6 +49,10 @@ Bildirim için Settings → Notifications kısmından e-posta (SMTP), Telegram v
 
 ## 4. Planlar (Pro / Business)
 
+> **Varsayılan: ücretli planlar kapalı.** `PAID_PLANS` ayarlı değilken site tamamen ücretsizdir: istatistikler ve marka rengi
+> herkese açıktır; fiyat sayfası, Pro/Business düğmeleri ve öne çıkan ilan gizlidir. Satışa başlamak istediğinde Coolify'da
+> `PAID_PLANS=on` yapıp Redeploy et. Ondan önce `docs/LEGAL.md`'deki "ücretli plan satmaya başlayınca" adımlarını tamamla.
+
 Ödeme sistemi yok; planları elle verirsiniz:
 
 - **Pro (kişi):** Admin → Users → kullanıcıyı bulun → *Give Pro* (1 veya 12 ay). Pro kullanıcılar profil istatistiklerini görür, başvuruları listede önce çıkar.

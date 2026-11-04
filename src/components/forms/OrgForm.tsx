@@ -25,6 +25,7 @@ export function OrgForm({
   moderator = false,
   canManageJobs = false,
   business = false,
+  featuredJobs = false,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -35,6 +36,8 @@ export function OrgForm({
   canManageJobs?: boolean;
   /** Business plan features (brand colour, featured jobs) */
   business?: boolean;
+  /** Featured job listings (Business plan, only while paid plans are on) */
+  featuredJobs?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveOrgAction, undefined);
   const [step, setStep] = useState(0);
@@ -236,7 +239,7 @@ export function OrgForm({
           <h2>More</h2>
           <p className="muted small">Products, leadership, offices, history and more. Everything here is optional.</p>
         </div>
-        <OrgMoreStep page={page} canManageJobs={canManageJobs} category={category} business={business} />
+        <OrgMoreStep page={page} canManageJobs={canManageJobs} category={category} business={business} featuredJobs={featuredJobs} />
       </div>
 
       <div className="step form" hidden={step !== LAST} ref={(el) => { stepRefs.current[LAST] = el; }}>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireModerator } from "@/lib/auth";
-import { countPendingApplications, listApplications, planActive } from "@/lib/pages";
+import { countPendingApplications, listApplications, paidPlansEnabled, planActive } from "@/lib/pages";
 import { countOpenReports, findUsers, listReports, REPORT_REASONS } from "@/lib/moderation";
 import { banAction, bulkApplicationsAction, bulkReportsAction, closeReportAction, setUserPlanAction } from "@/lib/actions/moderation";
 import { adminStats } from "@/lib/stats";
@@ -242,6 +242,7 @@ async function Users({ q }: { q: string }) {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {paidPlansEnabled() && (
               <form action={setUserPlanAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input type="hidden" name="userId" value={u.id} />
                 <input type="hidden" name="back" value={back} />
@@ -257,6 +258,7 @@ async function Users({ q }: { q: string }) {
                   </>
                 )}
               </form>
+              )}
               <form action={banAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="hidden" name="userId" value={u.id} />
                 <input type="hidden" name="back" value={back} />

@@ -6,7 +6,7 @@ import { ListEditor, ProjectsEditor } from "./Achievements";
 import { OrgInput } from "./shared";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
-export function OrgMoreStep({ page, canManageJobs, category, business }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean }) {
+export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean }) {
   const [parent, setParent] = useState(page?.parent?.title ?? "");
   const day = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "");
   return (
@@ -68,7 +68,7 @@ export function OrgMoreStep({ page, canManageJobs, category, business }: { page:
       )}
       {business && (
         <div className="field">
-          <label htmlFor="brandColor">Brand colour (Business)</label>
+          <label htmlFor="brandColor">Brand colour</label>
           <input id="brandColor" name="brandColor" type="color" className="input" style={{ width: 80, height: 40, padding: 4 }} defaultValue={page?.brandColor || "#1f5af2"} />
         </div>
       )}
@@ -180,7 +180,7 @@ export function OrgMoreStep({ page, canManageJobs, category, business }: { page:
             { key: "location", placeholder: "Location (or Remote)", max: 120 },
             { key: "type", placeholder: "Type", kind: "select", options: ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].map((v) => ({ value: v, label: v })) },
             { key: "url", placeholder: "Apply link (https://…)", kind: "url" },
-            ...(business
+            ...(featuredJobs
               ? [{ key: "featured", placeholder: "Featured", kind: "select" as const, options: [{ value: "", label: "Normal" }, { value: "true", label: "Featured (Business)" }] }]
               : []),
           ]}

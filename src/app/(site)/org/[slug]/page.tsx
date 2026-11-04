@@ -20,7 +20,7 @@ import {
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
-import { planActive, talksAtEvent } from "@/lib/pages";
+import { featureUnlocked, talksAtEvent } from "@/lib/pages";
 import { ORG_CATEGORIES } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ imported?: string }> };
@@ -77,7 +77,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
-  const brand = planActive(page.plan, "business") && page.brandColor ? page.brandColor : "";
+  const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
   const reserved = [
     "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",

@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cachedJobs } from "@/lib/cached";
+import { paidPlansEnabled } from "@/lib/pages";
 import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 
@@ -25,7 +26,7 @@ export default async function JobsPage() {
                 <Thumb image={org.image} name={org.title} variant="logo" />
                 <span style={{ minWidth: 0 }}>
                   <span className="result__name">{job.url ? <a href={job.url} rel="nofollow noopener" className="external">{job.title}</a> : job.title}
-                    {featured && <span className="badge-featured">Featured</span>}</span>
+                    {featured && paidPlansEnabled() && <span className="badge-featured">Featured</span>}</span>
                   <span className="result__sub">
                     <Link href={`/org/${org.slug}#jobs`}>{org.title}</Link>
                     {job.location && ` · ${job.location}`}

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Check, RotateCcw, X } from "lucide-react";
 import { isModerator, requireUser } from "@/lib/auth";
-import { getPageBySlug, planActive } from "@/lib/pages";
+import { featureUnlocked, getPageBySlug, paidPlansEnabled, planActive } from "@/lib/pages";
 import { claimDomainOf, listOrgAdmins, listPositions } from "@/lib/org-admin";
 import { formatDate, siteUrl } from "@/lib/site";
 import { decidePositionAction, decidePositionsBulkAction, removeOrgAdminAction } from "@/lib/actions/org";
@@ -59,7 +59,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
       </div>
 
       <div style={{ marginTop: 18 }}>
-        <StatsCard pageId={page._id} enabled={business} label="Page views" />
+        <StatsCard pageId={page._id} enabled={featureUnlocked(page.plan, "business")} label="Page views" />
       </div>
 
       <section className="card" id="people" style={{ marginTop: 18 }}>
@@ -154,6 +154,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
         <section className="card" id="moderator" style={{ marginTop: 16, borderColor: "var(--warn)" }}>
           <div className="card__body">
             <div className="card__title">Moderator tools</div>
+            {paidPlansEnabled() && (
             <form action={setOrgPlanAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="months" value="12" />
@@ -168,6 +169,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
                 )}
               </div>
             </form>
+            )}
             <form action={renameOrgAction} className="form" style={{ gap: 8, marginBottom: 18 }}>
               <input type="hidden" name="slug" value={slug} />
               <label htmlFor="rename-title" className="small" style={{ fontWeight: 600 }}>Rename</label>
