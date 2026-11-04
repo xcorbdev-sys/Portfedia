@@ -17,7 +17,7 @@ import { hasThanked, mutualConnections } from "@/lib/social";
 import { getPersonPageOf } from "@/lib/pages";
 import { Users as UsersIcon } from "lucide-react";
 import { Thumb } from "@/components/ui";
-import { pageHref, renderArticle } from "@/lib/wikitext";
+import { pageHref, renderArticle, stripWikiLinks } from "@/lib/wikitext";
 import { formatDate, plainExcerpt, initials } from "@/lib/site";
 import { breadcrumbLd, ldJson, personProfileLd } from "@/lib/seo";
 import { Breadcrumbs, GitHubIcon, LinkedInIcon, VerifiedBadge } from "@/components/ui";
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: canView(page, await getCurrentUser()) ? page.title : "Page not found", robots: { index: false, follow: false } };
   }
   const role = currentRole(page);
-  const description = page.summary || plainExcerpt(page.body) || `${page.title}, ${role}`;
+  const description = stripWikiLinks(page.summary) || plainExcerpt(page.body) || `${page.title}, ${role}`;
   return {
     title: page.title,
     description,
@@ -153,7 +153,7 @@ export default async function PersonPage({ params }: Props) {
                   ))}
                 </div>
               )}
-              {page.summary && <p className="p-summary">{page.summary}</p>}
+              {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
               <OpenToBadges page={page} />
               {mutual.length > 0 && (
                 <p className="mutual">

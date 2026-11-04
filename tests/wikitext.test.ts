@@ -52,3 +52,8 @@ test("external links get nofollow", () => {
   const { leadHtml } = renderArticle("[site](https://ornek.com)", new Map());
   assert.match(leadHtml, /rel="nofollow ugc noopener"/);
 });
+
+test("wiki links are stripped from plain-text fields", async () => {
+  const { stripWikiLinks } = await import("../src/lib/wikitext.ts");
+  assert.equal(stripWikiLinks("CTO of [[Northwind Robotics]] and [[Bluefin Bank|a bank]]."), "CTO of Northwind Robotics and a bank.");
+});

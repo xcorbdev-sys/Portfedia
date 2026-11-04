@@ -6,7 +6,7 @@ import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrgSpans, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { slugify } from "@/lib/slug";
-import { pageHref, renderArticle } from "@/lib/wikitext";
+import { pageHref, renderArticle, stripWikiLinks } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
 import { Breadcrumbs, VerifiedBadge } from "@/components/ui";
@@ -26,7 +26,7 @@ const load = cache(async (slug: string) => getPageBySlug(slug));
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = await load((await params).slug);
   if (!page || page.type === "person") return { title: "Page not found" };
-  const description = page.summary || plainExcerpt(page.body) || `${page.title} on Portfedia.`;
+  const description = stripWikiLinks(page.summary) || plainExcerpt(page.body) || `${page.title} on Portfedia.`;
   return {
     title: page.title,
     description,
@@ -163,7 +163,7 @@ export default async function OrgPage({ params }: Props) {
                   ))}
                 </div>
               )}
-              {page.summary && <p className="p-summary">{page.summary}</p>}
+              {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}
             </div>
             <PageActions
               slug={page.slug}

@@ -25,6 +25,11 @@ export function extractWikiLinks(body: string): OutLink[] {
   return [...seen.values()];
 }
 
+/** "[[Acme|the company]] and [[Ayşe Demir]]" → "the company and Ayşe Demir" (for plain-text fields such as summaries). */
+export function stripWikiLinks(text: string): string {
+  return text.replace(WIKI_LINK, (_m, target: string, label?: string) => (label ?? target).trim());
+}
+
 export function pageHref(type: PageType, slug: string): string {
   return type === "person" ? `/${slug}` : `/org/${slug}`;
 }

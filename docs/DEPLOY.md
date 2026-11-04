@@ -59,6 +59,7 @@ Uygulama yüklenen her görseli `images/<yıl>/<rastgele>.jpg|png|webp` anahtar�
 | `RESEND_API_KEY` | `re_...` | E-posta gönderimi (bkz. 3.1). Boşsa e-postalar loga yazılır. |
 | `EMAIL_FROM` | `Portfedia <no-reply@portfedia.com>` | Gönderen adres; alan adı Resend'de doğrulanmış olmalı |
 | `COMPANY_NAME` | `Portfedia Teknoloji A.Ş.` | E-postaların altında görünür (yasal zorunluluk) |
+| `PWNED_CHECK` | *(boş)* | Yeni şifreler ücretsiz Have I Been Pwned servisiyle sızıntı listelerine karşı kontrol edilir (şifre gönderilmez, sadece hash'in ilk 5 karakteri). Kapatmak için `off`. |
 | `CONTACT_EMAIL` | `privacy@portfedia.com` | Gizlilik politikasında görünen iletişim adresi |
 | `COMPANY_ADDRESS` | `Örnek Mah. 1. Sok. No:1, İstanbul, Türkiye` | E-postaların altında görünür (yasal zorunluluk) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | "Google ile giriş" (bkz. 3.2). Boşsa düğme görünmez. |
@@ -171,7 +172,7 @@ Sunucu hataları Coolify'daki uygulama loglarına tek satırlık JSON olarak yaz
 
 ## 8. Testler (CI)
 
-GitHub'a her push'ta `.github/workflows/ci.yml` çalışır: tip kontrolü, birim testleri, build ve gerçek bir MongoDB ile uçtan uca test (`e2e/run.cjs`, 30 kontrol). Yerelde:
+GitHub'a her push'ta `.github/workflows/ci.yml` çalışır: tip kontrolü, birim testleri, build ve gerçek bir MongoDB ile uçtan uca test (`e2e/run.cjs`, 52 kontrol). Yerelde:
 
 ```bash
 docker compose up -d --build        # ADMIN_EMAILS=admin@example.com ile

@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { connectDB } from "./db";
 import { Follow, Page, Revision, Session, Suggestion, Testimonial, Thank, Token, User } from "./models";
 import { isReservedSlug, searchKey, slugify } from "./slug";
-import { extractWikiLinks } from "./wikitext";
+import { extractWikiLinks, stripWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
@@ -100,7 +100,7 @@ export function toCard(d: any, detail?: string): PageCard {
     slug: d.slug,
     title: d.title,
     type: d.type,
-    summary: d.summary ?? "",
+    summary: stripWikiLinks(d.summary ?? ""),
     image: d.image?.url ? { key: d.image.key, url: d.image.url } : null,
     verified: Boolean(d.verified) || d.status === "claimed",
     subtitle,

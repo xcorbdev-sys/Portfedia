@@ -1,5 +1,6 @@
 import { siteUrl } from "./site";
 import type { PageDoc } from "./types";
+import { stripWikiLinks } from "./wikitext";
 
 /**
  * schema.org structured data. Google uses ProfilePage for "profile" results and
@@ -33,7 +34,7 @@ export function personProfileLd(p: PageDoc) {
       "@type": "Person",
       "@id": `${base}/${p.slug}#person`,
       name: p.title,
-      description: p.summary || undefined,
+      description: p.summary ? stripWikiLinks(p.summary) : undefined,
       jobTitle: current[0]?.role || p.infobox.occupation || undefined,
       image: p.image?.url ? (p.image.url.startsWith("/") ? `${base}${p.image.url}` : p.image.url) : undefined,
       nationality: p.infobox.nationality || undefined,
@@ -56,7 +57,7 @@ export function organizationLd(p: PageDoc) {
     "@id": `${base}/org/${p.slug}#org`,
     name: p.title,
     url: `${base}/org/${p.slug}`,
-    description: p.summary || undefined,
+    description: p.summary ? stripWikiLinks(p.summary) : undefined,
     logo: p.image?.url ? (p.image.url.startsWith("/") ? `${base}${p.image.url}` : p.image.url) : undefined,
     foundingDate: p.infobox.founded ? String(p.infobox.founded) : undefined,
     founder: p.infobox.founders ? p.infobox.founders.split(/,\s*/).map((name) => ({ "@type": "Person", name })) : undefined,

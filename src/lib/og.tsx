@@ -3,6 +3,7 @@ import { ImageResponse } from "next/og";
 import sharp from "sharp";
 import { readLocal } from "./storage";
 import type { StoredImage } from "./types";
+import { stripWikiLinks } from "./wikitext";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
@@ -64,8 +65,9 @@ export async function profileCard(opts: { title: string; subtitle: string; summa
             </div>
             {opts.subtitle && <div style={{ fontSize: 34, color: "#3f4a5c", marginTop: 16 }}>{opts.subtitle}</div>}
             {opts.summary && (
+              // summaries may contain [[wiki links]]
               <div style={{ fontSize: 26, color: "#6b7588", marginTop: 22, lineHeight: 1.4 }}>
-                {opts.summary.length > 150 ? `${opts.summary.slice(0, 147)}…` : opts.summary}
+                {stripWikiLinks(opts.summary).length > 150 ? `${stripWikiLinks(opts.summary).slice(0, 147)}…` : stripWikiLinks(opts.summary)}
               </div>
             )}
           </div>

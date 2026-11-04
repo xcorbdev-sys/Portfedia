@@ -556,6 +556,15 @@ Kişisel veri işleyen bir platform olduğumuz için bu bölüm **tasarımın pa
 - [x] KVKK/GDPR: gizlilik politikası, "verilerimi indir", hesap silme
 - [x] CI: tip kontrolü, birim testleri, build ve uçtan uca test (GitHub Actions)
 
+### Geliştirme listesinden tamamlananlar
+- [x] Güvenlik: şifre gücü göstergesi + sızdırılmış şifre kontrolü, taklit (aynı isim/fotoğraf) uyarısı, sayfa koruma, hakaret filtresi, link spam tespiti
+- [x] Profil: projeler (görselli), yayınlar, ödüller ve sertifikalar, konuşmalar, patentler, gönüllülük, seviyeli diller, "Open to" rozeti, profil gücü yüzdesi, zaman çizelgesi
+- [x] Topluluk: önerilen düzeltmeler (sahip onaylar), referanslar (sahip onaylar), bahsetme bildirimi, ortak bağlantılar, "Teşekkür"
+- [x] Paylaşım: `portfedia.com/@kullanici` kısa adres, yazdırılabilir QR kart
+- [x] Şirket: ürünler, yönetim (yönetim kurulu/üst yönetim), ofisler (haritasız), ana şirket ve bağlı şirketler, satın almalar, eski isimler (yönlendirme + arama), kilometre taşları, basın, iş ilanları (`/jobs`), Portfedia'daki çalışan sayısı trendi, borsa kodu, sitelere gömülebilir doğrulama rozeti
+- [x] Okul: mezunların çalıştığı şirketler
+- [x] Etiket sayfaları (`/tag/...`) ve ağır listeler için sunucu önbelleği
+
 ### Faz 4 — Gelir ve ekosistem
 - [ ] Portfedia Pro, kuruluş planları (bkz. §17)
 - [ ] Herkese açık API (okuma)
