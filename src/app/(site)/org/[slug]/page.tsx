@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrgSpans, isOrgAdmin, isProtected, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
+import { slugify } from "@/lib/slug";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
@@ -158,7 +159,7 @@ export default async function OrgPage({ params }: Props) {
               {page.tags.length > 0 && (
                 <div className="chips">
                   {page.tags.map((t) => (
-                    <Link key={t} className="chip" href={`/search?q=${encodeURIComponent(t)}`}>{t}</Link>
+                    <Link key={t} className="chip" href={`/tag/${slugify(t)}`}>{t}</Link>
                   ))}
                 </div>
               )}

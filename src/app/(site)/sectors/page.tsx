@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Layers } from "lucide-react";
-import { listSectors } from "@/lib/pages";
+import { cachedSectors } from "@/lib/cached";
 import { Breadcrumbs } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Sectors", description: "Browse companies and people on Portfedia by sector." };
 
 export default async function SectorsPage() {
-  const sectors = await listSectors();
+  const sectors = await cachedSectors();
   return (
     <div className="container" style={{ paddingBottom: 56 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Sectors" }]} />

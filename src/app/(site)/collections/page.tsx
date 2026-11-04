@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listCollections } from "@/lib/collections";
+import { cachedCollections } from "@/lib/cached";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Collections", description: "Curated lists of people and companies on Portfedia." };
 
 export default async function CollectionsPage() {
-  const collections = await listCollections();
+  const collections = await cachedCollections();
   return (
     <div className="container" style={{ paddingBottom: 56 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Collections" }]} />

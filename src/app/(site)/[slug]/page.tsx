@@ -149,7 +149,7 @@ export default async function PersonPage({ params }: Props) {
               {page.tags.length > 0 && (
                 <div className="chips">
                   {page.tags.map((t) => (
-                    <Link key={t} className="chip" href={`/search?q=${encodeURIComponent(t)}`}>{t}</Link>
+                    <Link key={t} className="chip" href={`/tag/${slugify(t)}`}>{t}</Link>
                   ))}
                 </div>
               )}

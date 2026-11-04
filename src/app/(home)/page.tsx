@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-react";
-import { homeData } from "@/lib/pages";
+import { cachedCollections, cachedHomeData } from "@/lib/cached";
 import { pageHref } from "@/lib/wikitext";
 import { EntityGrid } from "@/components/EntityCards";
 import { Thumb } from "@/components/ui";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
-import { listCollections } from "@/lib/collections";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +59,7 @@ function Globe() {
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
-  const [data, collections] = await Promise.all([homeData(), listCollections()]);
+  const [data, collections] = await Promise.all([cachedHomeData(), cachedCollections()]);
   const floaters = [...data.featuredPeople.slice(0, 2), ...data.featuredOrgs.slice(0, 1)];
   const positions = [
     { top: "6%", left: "4%" },

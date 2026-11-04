@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listJobs } from "@/lib/pages";
+import { cachedJobs } from "@/lib/cached";
 import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Jobs", description: "Open positions at organizations that manage their Portfedia page." };
 
 export default async function JobsPage() {
-  const jobs = await listJobs();
+  const jobs = await cachedJobs();
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 980 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Jobs" }]} />

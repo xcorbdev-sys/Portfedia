@@ -2,6 +2,7 @@
 // Schemas are typed as <any>: mongoose's deep schema inference makes tsc run out of memory.
 // Typed shapes live in ../types.ts and are applied when documents are read.
 import mongoose, { Schema, type Model } from "mongoose";
+import { slugify as slugifyTag } from "../slug";
 
 const { models, model } = mongoose;
 
@@ -117,6 +118,7 @@ const PageSchema = new Schema<any>(
     educations: { type: [EducationSchema], default: [] },
     outLinks: { type: [new Schema<any>({ slug: String, title: String }, { _id: false })], default: [] },
     tags: { type: [String], default: [] },
+    tagKeys: { type: [String], default: [] }, // URL-friendly tags for /tag/<key>, kept in sync on save
     // Organization ownership (claimed with a work email)
     orgAdmins: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
     claimDomain: { type: String, default: null }, // set by moderators; overrides the website domain
@@ -191,6 +193,10 @@ PageSchema.index({ "jobs.postedAt": -1 }); // /jobs // "Investments" of an inves
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });
+PageSchema.index({ tagKeys: 1 });
+PageSchema.pre("save", function syncTagKeys(this: any) {
+  this.tagKeys = [...new Set(((this.tags ?? []) as string[]).map(slugifyTag).filter(Boolean))];
+});
 PageSchema.index({ type: 1, status: 1, "review.submittedAt": 1 }); // review queue
 PageSchema.index({ "infobox.sector": 1 });
 

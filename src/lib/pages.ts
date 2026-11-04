@@ -224,6 +224,18 @@ export async function getInvestments(slug: string) {
   }));
 }
 
+/** Pages with a tag (#62), split into people and organizations. */
+export async function listByTag(key: string) {
+  await connectDB();
+  const rows = await Page.find({ tagKeys: key, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, tags: 1, followerCount: 1 })
+    .sort({ followerCount: -1, title: 1 })
+    .limit(300)
+    .lean();
+  const label = (rows[0]?.tags as string[] | undefined)?.find((t) => slugify(t) === key) ?? key.replace(/-/g, " ");
+  const cards = rows.map((r) => toCard(r));
+  return { label, people: cards.filter((c) => c.type === "person"), orgs: cards.filter((c) => c.type !== "person") };
+}
+
 /* ───────────── Search & listings ───────────── */
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
