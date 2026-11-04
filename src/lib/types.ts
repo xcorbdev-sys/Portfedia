@@ -71,6 +71,13 @@ export interface OrgInfobox {
   website?: string;
 }
 
+export interface FundingRound {
+  round: string;
+  year: number | null;
+  amount: string;
+  investors: { title: string; slug: string }[];
+}
+
 export interface OutLink {
   slug: string;
   title: string;
@@ -96,6 +103,7 @@ export interface PageDoc {
   claimDomain: string | null;
   websiteChangedAt: Date | null;
   sources: SourceRef[];
+  fundingRounds: FundingRound[];
   verified: boolean;
   review: ReviewInfo;
   followerCount: number;

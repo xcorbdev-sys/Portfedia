@@ -5,9 +5,12 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { saveOrgAction } from "@/lib/actions/pages";
 import type { PageDoc } from "@/lib/types";
 import { FormError } from "../ui";
-import { ImagePicker, MARKDOWN_HINT, SourcesEditor, Stepper, stepIsValid, validateAllSteps } from "./shared";
+import { AddButton, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
 
 const STEPS = ["Basic Info", "Details", "Sources & Submit"];
+const ROUNDS = ["Pre-seed", "Seed", "Series A", "Series B", "Series C", "Series D+", "Grant", "Debt", "IPO", "Acquisition", "Other"];
+type Round = { round: string; year: string; amount: string; investors: string };
+
 const EMPLOYEE_RANGES = ["1–10", "11–50", "51–200", "201–500", "501–1,000", "1,001–5,000", "5,001–10,000", "10,000+"];
 
 export function OrgForm({
@@ -29,6 +32,10 @@ export function OrgForm({
   const [name, setName] = useState(page?.title ?? defaultTitle);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ib = page?.infobox ?? {};
+  const rounds = useList<Round>(
+    (page?.fundingRounds ?? []).map((r) => ({ round: r.round, year: r.year ? String(r.year) : "", amount: r.amount, investors: r.investors.map((i) => i.title).join(", ") })),
+    () => ({ round: "Seed", year: "", amount: "", investors: "" }),
+  );
 
   const labels = onBackToType ? ["Profile Type", ...STEPS] : STEPS;
   const offset = onBackToType ? 1 : 0;
@@ -137,6 +144,30 @@ export function OrgForm({
               <input id="website" name="website" className="input" maxLength={300} defaultValue={ib.website} placeholder="https://example.com" />
             )}
           </div>
+        </div>
+        <div className="field">
+          <span className="label">Funding</span>
+          <span className="hint">Investment rounds. Investors that have a Portfedia page are linked automatically.</span>
+          <input type="hidden" name="fundingRounds" value={JSON.stringify(rounds.items)} />
+          {rounds.items.map((r, i) => (
+            <div key={i} className="repeat-item">
+              <div className="repeat-item__head">
+                <span>Round {i + 1}</span>
+                <RemoveButton onClick={() => rounds.remove(i)} label={`Remove round ${i + 1}`} />
+              </div>
+              <div className="grid-3">
+                <select className="select" value={r.round} onChange={(e) => rounds.update(i, { round: e.target.value })} aria-label="Round">
+                  {ROUNDS.map((x) => (
+                    <option key={x}>{x}</option>
+                  ))}
+                </select>
+                <input className="input" value={r.year} onChange={(e) => rounds.update(i, { year: e.target.value })} placeholder="Year" inputMode="numeric" pattern="\d{4}" aria-label="Year" />
+                <input className="input" value={r.amount} onChange={(e) => rounds.update(i, { amount: e.target.value })} placeholder="Amount (e.g. $5M)" maxLength={60} aria-label="Amount" />
+              </div>
+              <input className="input" value={r.investors} onChange={(e) => rounds.update(i, { investors: e.target.value })} placeholder="Investors, comma separated" aria-label="Investors" />
+            </div>
+          ))}
+          <AddButton onClick={rounds.add}>Add funding round</AddButton>
         </div>
         <div className="field">
           <label htmlFor="body">About</label>

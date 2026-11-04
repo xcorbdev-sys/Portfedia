@@ -7,7 +7,7 @@ import { extractWikiLinks } from "./wikitext";
 import { deleteImage } from "./storage";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  Education, Experience, OrgInfobox, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
+  Education, Experience, FundingRound, OrgInfobox, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 
 /* ───────────── Mapping ───────────── */
@@ -34,6 +34,7 @@ function toPage(d: any): PageDoc {
     claimDomain: d.claimDomain ?? null,
     websiteChangedAt: d.websiteChangedAt ?? null,
     sources: d.sources ?? [],
+    fundingRounds: d.fundingRounds ?? [],
     verified: Boolean(d.verified),
     review: {
       submittedAt: d.review?.submittedAt ?? null,
@@ -185,6 +186,19 @@ export async function listRevisions(pageId: string): Promise<RevisionDoc[]> {
     size: r.size,
     delta: r.delta,
     createdAt: r.createdAt,
+  }));
+}
+
+/** Rounds in which this page (person or organization) invested. */
+export async function getInvestments(slug: string) {
+  await connectDB();
+  const rows = await Page.find({ "fundingRounds.investors.slug": slug, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, fundingRounds: 1 })
+    .sort({ title: 1 })
+    .limit(200)
+    .lean();
+  return rows.map((r) => ({
+    company: toCard(r),
+    rounds: (r.fundingRounds as FundingRound[]).filter((f) => f.investors.some((i) => i.slug === slug)),
   }));
 }
 
@@ -574,6 +588,7 @@ export interface OrgInput {
   infobox: OrgInfobox;
   body: string;
   sources: SourceRef[];
+  fundingRounds: FundingRound[];
   editSummary: string;
   image?: StoredImage | null;
   /** Moderators only */
@@ -604,6 +619,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     infobox: input.infobox,
     body: input.body,
     sources: input.sources,
+    fundingRounds: input.fundingRounds,
     outLinks: extractWikiLinks(input.body),
   };
 

@@ -53,6 +53,7 @@ const FIELD_LABELS: Record<string, string> = {
   experiences: "Career",
   educations: "Education",
   sources: "Sources",
+  fundingRounds: "Funding",
   noindex: "Search engine visibility",
 };
 
@@ -64,7 +65,7 @@ function show(v: unknown): string {
         typeof x === "object" && x
           ? Object.entries(x)
               .filter(([k, val]) => val !== "" && val !== null && !["orgSlug", "schoolSlug", "verification", "verifiedVia"].includes(k))
-              .map(([, val]) => String(val))
+              .map(([, val]) => (Array.isArray(val) ? val.map((x) => (typeof x === "object" && x ? (x as { title?: string }).title : String(x))).join(", ") : String(val)))
               .join(" · ")
           : String(x),
       )
@@ -123,6 +124,7 @@ export async function restoreRevision(user: SessionUser, page: PageDoc, revId: s
   if (page.type !== "person" && !isMod && !page.orgAdmins.includes(user.id) && doc.infobox?.website) infobox.website = doc.infobox.website;
   const fields: Record<string, unknown> = { summary: s.summary ?? "", tags: s.tags ?? [], infobox, body: s.body ?? "", sources: s.sources ?? [], outLinks: s.outLinks ?? [] };
   if (page.type === "person") Object.assign(fields, { experiences: s.experiences ?? [], educations: s.educations ?? [], noindex: Boolean(s.noindex) });
+  else Object.assign(fields, { fundingRounds: s.fundingRounds ?? [] });
   const prevSize = doc.body?.length ?? 0;
   doc.set(fields);
   doc.revisionCount = (doc.revisionCount ?? 0) + 1;

@@ -120,6 +120,21 @@ const PageSchema = new Schema<any>(
     claimDomain: { type: String, default: null }, // set by moderators; overrides the website domain
     websiteChangedAt: { type: Date, default: null },
     sources: { type: [new Schema<any>({ title: String, url: String }, { _id: false })], default: [] },
+    // Organizations: funding rounds; investors are linked to their pages by slug
+    fundingRounds: {
+      type: [
+        new Schema<any>(
+          {
+            round: { type: String, default: "" },
+            year: { type: Number, default: null },
+            amount: { type: String, default: "" },
+            investors: { type: [new Schema<any>({ title: String, slug: String }, { _id: false })], default: [] },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     verified: { type: Boolean, default: false }, // kimlik/kuruluş doğrulandı (yönetici işaretler)
     followerCount: { type: Number, default: 0 },
     noindex: { type: Boolean, default: false },
@@ -136,6 +151,7 @@ PageSchema.index({ "experiences.orgSlug": 1 }); // "Burada çalışanlar"
 PageSchema.index({ "educations.schoolSlug": 1 }); // "Mezunlar"
 PageSchema.index({ oldSlugs: 1 });
 PageSchema.index({ orgAdmins: 1 });
+PageSchema.index({ "fundingRounds.investors.slug": 1 }); // "Investments" of an investor
 PageSchema.index({ "outLinks.slug": 1 }); // "Bu sayfaya bağlantılar"
 PageSchema.index({ type: 1, createdAt: -1 });
 PageSchema.index({ tags: 1 });
@@ -204,6 +220,19 @@ const NotificationSchema = new Schema<any>(
 NotificationSchema.index({ userId: 1, createdAt: -1 });
 NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 86400 }); // kept for 6 months
 
+/* ───────────── Curated collections ───────────── */
+const CollectionSchema = new Schema<any>(
+  {
+    slug: { type: String, required: true, unique: true },
+    title: { type: String, required: true, maxlength: 120 },
+    description: { type: String, default: "", maxlength: 600 },
+    items: { type: [String], default: [] }, // page slugs, in order
+    published: { type: Boolean, default: true },
+    createdBy: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -216,3 +245,4 @@ export const Follow = getModel("Follow", FollowSchema);
 export const Token = getModel("Token", TokenSchema);
 export const Report = getModel("Report", ReportSchema);
 export const Notification = getModel("Notification", NotificationSchema);
+export const Collection = getModel("Collection", CollectionSchema);

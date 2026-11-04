@@ -12,6 +12,7 @@ const NAV = [
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
   { href: "/sectors", label: "Sectors" },
+  { href: "/collections", label: "Collections" },
 ];
 
 export function Brand() {

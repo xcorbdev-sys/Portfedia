@@ -11,7 +11,7 @@ import { bool, email, handle, httpUrl, str, year } from "../validate";
 import { slugify } from "../slug";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
-import type { SourceRef, StoredImage } from "../types";
+import type { FundingRound, SourceRef, StoredImage } from "../types";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -44,6 +44,22 @@ function parseTags(v: FormDataEntryValue | null): string[] {
     }
   }
   return out.slice(0, 8);
+}
+
+function parseFunding(v: FormDataEntryValue | null): FundingRound[] {
+  return parseJsonArray(v, 30)
+    .map((r) => ({
+      round: str(r.round, 40),
+      year: year(r.year),
+      amount: str(r.amount, 60),
+      investors: String(r.investors ?? "")
+        .split(",")
+        .map((t) => str(t, 120))
+        .filter((t) => slugify(t))
+        .slice(0, 20)
+        .map((title) => ({ title, slug: slugify(title) })),
+    }))
+    .filter((r) => r.round || r.amount || r.investors.length);
 }
 
 function parseSources(v: FormDataEntryValue | null): SourceRef[] {
@@ -177,6 +193,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       },
       body: String(fd.get("body") ?? "").slice(0, MAX_BODY),
       sources: parseSources(fd.get("sources")),
+      fundingRounds: parseFunding(fd.get("fundingRounds")),
       editSummary: str(fd.get("editSummary"), 300),
       image,
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,

@@ -6,6 +6,7 @@ import { EntityGrid } from "@/components/EntityCards";
 import { Thumb } from "@/components/ui";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
+import { listCollections } from "@/lib/collections";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ function Globe() {
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
-  const data = await homeData();
+  const [data, collections] = await Promise.all([homeData(), listCollections()]);
   const floaters = [...data.featuredPeople.slice(0, 2), ...data.featuredOrgs.slice(0, 1)];
   const positions = [
     { top: "6%", left: "4%" },
@@ -114,8 +115,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <FeaturedTabs
           people={<EntityGrid items={data.featuredPeople} />}
           companies={<EntityGrid items={data.featuredOrgs} />}
+          collections={
+            <ul className="entity-grid">
+              {collections.slice(0, 8).map((c) => (
+                <li key={c.slug}>
+                  <Link href={`/collections/${c.slug}`} className="entity">
+                    <span className="thumb"><Layers size={20} /></span>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="entity__name">{c.title}</span>
+                      <span className="entity__sub">{c.count} profiles</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          }
           hasPeople={data.featuredPeople.length > 0}
           hasCompanies={data.featuredOrgs.length > 0}
+          hasCollections={collections.length > 0}
         />
         <div className="cta-band" style={{ marginTop: 36 }}>
           <div>

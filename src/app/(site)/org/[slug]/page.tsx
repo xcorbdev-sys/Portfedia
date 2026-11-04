@@ -4,7 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditOrg, isOrgAdmin, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
+import { canEditOrg, getInvestments, isOrgAdmin, existingPages, getAlumni, getBacklinks, getPageBySlug, getPeopleOfOrg, isFollowing } from "@/lib/pages";
 import { pageHref, renderArticle } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
@@ -12,6 +12,7 @@ import { Breadcrumbs, VerifiedBadge } from "@/components/ui";
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
 import { EntityGrid, PersonRows } from "@/components/EntityCards";
+import { FundingTable, InvestmentsList } from "@/components/Funding";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -48,15 +49,17 @@ export default async function OrgPage({ params }: Props) {
   if (page.type === "person") permanentRedirect(`/${page.slug}`);
 
   const user = await getCurrentUser();
-  const [existing, backlinks, people, alumni, following] = await Promise.all([
-    existingPages(page.outLinks.map((l) => l.slug)),
+  const investorSlugs = page.fundingRounds.flatMap((r) => r.investors.map((i) => i.slug));
+  const [existing, backlinks, people, alumni, following, investments] = await Promise.all([
+    existingPages([...page.outLinks.map((l) => l.slug), ...investorSlugs]),
     getBacklinks(page.slug),
     getPeopleOfOrg(page.slug),
     page.type === "school" ? getAlumni(page.slug) : Promise.resolve([]),
     user ? isFollowing(user.id, page._id) : Promise.resolve(false),
+    getInvestments(page.slug),
   ]);
   const canEdit = canEditOrg(user, page);
-  const reserved = ["overview", "about", "key-people", "people", "former-people", "alumni", "connections", "sources"];
+  const reserved = ["overview", "about", "funding", "investments", "key-people", "people", "former-people", "alumni", "connections", "sources"];
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
   const isSchool = page.type === "school";
@@ -67,6 +70,8 @@ export default async function OrgPage({ params }: Props) {
   const nav = [{ id: "overview", label: "Overview" }];
   if (article.leadHtml.trim()) nav.push({ id: "about", label: "About" });
   for (const t of article.toc) if (t.level === 2) nav.push({ id: t.id, label: t.title });
+  if (page.fundingRounds.length) nav.push({ id: "funding", label: "Funding" });
+  if (investments.length) nav.push({ id: "investments", label: "Investments" });
   if (keyPeople.length) nav.push({ id: "key-people", label: "Key People" });
   if (people.current.length > keyPeople.length) nav.push({ id: "people", label: "All People" });
   if (people.former.length) nav.push({ id: "former-people", label: "Former People" });
@@ -154,6 +159,19 @@ export default async function OrgPage({ params }: Props) {
             </section>
           )}
           {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
+
+          {page.fundingRounds.length > 0 && (
+            <section className="p-section" id="funding">
+              <h2>Funding</h2>
+              <FundingTable rounds={page.fundingRounds} existing={existing} />
+            </section>
+          )}
+          {investments.length > 0 && (
+            <section className="p-section" id="investments">
+              <h2>Investments</h2>
+              <InvestmentsList items={investments} />
+            </section>
+          )}
 
           <div className="two-cards">
             <div className="card" id="key-people">
