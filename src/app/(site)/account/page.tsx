@@ -118,9 +118,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       </Section>
 
       <Section id="data" title="Your data">
-        <p className="small muted" style={{ margin: 0 }}>
+        <p className="small muted">
           Hide your birth year and email, or hide your whole profile from search engines, in the privacy options of the profile editor.
         </p>
+        <a className="btn" href="/api/account/export" download>
+          Download my data (JSON)
+        </a>
       </Section>
 
       <Section id="delete" title="Delete account" danger>
