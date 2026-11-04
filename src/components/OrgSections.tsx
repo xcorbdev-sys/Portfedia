@@ -160,7 +160,9 @@ export function AcquisitionsSection({ page, existing, acquiredBy }: { page: Page
   );
 }
 
-export function GroupSection({ page, existing, subsidiaries }: { page: PageDoc; existing: Map<string, PageType>; subsidiaries: PageCard[] }) {
+export function GroupSection({ page, existing, subsidiaries: all }: { page: PageDoc; existing: Map<string, PageType>; subsidiaries: PageCard[] }) {
+  // Two pages that point at each other: show the parent once, not also as a subsidiary
+  const subsidiaries = all.filter((s) => s.slug !== page.parent?.slug);
   if (!page.parent && subsidiaries.length === 0) return null;
   return (
     <section className="p-section" id="group">

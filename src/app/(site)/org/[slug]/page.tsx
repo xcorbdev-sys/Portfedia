@@ -20,7 +20,8 @@ import {
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
-import { featureUnlocked, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
+import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
+import { NetworkSection } from "@/components/Network";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -76,14 +77,15 @@ export default async function OrgPage({ params }: Props) {
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
   const isSaas = page.category === "saas";
-  const makers = isSaas ? await makersOf(page.slug) : [];
+  const [makers, network] = await Promise.all([isSaas ? makersOf(page.slug) : Promise.resolve([]), followNetwork(page)]);
+  const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
   const reserved = [
     "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",
-    "trend", "key-people", "people", "former-people", "alumni", "alumni-work", "connections", "sources",
+    "trend", "key-people", "people", "former-people", "alumni", "alumni-work", "connections", "sources", "network",
   ];
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
@@ -107,12 +109,13 @@ export default async function OrgPage({ params }: Props) {
   if (page.milestones.length) nav.push({ id: "milestones", label: "Milestones" });
   if (page.offices.length) nav.push({ id: "offices", label: "Offices" });
   if (page.press.length) nav.push({ id: "press", label: "In the Press" });
-  if (keyPeople.length) nav.push({ id: "key-people", label: "Key People" });
+  if (team.people.length) nav.push({ id: "key-people", label: isSaas ? "Team" : "Key People" });
   if (people.current.length > keyPeople.length) nav.push({ id: "people", label: "All People" });
   if (people.former.length) nav.push({ id: "former-people", label: "Former People" });
   if (alumni.length) nav.push({ id: "alumni", label: "Alumni" });
   if (backlinks.length) nav.push({ id: "connections", label: "Connections" });
   if (page.sources.length) nav.push({ id: "sources", label: "Sources" });
+  nav.push({ id: "network", label: "Followers" });
 
 
   return (
@@ -218,12 +221,6 @@ export default async function OrgPage({ params }: Props) {
               </div>
             </div>
           )}
-          {isSaas && makers.length > 0 && (
-            <section className="p-section" id="makers">
-              <h2>Made by</h2>
-              <PersonRows items={makers} />
-            </section>
-          )}
           {isInvestor && page.investor && (page.investor.fundSize || page.investor.stages.length || page.investor.focus.length) ? (
             <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
               <div className="fact"><Building2 /><span><small>Fund size</small><b>{page.investor.fundSize || "—"}</b></span></div>
@@ -242,12 +239,14 @@ export default async function OrgPage({ params }: Props) {
           <div className="two-cards">
             <div className="card" id="key-people">
               <div className="card__body">
-                <div className="card__title">Key People</div>
-                {keyPeople.length ? (
-                  <PersonRows items={keyPeople} />
+                <div className="card__title">{isSaas ? "Team" : "Key People"}</div>
+                {team.people.length ? (
+                  <PersonRows items={team.people.slice(0, 8)} />
                 ) : (
                   <p className="muted small" style={{ margin: 0 }}>
-                    No one has listed {page.title} as their current workplace yet.
+                    {isSaas
+                      ? `No team yet. Makers who add ${page.title} to the projects on their profile appear here.`
+                      : `No one has listed ${page.title} as their current workplace yet.`}
                   </p>
                 )}
               </div>
@@ -259,7 +258,14 @@ export default async function OrgPage({ params }: Props) {
                   <tbody>
                     <Fact label="Type">{ib.kind || (isSchool ? "Educational institution" : isSaas ? "SaaS product" : "Company")}</Fact>
                     <Fact label="Founded">{ib.founded ? String(ib.founded) : ""}</Fact>
-                    <Fact label="Founders">{ib.founders}</Fact>
+                    <Fact label="Founders">
+                      {ib.founders
+                        ? ib.founders.split(/(,|;|&|\band\b)/).map((part, i) => {
+                            const slug = team.founderLinks[part.trim()];
+                            return slug ? <Link key={i} href={`/${slug}`}>{part}</Link> : <span key={i}>{part}</span>;
+                          })
+                        : ""}
+                    </Fact>
                     <Fact label="Headquarters">{ib.headquarters}</Fact>
                     <Fact label="Sector">{ib.sector}</Fact>
                     <Fact label="Employees">{ib.employees}</Fact>
@@ -408,6 +414,7 @@ export default async function OrgPage({ params }: Props) {
               </ol>
             </section>
           )}
+          <NetworkSection name={page.title} followers={network.followers} followerTotal={page.followerCount} />
           <footer className="page-foot">
             <span>Last edited on {formatDate(page.updatedAt)}</span>
             <span>{page.revisionCount} revision{page.revisionCount === 1 ? "" : "s"}</span>

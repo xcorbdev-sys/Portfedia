@@ -45,7 +45,7 @@ export default async function KvkkPage() {
           </tr>
           <tr>
             <td>Profil bilgileri: fotoğraf, unvan, iş ve eğitim geçmişi, biyografi, bağlantılar</td>
-            <td>Kullanıcının kendi talebiyle profilinin yayımlanması</td>
+            <td>Kullanıcının kendi talebiyle profilinin yayımlanması; herkese açık profili olan kullanıcının takip ettiği sayfaların ve takipçilerinin profilde gösterilmesi</td>
             <td>Sözleşmenin ifası (c); ilgili kişinin kendisi tarafından alenileştirilmesi (d)</td>
           </tr>
           <tr>

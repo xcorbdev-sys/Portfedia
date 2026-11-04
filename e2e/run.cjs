@@ -248,7 +248,7 @@ async function createProfile(p, opts) {
   await anon.goto(`${BASE}/elif-sahin`);
   check("profile project links to the SaaS page", (await anon.locator('#projects a[href="/org/elif-analytics"]').count()) === 1);
   await anon.goto(`${BASE}/org/elif-analytics`);
-  check("SaaS page shows its maker", (await anon.locator('#makers a[href="/elif-sahin"]').count()) === 1);
+  check("SaaS page shows its maker in the team", (await anon.locator('#key-people a[href="/elif-sahin"]').count()) === 1);
 
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
@@ -547,6 +547,35 @@ async function createProfile(p, opts) {
   check("universities are listed under Education", (await anon.locator('a[href="/org/ankara-technical-university"]').count()) === 1);
   await anon.goto(`${BASE}/companies`);
   check("universities are not listed as companies", (await anon.locator('a[href="/org/ankara-technical-university"]').count()) === 0);
+
+  // ── Followers and following on profiles and company pages
+  await elif.goto(`${BASE}${aysePath}`);
+  await elif.click('button:has-text("Follow")');
+  await elif.waitForSelector('button:has-text("Following")');
+  await elif.goto(`${BASE}/org/northwind-robotics`);
+  await elif.click('button:has-text("Follow")');
+  await elif.waitForSelector('button:has-text("Following")');
+  await anon.goto(`${BASE}${aysePath}`);
+  check("profile lists its followers", (await anon.locator('#network a[href="/elif-sahin"]').count()) === 1);
+  await anon.goto(`${BASE}/elif-sahin`);
+  check("profile lists what the person follows", (await anon.locator(`#network a[href="${aysePath}"]`).count()) === 1 && (await anon.locator('#network a[href="/org/northwind-robotics"]').count()) === 1);
+  await anon.goto(`${BASE}/org/northwind-robotics`);
+  check("company page lists its followers", (await anon.locator('#network a[href="/elif-sahin"]').count()) === 1);
+
+  // ── A company can't be both the parent and a subsidiary of another
+  await elif.goto(`${BASE}/org/elif-analytics/edit`);
+  for (let i = 0; i < 2; i++) await elif.click('button:has-text("Continue")');
+  await visible(elif).getByPlaceholder("e.g. Atlas Holding").fill("Elif Forms Pro");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/elif-analytics`);
+  await elif.goto(`${BASE}/org/elif-forms-pro/edit`);
+  for (let i = 0; i < 2; i++) await elif.click('button:has-text("Continue")');
+  await visible(elif).getByPlaceholder("e.g. Atlas Holding").fill("Elif Analytics");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForSelector(".notice--error");
+  check("circular parent companies are refused", /already listed as part of this company/.test(await elif.locator(".notice--error").innerText()));
 
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {

@@ -269,6 +269,7 @@ const FollowSchema = new Schema<any>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 FollowSchema.index({ userId: 1, pageId: 1 }, { unique: true });
+FollowSchema.index({ pageId: 1, createdAt: -1 }); // followers of a page, newest first
 FollowSchema.index({ pageId: 1 });
 
 // Reuse compiled models across Next.js hot reloads

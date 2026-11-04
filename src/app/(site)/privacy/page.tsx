@@ -92,7 +92,8 @@ export default async function PrivacyPage() {
       <p>
         Your profile becomes public after our team approves it. Your email address and year of birth are never shown publicly. You can
         make your profile visible to signed-in members only, or hide it from search engines, in the profile editor. Pages you edit show
-        your name in their history.
+        your name in their history. If you have a public profile, the pages you follow and the people who follow you are shown on it,
+        and you appear in the follower lists of the pages you follow; you can unfollow at any time.
       </p>
 
       <h2>5. Who receives data</h2>

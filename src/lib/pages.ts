@@ -601,6 +601,78 @@ export async function isFollowing(userId: string, pageId: string): Promise<boole
   return Boolean(await Follow.exists({ userId, pageId }));
 }
 
+/**
+ * "Key People" of an organization, merged from everything Portfedia knows: founders and leadership with a
+ * profile, the people who manage the page, makers who show it in their projects (SaaS) and people who list it
+ * as their current workplace. Each person appears once, with the most telling role.
+ */
+export async function keyPeopleOf(page: PageDoc, current: PageCard[], makers: PageCard[]) {
+  await connectDB();
+  const saas = page.category === "saas";
+  const founderNames = (page.infobox.founders ?? "").split(/,|;|&|\band\b/).map((x) => x.trim()).filter((x) => x.length > 1).slice(0, 10);
+  const founderLinks = await personSlugsByName(founderNames);
+  const leaderLinks = await personSlugsByName(page.leadership.map((l) => l.name));
+  const admins = page.orgAdmins.length
+    ? await Page.find({ type: "person", ownerId: { $in: page.orgAdmins.map((id) => new Types.ObjectId(id)) }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).lean()
+    : [];
+
+  const order: { slug: string; role: string; card?: PageCard }[] = [];
+  const add = (slug: string | undefined, role: string, card?: PageCard) => {
+    if (slug && !order.some((x) => x.slug === slug)) order.push({ slug, role, card });
+  };
+  for (const n of founderNames) add(founderLinks[n], "Founder");
+  for (const l of page.leadership) add(leaderLinks[l.name] ?? (l.slug || undefined), l.role || (l.kind === "board" ? "Board" : "Leadership"));
+  for (const c of makers) add(c.slug, saas ? "Maker" : "Team", c);
+  for (const a of admins) add(a.slug as string, saas ? "Maker" : "Manages this page", toCard(a));
+  for (const c of current) add(c.slug, c.subtitle || "Team", c);
+
+  const missing = order.filter((x) => !x.card).map((x) => x.slug);
+  const found = missing.length ? await Page.find({ type: "person", slug: { $in: missing }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).lean() : [];
+  const bySlug = new Map(found.map((r) => [r.slug as string, toCard(r)]));
+  const people = order
+    .map((x) => {
+      const card = x.card ?? bySlug.get(x.slug);
+      // People listing it as their workplace keep their own line (role at the organization)
+      return card ? { ...card, subtitle: current.some((c) => c.slug === x.slug) && x.role === (card.subtitle || "Team") ? card.subtitle : x.role } : null;
+    })
+    .filter((x): x is PageCard => Boolean(x));
+  return { people, founderLinks };
+}
+
+const NETWORK_SHOWN = 24;
+
+/**
+ * Followers of a page (shown as the followers' own profiles) and, for a person, the pages they follow.
+ * Followers without a public profile are only counted.
+ */
+export async function followNetwork(page: { _id: string; ownerId: string | null; type: PageType }) {
+  await connectDB();
+  const pageId = new Types.ObjectId(page._id);
+  const followerIds = (await Follow.find({ pageId }, { userId: 1 }).sort({ createdAt: -1 }).limit(500).lean<{ userId: unknown }[]>()).map((f) => f.userId);
+  const followerRows = followerIds.length
+    ? await Page.find({ type: "person", ownerId: { $in: followerIds }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1, ownerId: 1 }).lean()
+    : [];
+  const order = new Map(followerIds.map((id, i) => [String(id), i]));
+  followerRows.sort((a, b) => (order.get(String(a.ownerId)) ?? 0) - (order.get(String(b.ownerId)) ?? 0));
+
+  let following: PageCard[] = [];
+  let followingTotal = 0;
+  if (page.type === "person" && page.ownerId) {
+    const ids = (await Follow.find({ userId: new Types.ObjectId(page.ownerId) }, { pageId: 1 }).sort({ createdAt: -1 }).limit(500).lean<{ pageId: unknown }[]>()).map((f) => f.pageId);
+    const rows = ids.length ? await Page.find({ _id: { $in: ids }, ...PUBLIC_FILTER }, { ...CARD_FIELDS, status: 1 }).lean() : [];
+    const pos = new Map(ids.map((id, i) => [String(id), i]));
+    rows.sort((a, b) => (pos.get(String(a._id)) ?? 0) - (pos.get(String(b._id)) ?? 0));
+    followingTotal = rows.length;
+    following = rows.slice(0, NETWORK_SHOWN).map((r) => toCard(r));
+  }
+  return {
+    followers: followerRows.slice(0, NETWORK_SHOWN).map((r) => toCard(r)),
+    followersWithProfile: followerRows.length,
+    following,
+    followingTotal,
+  };
+}
+
 export async function toggleFollow(userId: string, pageId: string): Promise<boolean> {
   await connectDB();
   const removed = await Follow.deleteOne({ userId, pageId });

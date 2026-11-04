@@ -409,6 +409,15 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (orgGuard) return { error: orgGuard };
   const orgExtras = parseOrgExtras(fd);
+  // "Part of": a company can't be its own parent, nor the parent of its parent
+  if (orgExtras.parent) {
+    const self = slug ?? slugify(title);
+    if (orgExtras.parent.slug === self) return { error: "A company can't be part of itself." };
+    const parentPage = await getPageBySlug(orgExtras.parent.slug, ["org", "school"]);
+    if (parentPage?.parent?.slug === self) {
+      return { error: `${parentPage.title} is already listed as part of this company, so it can't also be its parent. Remove one of the two links.` };
+    }
+  }
   const extrasGuard = await guardContent(user, {
     texts: [...orgExtras.milestones.map((m) => m.text), ...orgExtras.press.map((x) => x.title), ...orgExtras.leadership.map((l) => `${l.name} ${l.role}`), ...orgExtras.formerNames],
     newLinks: externalLinks(...orgExtras.press.map((x) => x.url)).filter((l) => !new Set(externalLinks(...(prevOrg?.press ?? []).map((x) => x.url))).has(l)),
