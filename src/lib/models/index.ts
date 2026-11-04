@@ -115,6 +115,8 @@ const PageSchema = new Schema<any>(
           flags: { type: [String], default: [] },
           // Saved by someone who hasn't confirmed their email yet: kept, but not in the review queue until they do
           awaitingEmail: { type: Boolean, default: false },
+          // Saved automatically while the owner is still filling it in: not submitted for review yet
+          draft: { type: Boolean, default: false },
         },
         { _id: false },
       ),

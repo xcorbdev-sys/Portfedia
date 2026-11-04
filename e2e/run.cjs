@@ -186,6 +186,22 @@ async function createProfile(p, opts) {
   await admin.locator(".app-card", { has: admin.locator('a[href="/deniz-aksoy"]') }).locator('button:has-text("Approve")').click();
   await admin.locator('.app-card a[href="/deniz-aksoy"]').waitFor({ state: "detached" });
 
+  // ── Autosave: a profile being filled in is saved on its own, privately, and isn't in the review queue
+  const elif = await signup(browser, "Elif Sahin", "elif@example.com");
+  await elif.goto(`${BASE}/create`);
+  await elif.click("text=Person Profile");
+  await elif.click('button:has-text("Continue")');
+  await elif.fill("#occupation", "Data Analyst");
+  await elif.fill("#summary", "Data analyst who should never lose her work.");
+  await elif.locator("text=✓ Saved automatically at").waitFor({ timeout: 20000 });
+  check("profile is saved automatically", true);
+  await elif.goto(`${BASE}/edit`);
+  check("autosaved values come back", (await elif.inputValue("#occupation")) === "Data Analyst");
+  await elif.goto(`${BASE}/elif-sahin`);
+  check("autosaved draft is private and labelled", (await elif.locator("text=Your profile is saved as a draft.").count()) === 1 && (await anon.goto(`${BASE}/elif-sahin`)).status() === 404);
+  await admin.goto(`${BASE}/admin`);
+  check("draft is not in the review queue", (await admin.locator('.app-card a[href="/elif-sahin"]').count()) === 0);
+
   // ── Ayşe applies
   const ayse = await signup(browser, "Ayşe Demir", "ayse@example.com");
   const aysePath = await createProfile(ayse, { occupation: "Robotics Engineer", summary: "Robotics engineer and CTO of [[Northwind Robotics]].", org: "Northwind Robotics", role: "CTO", rich: true });

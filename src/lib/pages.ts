@@ -74,6 +74,7 @@ function toPage(d: any): PageDoc {
       note: d.review?.note ?? "",
       flags: d.review?.flags ?? [],
       awaitingEmail: Boolean(d.review?.awaitingEmail),
+      draft: Boolean(d.review?.draft),
     },
     followerCount: d.followerCount ?? 0,
     thanksCount: d.thanksCount ?? 0,
@@ -417,7 +418,11 @@ export async function listApplications(status: "pending" | "rejected" | "publish
   await connectDB();
   const sort: Record<string, 1 | -1> = status === "pending" ? { "review.submittedAt": 1 } : { "review.reviewedAt": -1 };
   const filter: Record<string, unknown> = { type: "person", status };
-  if (status === "pending") filter["review.awaitingEmail"] = { $ne: true }; // not submitted until the email is confirmed
+  if (status === "pending") {
+    // Not submitted yet: still being filled in, or waiting for the email to be confirmed
+    filter["review.awaitingEmail"] = { $ne: true };
+    filter["review.draft"] = { $ne: true };
+  }
   if (status === "published") filter["review.reviewedAt"] = { $ne: null };
   const rows = await Page.find(filter, { ...CARD_FIELDS, status: 1, review: 1, ownerId: 1 }).sort(sort).limit(limit).lean();
   const owners = await User.find({ _id: { $in: rows.map((r) => r.ownerId).filter(Boolean) } }, { email: 1, plan: 1 }).lean<{ _id: unknown; email: string; plan?: Plan }[]>();
@@ -441,7 +446,7 @@ export async function listApplications(status: "pending" | "rejected" | "publish
 
 export async function countPendingApplications(): Promise<number> {
   await connectDB();
-  return Page.countDocuments({ type: "person", status: "pending", "review.awaitingEmail": { $ne: true } });
+  return Page.countDocuments({ type: "person", status: "pending", "review.awaitingEmail": { $ne: true }, "review.draft": { $ne: true } });
 }
 
 export async function getOwnerContact(ownerId: string | null): Promise<{ email: string; name: string; notify: boolean } | null> {
@@ -593,7 +598,13 @@ export interface PersonInput {
   cover?: StoredImage | null;
 }
 
-export async function savePersonPage(user: SessionUser, input: PersonInput): Promise<PageDoc> {
+/**
+ * Saves the signed-in person's profile. With `autosave`, the profile is stored while it is being filled in:
+ * a new profile is kept private as a draft (not in the review queue), the status doesn't change and no
+ * revision is written. The final save submits it.
+ */
+export async function savePersonPage(user: SessionUser, input: PersonInput, opts: { autosave?: boolean } = {}): Promise<PageDoc> {
+  const autosave = Boolean(opts.autosave);
   await connectDB();
   const existing = await Page.findOne({ type: "person", ownerId: new Types.ObjectId(user.id) });
 
@@ -647,12 +658,17 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
   let page;
   let oldImage: StoredImage | null = null;
   const prevSize = existing?.body?.length ?? 0;
-  const status = statusAfterOwnerSave(existing ? existing.status : null);
+  const status = autosave ? (existing ? existing.status : "pending") : statusAfterOwnerSave(existing ? existing.status : null);
+  // Autosaves of a new profile stay a draft until the owner submits it
+  const draft = autosave ? !existing || Boolean(existing.review?.draft) : false;
   // A new or resubmitted application goes (back) to the review queue. Someone who hasn't confirmed their
   // email yet keeps everything they entered, but the profile waits outside the queue until they confirm.
-  const awaitingEmail = status === "pending" && !user.emailVerified;
+  const awaitingEmail = autosave ? Boolean(existing?.review?.awaitingEmail) : status === "pending" && !user.emailVerified;
   const resubmitted =
-    status === "pending" && !awaitingEmail && (!existing || existing.status !== "pending" || Boolean(existing.review?.awaitingEmail) || !existing.review?.submittedAt);
+    !autosave &&
+    status === "pending" &&
+    !awaitingEmail &&
+    (!existing || existing.status !== "pending" || Boolean(existing.review?.awaitingEmail) || Boolean(existing.review?.draft) || !existing.review?.submittedAt);
   if (existing) {
     if (input.image !== undefined) {
       oldImage = existing.image?.url ? { key: existing.image.key, url: existing.image.url } : null;
@@ -665,6 +681,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     existing.set(content);
     existing.status = status;
     existing.set("review.awaitingEmail", awaitingEmail);
+    existing.set("review.draft", draft);
     if (resubmitted) existing.set("review.submittedAt", new Date());
     existing.revisionCount = (existing.revisionCount ?? 0) + 1;
     page = await existing.save();
@@ -676,14 +693,14 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
       slug,
       ownerId: user.id,
       status,
-      review: { submittedAt: awaitingEmail ? null : new Date(), awaitingEmail },
+      review: { submittedAt: awaitingEmail || draft ? null : new Date(), awaitingEmail, draft },
       image: input.image ?? null,
       cover: input.cover ?? null,
       revisionCount: 1,
     });
   }
 
-  if (page.status === "pending") {
+  if (page.status === "pending" && !autosave) {
     // Warn moderators about possible impersonation: same name or same photo as another profile
     const flags: string[] = [];
     const sameName = await Page.find({ type: "person", titleKey: page.titleKey, _id: { $ne: page._id } }, { slug: 1 }).limit(5).lean<{ slug: string }[]>();
@@ -695,11 +712,11 @@ export async function savePersonPage(user: SessionUser, input: PersonInput): Pro
     await Page.updateOne({ _id: page._id }, { $set: { "review.flags": flags } });
   }
 
-  await Revision.create({
+  if (!autosave) await Revision.create({
     pageId: page._id,
     authorId: user.id,
     authorName: user.name,
-    editSummary: input.editSummary || (existing ? (resubmitted ? "Resubmitted for review" : "") : "Profile created and submitted for review"),
+    editSummary: input.editSummary || (existing && !existing.review?.draft ? (resubmitted ? "Resubmitted for review" : "") : "Profile created and submitted for review"),
     snapshot: { ...content, image: page.image ?? null },
     size: input.body.length,
     delta: input.body.length - prevSize,

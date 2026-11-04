@@ -113,7 +113,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                 {myPage ? (
                   <Link href={`/${myPage.slug}`}>
                     <User size={16} /> My profile
-                    {myPage.status === "pending" && <span className="status-pill status-pill--pending" style={{ marginLeft: "auto" }}>In review</span>}
+                    {myPage.status === "pending" && <span className="status-pill status-pill--pending" style={{ marginLeft: "auto" }}>{myPage.review.draft ? "Draft" : "In review"}</span>}
                     {myPage.status === "rejected" && <span className="status-pill status-pill--rejected" style={{ marginLeft: "auto" }}>Action needed</span>}
                   </Link>
                 ) : (

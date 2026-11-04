@@ -632,3 +632,7 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
   .header-login { display: none; }
   .menu-login { display: flex !important; }
 }
+
+/* Autosave status under the profile form */
+.autosave-status { text-align: right; margin: 10px 0 0; color: var(--text-3); }
+.autosave-status--error { color: var(--err); }

@@ -9,6 +9,7 @@ import { OrgMoreStep } from "./OrgMoreStep";
 import { MarkdownField } from "./MarkdownField";
 import { FormDraft } from "./FormDraft";
 import { AddButton, CoverPicker, ImagePicker, MARKDOWN_HINT, RemoveButton, SourcesEditor, Stepper, stepIsValid, useList, validateAllSteps } from "./shared";
+import { safeAction } from "./submit-helpers";
 
 const STEPS = ["Basic Info", "Details", "More", "Sources & Submit"];
 const LAST = STEPS.length - 1;
@@ -16,6 +17,9 @@ const ROUNDS = ["Pre-seed", "Seed", "Series A", "Series B", "Series C", "Series 
 type Round = { round: string; year: string; amount: string; investors: string };
 
 const EMPLOYEE_RANGES = ["1–10", "11–50", "51–200", "201–500", "501–1,000", "1,001–5,000", "5,001–10,000", "10,000+"];
+
+// Shrinks large photos before upload and shows an error instead of losing the form if saving fails
+const saveSafely = safeAction(saveOrgAction, (error) => ({ error }));
 
 export function OrgForm({
   page,
@@ -39,7 +43,7 @@ export function OrgForm({
   /** Featured job listings (Business plan, only while paid plans are on) */
   featuredJobs?: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(saveOrgAction, undefined);
+  const [state, formAction, pending] = useActionState(saveSafely, undefined);
   const [step, setStep] = useState(0);
   const [name, setName] = useState(page?.title ?? defaultTitle);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);

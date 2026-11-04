@@ -13,6 +13,8 @@ export interface ReviewInfo {
   flags: string[];
   /** Saved before the owner confirmed their email; goes to review once they do */
   awaitingEmail: boolean;
+  /** Saved automatically, not submitted yet */
+  draft: boolean;
 }
 export type Verification = "unverified" | "verified" | "rejected";
 

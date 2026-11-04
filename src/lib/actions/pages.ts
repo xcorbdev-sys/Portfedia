@@ -18,7 +18,7 @@ import { duplicatePositions, yearProblems } from "../data-rules";
 import { findSimilarOrgs } from "../org-tools";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
-import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
+import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, SessionUser, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
 import { OPEN_TO, ORG_CATEGORIES, type OrgCategory } from "../types";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 
@@ -101,6 +101,8 @@ async function parseImageCards(fd: FormData, prevItems: Project[], field: string
     const id = /^[a-z0-9]{6,16}$/.test(String(r.id)) ? String(r.id) : Math.random().toString(36).slice(2, 10);
     // Only images this page already owns may be kept (never trust a client-sent URL)
     let image = typeof r.imageKey === "string" && !r.removeImage ? (prevImages.get(r.imageKey) ?? null) : null;
+    // An image uploaded by an earlier (automatic) save of the same card is kept, unless it was removed
+    if (!image && !r.removeImage && !r.imageKey) image = prevItems.find((x) => x.id === id)?.image ?? null;
     const file = fd.get(`${filePrefix}${id}`);
     if (file instanceof File && file.size > 0) image = await saveImage(file, "logo");
     out.push({ id, title, url: httpUrl(r.url), year: yearOrNull(r.year), description: str(r.description, 600), image });
@@ -180,11 +182,8 @@ function parseSources(v: FormDataEntryValue | null): SourceRef[] {
     .map((s) => ({ ...s, title: s.title || s.url }));
 }
 
-export async function savePersonAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?next=/edit");
-  // Unconfirmed emails can still save: the profile stays private and goes to review once the email is confirmed
-
+/** Reads and checks the profile form. Returns the data to save, or an error to show. */
+async function personFromForm(user: SessionUser, fd: FormData): Promise<{ error: string } | { input: PersonInput; prev: PageDoc | null }> {
   const title = str(fd.get("title"), 120);
   const occupation = str(fd.get("occupation"), 120);
   if (title.length < 2) return { error: "Full name is required." };
@@ -272,7 +271,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
   });
   if (extraGuard) return { error: extraGuard };
 
-  const page = await savePersonPage(user, {
+  const input: PersonInput = {
     title,
     summary,
     tags,
@@ -309,7 +308,18 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     editSummary: str(fd.get("editSummary"), 300),
     image,
     cover,
-  });
+  };
+  return { input, prev };
+}
+
+export async function savePersonAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/edit");
+  // Unconfirmed emails can still save: the profile stays private and goes to review once the email is confirmed
+  const parsed = await personFromForm(user, fd);
+  if ("error" in parsed) return { error: parsed.error };
+  const { input, prev } = parsed;
+  const page = await savePersonPage(user, input);
 
   if (isPublic(page)) {
     await notifyFollowers(page._id, user.id, { type: "page_update", text: `${page.title} updated their profile.`, href: `/${page.slug}` });
@@ -322,6 +332,26 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
   for (const e of page.experiences) revalidatePath(`/org/${e.orgSlug}`);
   for (const e of page.educations) revalidatePath(`/org/${e.schoolSlug}`);
   redirect(`/${page.slug}`);
+}
+
+export type AutosaveState = { ok: true; savedAt: string } | { ok: false; error: string } | { ok: false; skipped: true };
+
+/**
+ * Saves a profile that isn't public yet while the person is filling it in, so nothing is lost if the
+ * browser closes or the final submit fails. Public profiles are only changed by an explicit save.
+ */
+export async function autosavePersonAction(fd: FormData): Promise<AutosaveState> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "You are signed out. Log in again to keep your changes." };
+  const prev = await getPersonPageOf(user.id);
+  if (prev && isPublic(prev)) return { ok: false, skipped: true };
+  // Not enough to create a profile yet: wait for the required fields
+  if (str(fd.get("title"), 120).length < 2 || !str(fd.get("occupation"), 120)) return { ok: false, skipped: true };
+  if (!(await rateLimit(`autosave:${user.id}`, 240, 3600_000))) return { ok: false, skipped: true };
+  const parsed = await personFromForm(user, fd);
+  if ("error" in parsed) return { ok: false, error: parsed.error };
+  await savePersonPage(user, parsed.input, { autosave: true });
+  return { ok: true, savedAt: new Date().toISOString() };
 }
 
 export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormState> {

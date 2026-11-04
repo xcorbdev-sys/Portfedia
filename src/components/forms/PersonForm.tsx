@@ -2,7 +2,9 @@
 
 import { useActionState, useRef, useState, startTransition } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { savePersonAction } from "@/lib/actions/pages";
+import { autosavePersonAction, savePersonAction } from "@/lib/actions/pages";
+import { isPublic } from "@/lib/visibility";
+import { safeAction, useAutosave } from "./submit-helpers";
 import { OPEN_TO, type PageDoc } from "@/lib/types";
 import { AchievementsStep, LanguagesEditor } from "./Achievements";
 import { MarkdownField } from "./MarkdownField";
@@ -20,11 +22,14 @@ const STEPS = ["Basic Info", "Details", "Achievements", "Sources & Submit"];
 const LAST = STEPS.length - 1;
 
 function submitLabel(page: PageDoc | null): string {
-  if (!page) return "Submit for review";
+  if (!page || page.review.draft) return "Submit for review";
   if (page.status === "pending") return "Update application";
   if (page.status === "rejected") return "Resubmit for review";
   return "Save changes";
 }
+
+// Shrinks large photos before upload and shows an error instead of losing the form if saving fails
+const saveSafely = safeAction(savePersonAction, (error) => ({ error }));
 
 export function PersonForm({
   page,
@@ -36,7 +41,12 @@ export function PersonForm({
   /** When rendered inside the create wizard, the first step is "Profile Type". */
   onBackToType?: () => void;
 }) {
-  const [state, formAction, pending] = useActionState(savePersonAction, undefined);
+  const [state, formAction, pending] = useActionState(saveSafely, undefined);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Profiles that aren't public yet are saved automatically while they are filled in
+  const autosaving = !page || !isPublic(page);
+  const autosaver = useAutosave(formRef, autosaving, autosavePersonAction, pending);
+  const autosave = autosaver.status;
   const [step, setStep] = useState(0);
   const [name, setName] = useState(page?.title ?? defaultName);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -63,16 +73,17 @@ export function PersonForm({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!validateAllSteps(stepRefs.current, setStep)) return;
     // Submitting manually keeps the form's values if the server returns an error
     const fd = new FormData(e.currentTarget);
+    await autosaver.idle();
     startTransition(() => formAction(fd));
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form ref={formRef} onSubmit={onSubmit} noValidate>
       <FormDraft storageKey="pf-draft:person" savedAt={page?.updatedAt} />
       <Stepper labels={labels} current={step + offset} onJump={(i) => (i < offset ? onBackToType?.() : go(i - offset))} />
 
@@ -302,11 +313,23 @@ export function PersonForm({
           </button>
         )}
       </div>
-      {page && step < LAST && (
-        <p className="small muted" style={{ textAlign: "right", marginTop: 10 }}>
-          Editing an existing profile? You can{" "}
-          <button type="submit" className="read-more" style={{ margin: 0 }} disabled={pending}>save now</button>.
+      {autosaving ? (
+        <p className={`small autosave-status${autosave.kind === "error" ? " autosave-status--error" : ""}`} role="status" aria-live="polite">
+          {autosave.kind === "saving"
+            ? "Saving…"
+            : autosave.kind === "saved"
+              ? `✓ Saved automatically at ${autosave.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Only you can see it until you submit.`
+              : autosave.kind === "error"
+                ? autosave.message
+                : "Your profile is saved automatically as you fill it in (after you enter your name and occupation)."}
         </p>
+      ) : (
+        page && step < LAST && (
+          <p className="small muted" style={{ textAlign: "right", marginTop: 10 }}>
+            Editing an existing profile? You can{" "}
+            <button type="submit" className="read-more" style={{ margin: 0 }} disabled={pending}>save now</button>.
+          </p>
+        )
       )}
     </form>
   );
