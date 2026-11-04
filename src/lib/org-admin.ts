@@ -9,6 +9,7 @@ import { siteUrl } from "./site";
 import { checkWorkEmail, claimDomainFor, emailMatchesDomain } from "./claim-rules";
 import { PUBLIC_FILTER } from "./visibility";
 import type { Experience, PageDoc, SessionUser, StoredImage } from "./types";
+import { adminEmailList } from "./admins";
 
 const DAY = 86400_000;
 
@@ -17,7 +18,7 @@ export function claimDomainOf(page: PageDoc) {
 }
 
 async function moderatorEmails(): Promise<string[]> {
-  const fromEnv = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  const fromEnv = adminEmailList();
   await connectDB();
   const mods = await User.find({ role: { $in: ["admin", "moderator"] }, emailVerifiedAt: { $ne: null } }, { email: 1 }).lean<{ email: string }[]>();
   return [...new Set([...fromEnv, ...mods.map((m) => m.email)])].slice(0, 20);

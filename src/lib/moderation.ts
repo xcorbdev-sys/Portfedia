@@ -10,6 +10,7 @@ import { canEditOrg } from "./pages";
 import { readSnapshot } from "./snapshots";
 import { restoreFromTrash, trashImage, trashedKeys } from "./image-trash";
 import type { PageDoc, SessionUser } from "./types";
+import { adminEmailList } from "./admins";
 
 /* ───────────── Revisions: compare & restore ───────────── */
 
@@ -269,7 +270,7 @@ export async function createReport(input: {
     reporterName: input.reporterName || input.reporter?.name || "",
     reporterEmail: input.reporterEmail || input.reporter?.email || "",
   });
-  const mods = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim()).filter(Boolean).slice(0, 10);
+  const mods = adminEmailList().slice(0, 10);
   for (const to of mods) {
     await sendEmail({
       to,

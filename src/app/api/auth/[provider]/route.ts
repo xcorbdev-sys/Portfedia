@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { cookies } from "next/headers";
-import { safeNext } from "@/lib/auth";
+import { safeNext, secureCookies } from "@/lib/auth";
 import { authorizationUrl, getProvider } from "@/lib/oauth";
 import { createToken } from "@/lib/tokens";
 
@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   (await cookies()).set("pf_oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await secureCookies(),
     path: "/api/auth",
     maxAge: 600,
   });

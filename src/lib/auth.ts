@@ -6,9 +6,22 @@ import { cache } from "react";
 import { connectDB } from "./db";
 import { Session, User } from "./models";
 import type { SessionUser } from "./types";
+import { adminEmailList } from "./admins";
 
 const COOKIE = "pf_session";
 const SESSION_DAYS = 30;
+
+/**
+ * Cookies are marked Secure only when the request really came over HTTPS. Browsers refuse to
+ * store Secure cookies sent over plain HTTP, which signed people out on every page of an
+ * http:// deployment.
+ */
+export async function secureCookies(): Promise<boolean> {
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (proto) return proto === "https";
+  return (process.env.SITE_URL ?? "").startsWith("https://");
+}
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -21,7 +34,7 @@ export async function createSession(userId: string): Promise<void> {
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await secureCookies(),
     path: "/",
     expires: expiresAt,
   });
@@ -78,12 +91,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 });
 
 function adminEmails(): Set<string> {
-  return new Set(
-    (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean),
-  );
+  return new Set(adminEmailList());
 }
 
 export function isModerator(user: SessionUser | null): boolean {

@@ -25,11 +25,32 @@ const NAV = [
   { href: "/collections", label: "Collections" },
 ];
 
+/** The Portfedia mark: a serif P with a turning page, on a blue tile. */
+export function BrandMark({ size = 32 }: { size?: number }) {
+  return (
+    <svg className="brand__mark" width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="pf-mark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1e5bf0" />
+          <stop offset="1" stopColor="#0a3fd2" />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="10" fill="url(#pf-mark)" />
+      <g transform="translate(2.4 1.9) scale(0.88)">
+        <path fill="#fff" fillRule="evenodd" d="M9 8.6H22.4C28.3 8.6 31.4 11.7 31.4 16.1C31.4 20.6 28.3 23.7 22.4 23.7H18.6V31.4H9V29.6L11.6 29V11L9 10.4Z M18.6 10.9V21.4H21.5C24 21.4 25.1 19.6 25.1 16.1C25.1 12.7 24 10.9 21.5 10.9Z" />
+        <path fill="#a9c6ff" d="M18.6 31.4C22.2 27 26.4 24.4 31.4 22.8V29C31.4 30.4 30.4 31.4 29 31.4Z" />
+        <path fill="#e8efff" d="M18.6 31.4C21.6 26.2 26 22.6 31.4 20.4V21.9C26.2 24 22 27.4 18.6 31.4Z" />
+        <path fill="none" stroke="#2f6df5" strokeWidth="0.9" d="M18.8 31.2C22.2 27.2 26.3 24.2 31.4 22.4" />
+      </g>
+    </svg>
+  );
+}
+
 export function Brand() {
   return (
     <Link href="/" className="brand" aria-label="Portfedia home">
-      <span className="brand__mark" aria-hidden="true">P</span>
-      Portfedia
+      <BrandMark />
+      <span className="brand__word">Portfedia</span>
     </Link>
   );
 }

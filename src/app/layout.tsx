@@ -6,6 +6,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavProgress } from "@/components/NavProgress";
 import { Suspense } from "react";
 import "./globals.css";
+import localFont from "next/font/local";
+
+// Wordmark typeface: Merriweather Black (SIL Open Font License), bundled so builds need no network
+const logoFont = localFont({ src: "./fonts/merriweather-latin-900-normal.woff2", weight: "900", variable: "--font-logo", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -24,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Reading the request makes every page dynamic, which the per-request CSP nonce requires
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={logoFont.variable} suppressHydrationWarning>
       <head>
         {/* Applies a saved dark-theme choice before the first paint (light is the default) */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('pf-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}" }} />

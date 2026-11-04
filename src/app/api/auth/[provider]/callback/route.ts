@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { cookies } from "next/headers";
-import { createSession, safeNext } from "@/lib/auth";
+import { createSession, safeNext, secureCookies } from "@/lib/auth";
 import { fetchProfile, getProvider, resolveOAuthUser } from "@/lib/oauth";
 import { consumeToken, createToken } from "@/lib/tokens";
 import { connectDB } from "@/lib/db";
@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   jar.set("pf_oauth_signup", pending, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await secureCookies(),
     path: "/",
     maxAge: 1800,
   });
