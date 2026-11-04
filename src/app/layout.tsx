@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/sectors">Sectors</Link>
               <Link href="/random" prefetch={false}>Random profile</Link>
               <Link href="/terms">Terms</Link>
+              <Link href="/copyright">Copyright</Link>
               <Link href="/privacy">Privacy</Link>
             </nav>
           </div>

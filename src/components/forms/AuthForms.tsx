@@ -24,7 +24,7 @@ function useForm(action: Action) {
 }
 
 /** Invisible honeypot + start time, checked on the server (free bot protection). */
-function BotFields() {
+export function BotFields() {
   const started = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (started.current) started.current.value = String(Date.now());

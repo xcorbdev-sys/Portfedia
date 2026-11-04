@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ellipsis, History, Pencil, Printer, UserCheck, UserPlus } from "lucide-react";
+import { Ellipsis, Flag, History, Pencil, Printer, UserCheck, UserPlus } from "lucide-react";
 import { toggleFollowAction } from "@/lib/actions/pages";
 import { PrintButton, ShareButton } from "./client";
 
@@ -48,6 +48,9 @@ export function PageActions({
           <PrintButton>
             <Printer size={16} /> Save as PDF
           </PrintButton>
+          <Link href={`/report?page=${slug}`} rel="nofollow">
+            <Flag size={16} /> Report
+          </Link>
         </div>
       </details>
     </div>

@@ -54,8 +54,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     emailVerifiedAt: Date | null;
     passwordHash?: string;
     emailPrefs?: { profileUpdates?: boolean };
+    bannedAt?: Date | null;
   }>();
-  if (!user) return null;
+  if (!user || user.bannedAt) return null; // suspended accounts are signed out everywhere
   const emailVerified = Boolean(user.emailVerifiedAt);
   // ADMIN_EMAILS only applies to verified addresses: nobody can become admin by signing up with an unclaimed email
   const role = emailVerified && adminEmails().has(user.email) ? "admin" : user.role;

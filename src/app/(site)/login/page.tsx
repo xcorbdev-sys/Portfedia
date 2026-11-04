@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Log in", robots: { index: false } };
 const ERRORS: Record<string, string> = {
   oauth: "Signing in didn't work. Please try again.",
   provider: "This sign-in option is not available.",
+  banned: "This account has been suspended.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {

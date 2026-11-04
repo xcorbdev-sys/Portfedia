@@ -2,6 +2,13 @@ import { cookies } from "next/headers";
 import { createSession, safeNext } from "@/lib/auth";
 import { fetchProfile, getProvider, resolveOAuthUser } from "@/lib/oauth";
 import { consumeToken, createToken } from "@/lib/tokens";
+import { connectDB } from "@/lib/db";
+import { User } from "@/lib/models";
+
+async function isBanned(userId: string) {
+  await connectDB();
+  return Boolean(await User.exists({ _id: userId, bannedAt: { $ne: null } }));
+}
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   }
 
   const userId = await resolveOAuthUser(profile);
+  if (userId && (await isBanned(userId))) return redirect("/login?error=banned");
   if (userId) {
     await createSession(userId);
     return redirect(next === "/" ? "/create" : next);

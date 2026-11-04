@@ -5,7 +5,7 @@ import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs } from "./ui";
 import { HistoryList } from "./HistoryList";
 
-export async function HistoryPage({ page }: { page: PageDoc }) {
+export async function HistoryPage({ page, notice }: { page: PageDoc; notice?: { restored?: string; error?: string } }) {
   const revisions = await listRevisions(page._id);
   const href = pageHref(page.type, page.slug);
   return (
@@ -21,9 +21,11 @@ export async function HistoryPage({ page }: { page: PageDoc }) {
       <div className="narrow" style={{ margin: 0, paddingLeft: 0 }}>
         <h1>Revision history</h1>
         <p className="muted">
-          <Link href={href}>{page.title}</Link> · Every save is kept as a revision and revisions are never deleted.
+          <Link href={href}>{page.title}</Link> · Every save is kept as a revision. Click a date to see what changed and restore it.
         </p>
-        <HistoryList revisions={revisions} />
+        {notice?.restored && <div className="notice notice--ok" style={{ marginBottom: 12 }}>The earlier version was restored as a new revision.</div>}
+        {notice?.error && <div className="notice notice--error" style={{ marginBottom: 12 }}>{notice.error}</div>}
+        <HistoryList revisions={revisions} base={href} />
       </div>
     </div>
   );

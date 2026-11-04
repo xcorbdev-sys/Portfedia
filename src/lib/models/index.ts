@@ -18,6 +18,8 @@ const UserSchema = new Schema<any>(
     ageConfirmedAt: { type: Date, default: null },
     googleId: { type: String, default: null },
     linkedinId: { type: String, default: null },
+    bannedAt: { type: Date, default: null },
+    banReason: { type: String, default: "" },
     emailPrefs: {
       type: new Schema<any>({ profileUpdates: { type: Boolean, default: true } }, { _id: false }),
       default: () => ({}),
@@ -167,6 +169,26 @@ FollowSchema.index({ userId: 1, pageId: 1 }, { unique: true });
 FollowSchema.index({ pageId: 1 });
 
 // Reuse compiled models across Next.js hot reloads
+/* ───────────── Reports (abuse, copyright, impersonation…) ───────────── */
+const ReportSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", default: null },
+    pageSlug: { type: String, default: "" },
+    pageTitle: { type: String, default: "" },
+    reason: { type: String, enum: ["copyright", "impersonation", "false_info", "harassment", "spam", "privacy", "other"], required: true },
+    details: { type: String, default: "", maxlength: 5000 },
+    reporterId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    reporterName: { type: String, default: "" },
+    reporterEmail: { type: String, default: "" },
+    status: { type: String, enum: ["open", "resolved", "dismissed"], default: "open" },
+    resolution: { type: String, default: "" },
+    resolvedBy: { type: String, default: "" },
+    resolvedAt: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+ReportSchema.index({ status: 1, createdAt: -1 });
+
 function getModel(name: string, schema: Schema<any>): Model<any> {
   return ((models[name] as Model<any> | undefined) ?? model(name, schema)) as Model<any>;
 }
@@ -177,3 +199,4 @@ export const Page = getModel("Page", PageSchema);
 export const Revision = getModel("Revision", RevisionSchema);
 export const Follow = getModel("Follow", FollowSchema);
 export const Token = getModel("Token", TokenSchema);
+export const Report = getModel("Report", ReportSchema);
