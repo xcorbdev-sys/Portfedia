@@ -36,3 +36,14 @@ export async function raisingInterestAction(fd: FormData): Promise<void> {
   revalidatePath(`/org/${slug}`);
   redirect(`/org/${slug}?${e ? `interestError=${encodeURIComponent(e)}` : `interest=${Date.now().toString(36)}`}#raising`);
 }
+
+/** #58: mark someone who works here as a recruiter (or take it back). */
+export async function toggleRecruiterAction(fd: FormData): Promise<void> {
+  const org = str(fd.get("org"), 120);
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=/org/${org}/manage`);
+  const { toggleRecruiter } = await import("../recruiters");
+  const e = await toggleRecruiter(user, org, str(fd.get("person"), 120));
+  revalidatePath(`/org/${org}`);
+  redirect(`/org/${org}/manage?${e ? `error=${encodeURIComponent(e)}` : `done=${encodeURIComponent("Recruiters updated.")}`}#people`);
+}

@@ -2,10 +2,15 @@ import Link from "next/link";
 import type { PageCard } from "@/lib/pages";
 import { pageHref } from "@/lib/wikitext";
 import { Thumb, VerifiedBadge } from "./ui";
+import { featureOn } from "@/lib/features";
+
+/** #54: "Hiring" on organizations with open jobs (while the Jobs section is on). */
+const Hiring = () => <span className="badge-hiring">Hiring</span>;
 
 const TYPE_LABEL = { person: "Person", org: "Company", school: "Institution" } as const;
 
-export function EntityGrid({ items, className = "" }: { items: PageCard[]; className?: string }) {
+export async function EntityGrid({ items, className = "" }: { items: PageCard[]; className?: string }) {
+  const jobs = items.some((c) => c.hiring) && (await featureOn("jobs"));
   return (
     <ul className={`entity-grid ${className}`}>
       {items.map((c) => (
@@ -14,7 +19,7 @@ export function EntityGrid({ items, className = "" }: { items: PageCard[]; class
             <Thumb image={c.image} name={c.title} variant={c.type === "person" ? "square" : "logo"} />
             <span style={{ minWidth: 0 }}>
               <span className="entity__name">
-                {c.title} {c.verified && <VerifiedBadge size={15} />}
+                {c.title} {c.verified && <VerifiedBadge size={15} />} {jobs && c.hiring && <Hiring />}
               </span>
               {c.type === "person" && c.subtitle.includes(" · ") ? (
                 <span className="entity__sub">
@@ -33,7 +38,8 @@ export function EntityGrid({ items, className = "" }: { items: PageCard[]; class
   );
 }
 
-export function ResultList({ items }: { items: PageCard[] }) {
+export async function ResultList({ items }: { items: PageCard[] }) {
+  const jobs = items.some((c) => c.hiring) && (await featureOn("jobs"));
   return (
     <ul className="result-list card">
       {items.map((c) => (
@@ -42,7 +48,7 @@ export function ResultList({ items }: { items: PageCard[] }) {
             <Thumb image={c.image} name={c.title} variant={c.type === "person" ? "square" : "logo"} />
             <span style={{ minWidth: 0 }}>
               <span className="result__name">
-                {c.title} {c.verified && <VerifiedBadge size={16} />}
+                {c.title} {c.verified && <VerifiedBadge size={16} />} {jobs && c.hiring && <Hiring />}
               </span>
               {c.subtitle && <span className="result__sub">{c.subtitle}</span>}
               {c.summary && <span className="result__desc">{c.summary}</span>}

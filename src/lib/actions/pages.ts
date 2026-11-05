@@ -255,6 +255,7 @@ function parseJobs(fd: FormData, prev: PageDoc | null): Job[] {
       salaryPeriod: pick(SALARY_PERIODS, r.salaryPeriod, "year"),
       description,
       applyEmail: email(r.applyEmail),
+      easyApply: bool(r.easyApply),
     };
   });
 }

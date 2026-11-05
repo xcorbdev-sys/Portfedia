@@ -910,3 +910,40 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .saas-meta > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .saas-meta small { color: var(--text-3); min-width: 92px; }
 .embed-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; }
+
+/* Applications (#51) */
+.stage { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: .78rem; font-weight: 600; background: var(--bg-soft); color: var(--text-2); white-space: nowrap; }
+.stage--new { background: var(--primary-soft); color: var(--primary); }
+.stage--interview, .stage--offer { background: var(--warn-soft); color: var(--warn); }
+.stage--hired { background: var(--ok-soft); color: var(--ok); }
+.stage--rejected, .stage--withdrawn { background: var(--err-soft); color: var(--err); }
+.applicants { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.applicants__head { display: flex; gap: 12px; align-items: center; }
+.applicants__note { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--primary-soft-2); color: var(--text-2); white-space: pre-wrap; }
+.applicants__form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.applicants__form .select { width: auto; }
+.applicants__form .input { flex: 1 1 220px; width: auto; }
+.apply-box { margin-top: 18px; }
+
+/* Wins wall (#93) */
+.win-form { margin: 14px 0; }
+.wins { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.win { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.win__emoji { width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 50%; background: var(--primary-soft); }
+.win__person { display: flex; gap: 10px; align-items: center; color: var(--text); text-decoration: none; }
+.win__person span { display: flex; flex-direction: column; min-width: 0; }
+.win__person small { color: var(--text-3); font-size: .8rem; }
+.win__kind { margin: 8px 0 0; font-weight: 600; }
+.win__text { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2); }
+.win__foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: .82rem; color: var(--text-3); }
+.win__foot form { margin-left: auto; }
+
+/* Recruiters (#58) */
+.hiring-for { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-size: .88rem; color: var(--ok); font-weight: 600; }
+.hiring-team { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.hiring-team li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hiring-team__who { display: flex; gap: 10px; align-items: center; color: var(--text); text-decoration: none; min-width: 0; }
+.hiring-team__who span { display: flex; flex-direction: column; min-width: 0; }
+.hiring-team__who small { color: var(--text-3); font-size: .8rem; }
+.badge-hiring { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: .7rem; font-weight: 700; vertical-align: middle; white-space: nowrap; }
+.hiring-chip { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 8px; padding: 4px 12px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: .85rem; font-weight: 700; text-decoration: none; }

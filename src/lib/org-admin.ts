@@ -115,6 +115,7 @@ export async function listOrgAdmins(page: PageDoc) {
 /* ───────────── Career entry verification ───────────── */
 
 export interface Position {
+  personId: string;
   personSlug: string;
   personTitle: string;
   image: StoredImage | null;
@@ -128,11 +129,11 @@ export async function listPositions(orgSlug: string): Promise<Position[]> {
   const docs = await Page.find({ type: "person", "experiences.orgSlug": orgSlug, ...PUBLIC_FILTER }, { slug: 1, title: 1, image: 1, experiences: 1 })
     .sort({ title: 1 })
     .limit(1000)
-    .lean<{ slug: string; title: string; image?: StoredImage; experiences: Experience[] }[]>();
+    .lean<{ _id: unknown; slug: string; title: string; image?: StoredImage; experiences: Experience[] }[]>();
   const out: Position[] = [];
   for (const d of docs) {
     d.experiences.forEach((e, index) => {
-      if (e.orgSlug === orgSlug) out.push({ personSlug: d.slug, personTitle: d.title, image: d.image?.url ? d.image : null, index, entry: e });
+      if (e.orgSlug === orgSlug) out.push({ personId: String(d._id), personSlug: d.slug, personTitle: d.title, image: d.image?.url ? d.image : null, index, entry: e });
     });
   }
   return out.sort((a, b) => Number(a.entry.verification !== "unverified") - Number(b.entry.verification !== "unverified"));

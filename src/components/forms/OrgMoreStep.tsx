@@ -258,11 +258,11 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
           initial={(page?.jobs ?? []).map((j) => ({
             id: j.id, title: j.title, location: j.location, type: j.type, url: j.url, featured: j.featured ? "true" : "",
             workplace: j.workplace || "On-site", level: j.level || "", salaryMin: j.salaryMin ? String(j.salaryMin) : "", salaryMax: j.salaryMax ? String(j.salaryMax) : "",
-            currency: j.currency || "USD", salaryPeriod: j.salaryPeriod || "year", description: j.description || "", applyEmail: j.applyEmail || "",
+            currency: j.currency || "USD", salaryPeriod: j.salaryPeriod || "year", description: j.description || "", applyEmail: j.applyEmail || "", easyApply: j.easyApply ? "true" : "",
           }))}
           blank={{
             id: Math.random().toString(36).slice(2, 10), title: "", location: "", type: "Full-time", url: "", featured: "",
-            workplace: "On-site", level: "", salaryMin: "", salaryMax: "", currency: "USD", salaryPeriod: "year", description: "", applyEmail: "",
+            workplace: "On-site", level: "", salaryMin: "", salaryMax: "", currency: "USD", salaryPeriod: "year", description: "", applyEmail: "", easyApply: "true",
           }}
           fields={[
             { key: "title", placeholder: "Job title *", max: 120 },
@@ -277,6 +277,12 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
             { key: "description", placeholder: "What the role is, what you're looking for, benefits… *", kind: "textarea", max: 5000 },
             { key: "url", placeholder: "Apply link (https://…)", kind: "url" },
             { key: "applyEmail", placeholder: "…or apply by email", max: 200 },
+            {
+              key: "easyApply",
+              placeholder: "Applications",
+              kind: "select" as const,
+              options: [{ value: "true", label: "Accept applications on Portfedia (with the applicant's profile)" }, { value: "", label: "Only through the link or email above" }],
+            },
             ...(featuredJobs
               ? [{ key: "featured", placeholder: "Featured", kind: "select" as const, options: [{ value: "", label: "Normal" }, { value: "true", label: "Featured (Business)" }] }]
               : []),

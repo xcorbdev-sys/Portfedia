@@ -940,6 +940,53 @@ async function createProfile(p, opts) {
   }
   check("verify everyone waiting in one click", waiting === 1 && (await admin.locator(".verify-all").count()) === 0 && /verified/.test(await admin.locator(".notice--ok").first().innerText()));
 
+  // ── One-click applications, hiring badge, recruiters, internships, wins wall
+  await deniz.goto(jobUrl);
+  await deniz.click('a:has-text("Apply with my profile")');
+  await deniz.fill("#apply textarea[name=note]", "I'd love to design the robot dashboards.");
+  await deniz.check("#apply input[name=consent]");
+  await deniz.click('#apply button:has-text("Send application")');
+  await deniz.waitForURL(/applied=1/);
+  check("members apply with their profile", (await deniz.locator("#apply >> text=Status: New").count()) === 1);
+  await admin.goto(`${BASE}/org/northwind-robotics/applicants`);
+  check("companies see applicants", (await admin.locator(".applicants >> text=Deniz Aksoy").count()) === 1 && (await admin.locator(".applicants >> text=robot dashboards").count()) === 1);
+  await admin.selectOption(".applicants select[name=stage]", "interview");
+  await admin.click('.applicants button:has-text("Save")');
+  await admin.waitForURL(/saved=/);
+  await deniz.goto(`${BASE}/jobs/applications`);
+  check("applicants follow the status", (await deniz.locator(".applications .stage--interview").count()) === 1);
+  await deniz.goto(`${BASE}/notifications`);
+  check("applicants are told about status changes", (await deniz.locator("text=would like to interview you").count()) === 1);
+
+  await admin.goto(`${BASE}/org/northwind-robotics/manage`);
+  await admin.locator("#people li", { hasText: "Ayşe Demir" }).locator('button:has-text("Make recruiter")').first().click();
+  await admin.waitForURL(/done=/);
+  await anon.goto(jobUrl);
+  check("job pages show the hiring team", (await anon.locator(`.hiring-team a[href="${aysePath}"]`).count()) === 1);
+  await anon.goto(`${BASE}${aysePath}`);
+  check("profiles say who they recruit for", (await anon.locator('.hiring-for a[href="/org/northwind-robotics#jobs"]').count()) === 1);
+
+  await anon.goto(`${BASE}/companies`);
+  check("companies with open jobs show Hiring", (await anon.locator('a[href="/org/northwind-robotics"] .badge-hiring').count()) === 1 && (await anon.locator('a[href="/org/bluefin-bank"] .badge-hiring').count()) === 0);
+  await anon.goto(`${BASE}/org/northwind-robotics`);
+  check("company page says it's hiring", (await anon.locator(".hiring-chip").count()) === 1);
+  const internRes = await anon.goto(`${BASE}/jobs/internships`);
+  check("internships page", internRes.status() === 200 && (await anon.locator("h1:has-text('Internships')").count()) === 1);
+
+  await ayse.goto(`${BASE}/wins`);
+  await ayse.selectOption(".win-form select[name=kind]", "promotion");
+  await ayse.fill(".win-form textarea[name=text]", "I became Head of Robotics at Northwind!");
+  await ayse.click('.win-form button:has-text("Share")');
+  await ayse.waitForURL(/posted=/);
+  await elif.goto(`${BASE}/notifications`);
+  check("followers hear about wins", (await elif.locator("text=got promoted").count()) === 1);
+  await elif.goto(`${BASE}/wins`);
+  await elif.locator(".win", { hasText: "Head of Robotics" }).locator('button:has-text("Congratulate")').click();
+  await elif.waitForURL(/c=/);
+  check("members congratulate wins", (await elif.locator(".win", { hasText: "Head of Robotics" }).locator("text=1 congrat").count()) === 1);
+  await anon.goto(`${BASE}${aysePath}`);
+  check("wins show on the profile", (await anon.locator("#wins >> text=Head of Robotics").count()) === 1);
+
   // ── Suspicious accounts; members accept updated terms
   await signup(browser, "Spam Account", "spam@mailinator.com", { confirm: false });
   await admin.goto(`${BASE}/admin?section=suspicious`);

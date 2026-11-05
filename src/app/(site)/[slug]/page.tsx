@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 import Link from "next/link";
-import { Globe, Mail } from "lucide-react";
+import { Briefcase, Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { featureOn } from "@/lib/features";
+import { listWins } from "@/lib/wins";
+import { WinsList } from "@/components/WinsList";
+import { recruiterFor } from "@/lib/recruiters";
 import { findRenamedPage } from "@/lib/account";
 import { canView, isMembersOnly, isPublic, forVisitors } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
@@ -120,7 +123,14 @@ export default async function PersonPage({ params }: Props) {
   const ownerHidesStats = ownerViewing ? await viewStatsHidden(user!.id) : false;
   const ownerPro = ownerViewing ? featureUnlocked(await getUserPlan(user!.id), "pro") : false;
   const isOwner = Boolean(user && (user.id === page.ownerId || user.role === "admin"));
+  // #93 wins, #58 the companies this person hires for
+  const winsOn = await featureOn("wins");
+  const [wins, hiringFor] = await Promise.all([
+    winsOn && isPublic(page) ? listWins({ pageId: page._id, viewerId: user?.id, limit: 3 }) : Promise.resolve([]),
+    recruiterFor(page._id),
+  ]);
   const reserved = [
+    "wins", "hiring",
     "overview", "biography", "network", "timeline", "career", "education", "projects", "publications", "awards", "talks", "patents", "volunteering",
     "investments", "recommendations", "related-companies", "connections", "sources",
   ];
@@ -178,6 +188,14 @@ export default async function PersonPage({ params }: Props) {
                 {page.title} {page.verified && <VerifiedBadge size={24} label="Verified identity" />}
               </h1>
               {role && <div className="p-sub">{role}</div>}
+              {hiringFor.length > 0 && (
+                <div className="hiring-for">
+                  <Briefcase size={14} aria-hidden="true" /> Recruiting for{" "}
+                  {hiringFor.map((o, i) => (
+                    <span key={o.slug}>{i > 0 && ", "}<Link href={`/org/${o.slug}#jobs`}>{o.title}</Link></span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="p-head__body">
               {page.tags.length > 0 && (
@@ -233,6 +251,14 @@ export default async function PersonPage({ params }: Props) {
           )}
 
           {article.restHtml.trim() && <div className="prose" dangerouslySetInnerHTML={{ __html: article.restHtml }} />}
+
+          {wins.length > 0 && (
+            <section className="p-section" id="wins">
+              <h2>Wins</h2>
+              <WinsList items={wins} back={`/${page.slug}`} signedIn={Boolean(user)} showPerson={false} />
+              <p style={{ marginTop: 10 }}><Link className="link-arrow" href="/wins">Wins wall</Link></p>
+            </section>
+          )}
 
           {exps.length > 0 && (
             <section className="p-section" id="career">

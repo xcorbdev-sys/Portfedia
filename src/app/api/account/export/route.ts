@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Types } from "mongoose";
 import { getCurrentUser } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import { CommunityPost, Conversation, Follow, IntroRequest, LoginLog, Message, Page, Report, Revision, SavedSearch, User } from "@/lib/models";
+import { CommunityPost, JobApplication, Win, Conversation, Follow, IntroRequest, LoginLog, Message, Page, Report, Revision, SavedSearch, User } from "@/lib/models";
 import { readSnapshot } from "@/lib/snapshots";
 
 /** GDPR / KVKK right of access: everything we hold about the signed-in user, as JSON. */
@@ -32,6 +32,10 @@ export async function GET() {
     CommunityPost.find({ authorId: oid, deletedAt: null }, { _id: 0, sector: 1, text: 1, createdAt: 1 }).lean(),
     IntroRequest.find({ requesterId: oid }, { _id: 0, note: 1, status: 1, createdAt: 1 }).lean(),
   ]);
+  const [jobApplications, wins] = await Promise.all([
+    JobApplication.find({ userId: oid }, { _id: 0, jobTitle: 1, note: 1, status: 1, createdAt: 1, statusAt: 1 }).lean(),
+    Win.find({ userId: oid, deletedAt: null }, { _id: 0, kind: 1, text: 1, createdAt: 1 }).lean(),
+  ]);
 
   const body = JSON.stringify(
     {
@@ -50,6 +54,8 @@ export async function GET() {
       savedSearches,
       communityPosts,
       introductionsAsked: introductions,
+      jobApplications,
+      wins,
     },
     null,
     2,

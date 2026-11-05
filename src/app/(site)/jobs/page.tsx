@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bell, Bookmark, Users } from "lucide-react";
+import { Bell, Bookmark, GraduationCap, Send, Users } from "lucide-react";
 import { cachedJobs } from "@/lib/cached";
 import { paidPlansEnabled } from "@/lib/pages";
 import { matchesJob } from "@/lib/job-tools";
@@ -42,6 +42,8 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         <span className="job-links">
           <Link href="/jobs/saved"><Bookmark size={15} /> Saved</Link>
           <Link href="/jobs/alerts"><Bell size={15} /> Alerts</Link>
+          <Link href="/jobs/applications"><Send size={15} /> Applications</Link>
+          <Link href="/jobs/internships"><GraduationCap size={15} /> Internships</Link>
           <Link href="/people?openTo=work"><Users size={15} /> Find talent</Link>
         </span>
       </div>

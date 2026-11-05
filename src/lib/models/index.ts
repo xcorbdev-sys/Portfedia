@@ -170,6 +170,8 @@ const PageSchema = new Schema<any>(
     openTo: { type: [String], default: [] },
     // #89: what kind of organization page this is, with category-specific facts
     category: { type: String, enum: ["company", "investor", "event", "nonprofit", "public", "saas"], default: "company" },
+    // #58: people (their profile pages) the organization's admins named as recruiters
+    recruiters: { type: [Schema.Types.ObjectId], default: [] },
     saas: {
       // #65: tech stack and integrations; integrationsKey (normalised names) finds "works with" pages
       type: new Schema<any>({ pricing: String, platforms: [String], techStack: [String], integrations: [String], integrationsKey: [String] }, { _id: false }),
@@ -220,7 +222,7 @@ const PageSchema = new Schema<any>(
           {
             id: String, title: String, location: String, type: String, url: String, postedAt: Date, featured: Boolean,
             workplace: String, level: String, salaryMin: Number, salaryMax: Number, currency: String, salaryPeriod: String,
-            description: { type: String, maxlength: 5000 }, applyEmail: String,
+            description: { type: String, maxlength: 5000 }, applyEmail: String, easyApply: Boolean,
           },
           { _id: false },
         ),
@@ -689,3 +691,40 @@ const RaisingInterestSchema = new Schema<any>(
 );
 RaisingInterestSchema.index({ pageId: 1, userId: 1 }, { unique: true });
 export const RaisingInterest = getModel("RaisingInterest", RaisingInterestSchema);
+
+/* ───────────── Applications through Portfedia (#51) ───────────── */
+const JobApplicationSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true }, // the company
+    jobId: { type: String, required: true },
+    jobTitle: { type: String, default: "" },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    personPageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    note: { type: String, default: "", maxlength: 3000 },
+    status: { type: String, enum: ["new", "reviewing", "interview", "offer", "hired", "rejected", "withdrawn"], default: "new" },
+    statusAt: { type: Date, default: () => new Date() },
+    // Only the company's admins see this
+    companyNote: { type: String, default: "", maxlength: 2000 },
+  },
+  { timestamps: true },
+);
+JobApplicationSchema.index({ pageId: 1, jobId: 1, userId: 1 }, { unique: true });
+JobApplicationSchema.index({ userId: 1, createdAt: -1 });
+export const JobApplication = getModel("JobApplication", JobApplicationSchema);
+
+/* ───────────── Wins wall (#93) ───────────── */
+const WinSchema = new Schema<any>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true }, // the member's profile
+    kind: { type: String, required: true },
+    text: { type: String, default: "", maxlength: 600 },
+    congrats: { type: [Schema.Types.ObjectId], default: [] },
+    congratsCount: { type: Number, default: 0 },
+    deletedAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+WinSchema.index({ deletedAt: 1, createdAt: -1 });
+WinSchema.index({ pageId: 1, createdAt: -1 });
+export const Win = getModel("Win", WinSchema);

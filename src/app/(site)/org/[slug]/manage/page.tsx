@@ -15,6 +15,8 @@ import { LAUNCH_EVERY_DAYS, latestLaunch } from "@/lib/launches";
 import { launchAction } from "@/lib/actions/launches";
 import { featureOn } from "@/lib/features";
 import { applyClicks } from "@/lib/org-extras";
+import { toggleRecruiterAction } from "@/lib/actions/org-extras";
+import { applicantCounts } from "@/lib/applications";
 
 export const metadata: Metadata = { title: "Manage organization", robots: { index: false } };
 
@@ -50,6 +52,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
   const launchesOn = await featureOn("launches");
   const jobsOn = await featureOn("jobs");
   const clicks = jobsOn && page.jobs.length ? await applyClicks(page._id) : new Map<string, { total: number; last30: number }>();
+  const applicants = jobsOn && page.jobs.length ? await applicantCounts(page._id) : new Map<string, number>();
   const launch = isSaas && launchesOn ? await latestLaunch(page._id) : null;
   const canLaunchAgain = !launch || Date.now() - new Date(launch.createdAt).getTime() > LAUNCH_EVERY_DAYS * 86400000;
   const business = planActive(page.plan, "business");
@@ -131,6 +134,15 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
                     {p.entry.verification !== "unverified" && (
                       <DecisionButton org={slug} person={p.personSlug} index={p.index} decision="unverified"><RotateCcw size={14} /> Reset</DecisionButton>
                     )}
+                    {jobsOn && p.entry.current && p.entry.verification === "verified" && p.personId && (
+                      <form action={toggleRecruiterAction}>
+                        <input type="hidden" name="org" value={slug} />
+                        <input type="hidden" name="person" value={p.personSlug} />
+                        <button className={`btn btn--sm${page.recruiters.includes(p.personId) ? " btn--active" : ""}`} type="submit" title="Shown on your job pages as someone who hires">
+                          {page.recruiters.includes(p.personId) ? "✓ Recruiter" : "Make recruiter"}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </li>
               ))}
@@ -142,16 +154,17 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
       {jobsOn && page.jobs.length > 0 && (
         <section className="card" id="job-stats" style={{ marginTop: 16 }}>
           <div className="card__body">
-            <div className="card__title">Jobs: apply clicks</div>
+            <div className="card__title">Jobs: apply clicks and applicants <Link className="small" href={`/org/${page.slug}/applicants`} style={{ marginLeft: 8 }}>All applicants →</Link></div>
             <p className="small muted">How many times people pressed &ldquo;Apply&rdquo; on each listing. Only counts are kept, not who clicked.</p>
             <table className="kv">
-              <thead><tr><th scope="col">Job</th><th scope="col">Last 30 days</th><th scope="col">All time</th></tr></thead>
+              <thead><tr><th scope="col">Job</th><th scope="col">Last 30 days</th><th scope="col">All time</th><th scope="col">Applicants</th></tr></thead>
               <tbody>
                 {page.jobs.map((j) => (
                   <tr key={j.id}>
                     <th scope="row"><Link href={`/jobs/${page.slug}/${j.id}`}>{j.title}</Link></th>
                     <td>{clicks.get(j.id)?.last30 ?? 0}</td>
                     <td>{clicks.get(j.id)?.total ?? 0}</td>
+                    <td>{j.easyApply ? <Link href={`/org/${page.slug}/applicants?job=${j.id}`}>{applicants.get(j.id) ?? 0}</Link> : "—"}</td>
                   </tr>
                 ))}
               </tbody>

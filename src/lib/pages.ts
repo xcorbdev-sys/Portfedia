@@ -37,6 +37,7 @@ function toPage(d: any): PageDoc {
     tags: d.tags ?? [],
     sectors: d.sectors ?? [],
     orgAdmins: (d.orgAdmins ?? []).map(String),
+    recruiters: (d.recruiters ?? []).map(String),
     claimDomain: d.claimDomain ?? null,
     websiteChangedAt: d.websiteChangedAt ?? null,
     protectedUntil: d.protectedUntil ?? null,
@@ -115,9 +116,11 @@ export interface PageCard {
   /** e.g. "Acme · Senior Engineer" for people, sector for organisations */
   subtitle: string;
   detail?: string;
+  /** #54: a claimed organization with open jobs */
+  hiring?: boolean;
 }
 
-const CARD_FIELDS = { slug: 1, title: 1, type: 1, summary: 1, image: 1, verified: 1, infobox: 1, experiences: 1 };
+const CARD_FIELDS = { slug: 1, title: 1, type: 1, summary: 1, image: 1, verified: 1, infobox: 1, experiences: 1, "jobs.postedAt": 1 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toCard(d: any, detail?: string): PageCard {
@@ -137,6 +140,7 @@ export function toCard(d: any, detail?: string): PageCard {
     verified: Boolean(d.verified) || d.status === "claimed",
     subtitle,
     detail,
+    hiring: d.type !== "person" && d.status === "claimed" && Array.isArray(d.jobs) && d.jobs.some((j: { postedAt?: Date }) => j.postedAt && new Date(j.postedAt).getTime() > Date.now() - JOB_DAYS * 86400_000),
   };
 }
 
@@ -1383,7 +1387,10 @@ export async function deleteAccount(userId: string): Promise<void> {
   await Session.deleteMany({ userId: oid });
   await Token.deleteMany({ userId: oid });
   // Messages, introductions, saved searches and community posts (#37, #55, #56, #61)
-  const { Conversation, Message, IntroRequest, SavedSearch, CommunityPost } = await import("./models");
+  const { Conversation, Message, IntroRequest, SavedSearch, CommunityPost, JobApplication, Win } = await import("./models");
+  await JobApplication.deleteMany({ userId: oid });
+  await Win.deleteMany({ userId: oid });
+  await Win.updateMany({ congrats: oid }, { $pull: { congrats: oid }, $inc: { congratsCount: -1 } });
   const convs = await Conversation.find({ members: oid }, { _id: 1 }).lean<{ _id: unknown }[]>();
   await Message.deleteMany({ conversationId: { $in: convs.map((c) => c._id) } });
   await Conversation.deleteMany({ members: oid });

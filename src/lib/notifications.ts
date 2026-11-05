@@ -5,7 +5,7 @@ import { Follow, Notification, Page, User } from "./models";
 
 export type NotificationType =
   | "application" | "position" | "follower" | "page_update" | "claimed" | "raising" | "update" | "launch"
-  | "mention" | "thanks" | "feedback" | "search" | "intro" | "message" | "community" | "interest";
+  | "mention" | "thanks" | "feedback" | "search" | "intro" | "message" | "community" | "interest" | "job_application" | "win" | "congrats";
 
 /** #39: kinds a member can switch off in Account → Notifications (decisions about their own pages always arrive). */
 export const MUTABLE_NOTIFICATIONS: { type: NotificationType; label: string }[] = [
@@ -18,6 +18,8 @@ export const MUTABLE_NOTIFICATIONS: { type: NotificationType; label: string }[] 
   { type: "launch", label: "Products I follow launch" },
   { type: "raising", label: "New fundraising rounds (when turned on in Raising now)" },
   { type: "search", label: "New results for my saved searches" },
+  { type: "win", label: "People I follow share a win" },
+  { type: "congrats", label: "Someone congratulates me" },
   { type: "intro", label: "Introduction requests" },
   { type: "message", label: "New messages" },
 ];

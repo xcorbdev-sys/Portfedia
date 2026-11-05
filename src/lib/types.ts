@@ -111,6 +111,7 @@ export const OPEN_TO = {
   advising: "Advising",
   speaking: "Speaking",
   mentoring: "Mentoring",
+  internship: "Internships",
 } as const;
 export type OpenTo = keyof typeof OPEN_TO;
 
@@ -139,6 +140,8 @@ export interface Job {
   description?: string;
   /** Apply by email instead of a link */
   applyEmail?: string;
+  /** #51: members apply with their Portfedia profile; the company tracks applications here */
+  easyApply?: boolean;
 }
 export interface Ticker { exchange: string; symbol: string }
 
@@ -207,6 +210,8 @@ export interface PageDoc {
   /** Sectors from the fixed list (at most three) */
   sectors: string[];
   orgAdmins: string[];
+  /** #58: profile page ids of the organization's recruiters */
+  recruiters: string[];
   claimDomain: string | null;
   websiteChangedAt: Date | null;
   protectedUntil: Date | null;

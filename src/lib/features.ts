@@ -24,6 +24,7 @@ export const FEATURES = {
   updates: { label: "Company updates", href: "", footer: "", info: "Short news posts on company and SaaS pages." },
   messages: { label: "Messages and introductions", href: "", footer: "", info: "Private messages between members (with requests, blocking and reporting) and introductions through a shared connection." },
   communities: { label: "Sector communities", href: "", footer: "", info: "A page per sector where members join and post, with the sector's people, companies and jobs." },
+  wins: { label: "Wins wall", href: "/wins", footer: "Wins", info: "Members share new jobs, promotions, graduations and other milestones; others congratulate them." },
   cities: { label: "Cities", href: "/cities", footer: "Cities", info: "City pages that list the people, companies, SaaS projects and events of each city." },
   blog: { label: "Blog", href: "/blog", footer: "Blog", info: "The editorial blog written by admins." },
   feeds: { label: "RSS feeds", href: "/feeds", footer: "RSS", info: "RSS feeds of new people, companies, SaaS projects, jobs, launches and blog posts." },

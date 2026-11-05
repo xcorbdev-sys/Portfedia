@@ -27,6 +27,7 @@ import { latestLaunch } from "@/lib/launches";
 import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
 import { attendAction, deleteUpdateAction, postUpdateAction, restoreUpdateAction } from "@/lib/actions/page-social";
 import { UndoNotice } from "@/components/UndoNotice";
+import { JOB_DAYS } from "@/lib/jobs";
 import { integratedBy, integrationPages, interestedPeople, listChangelog, raisingInterest } from "@/lib/org-extras";
 import { raisingInterestAction } from "@/lib/actions/org-extras";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
@@ -101,6 +102,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
   // #58: speakers link to their profiles (an exact profile address, or a name only one profile has), with photos
   // #64, #65, #70: SaaS changelog and integrations; interest in a raise
   const ownerView = canPostUpdates(user, page);
+  const openJobs = page.jobs.filter((j) => j.postedAt && new Date(j.postedAt).getTime() > Date.now() - JOB_DAYS * 86400_000).length;
   const raisingOn = features.raising && page.raising?.active;
   const [changelog, integrationLinks, worksWith, interest, interested] = await Promise.all([
     isSaas ? listChangelog(page._id, 3) : Promise.resolve([]),
@@ -198,6 +200,9 @@ export default async function OrgPage({ params, searchParams }: Props) {
                 {ib.sector || ib.kind || (isSchool ? "Educational institution" : "Organization")}
                 {page.ticker && <span className="pill" style={{ marginLeft: 8 }}>{[page.ticker.exchange, page.ticker.symbol].filter(Boolean).join(": ")}</span>}
               </div>
+              {features.jobs && page.status === "claimed" && openJobs > 0 && (
+                <Link href="#jobs" className="hiring-chip">We&apos;re hiring · {openJobs} open position{openJobs === 1 ? "" : "s"}</Link>
+              )}
               {page.formerNames.length > 0 && <div className="small muted" style={{ marginTop: -6, marginBottom: 8 }}>Formerly {page.formerNames.join(", ")}</div>}
             </div>
             <div className="p-head__body">
