@@ -14,6 +14,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { LAUNCH_EVERY_DAYS, latestLaunch } from "@/lib/launches";
 import { launchAction } from "@/lib/actions/launches";
 import { featureOn } from "@/lib/features";
+import { applyClicks } from "@/lib/org-extras";
 
 export const metadata: Metadata = { title: "Manage organization", robots: { index: false } };
 
@@ -47,6 +48,8 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
   const isMod = isModerator(user);
   const isSaas = page.category === "saas";
   const launchesOn = await featureOn("launches");
+  const jobsOn = await featureOn("jobs");
+  const clicks = jobsOn && page.jobs.length ? await applyClicks(page._id) : new Map<string, { total: number; last30: number }>();
   const launch = isSaas && launchesOn ? await latestLaunch(page._id) : null;
   const canLaunchAgain = !launch || Date.now() - new Date(launch.createdAt).getTime() > LAUNCH_EVERY_DAYS * 86400000;
   const business = planActive(page.plan, "business");
@@ -76,6 +79,17 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
           <p className="small muted">
             Verify the positions people list on their profiles. Verified positions get a ✓; rejected ones are hidden from your page.
           </p>
+          {pending > 0 && (
+            <form action={decidePositionsBulkAction} className="verify-all">
+              <input type="hidden" name="org" value={slug} />
+              <input type="hidden" name="all" value="pending" />
+              <input type="hidden" name="decision" value="verified" />
+              <button className="btn btn--sm btn--primary" type="submit">
+                <Check size={14} /> Verify everyone waiting ({pending})
+              </button>
+              <span className="small muted">Only if you know they all work, or worked, at {page.title}.</span>
+            </form>
+          )}
           {positions.length > 1 && (
             <form id="bulk-positions" action={decidePositionsBulkAction} className="bulk-bar card">
               <input type="hidden" name="org" value={slug} />
@@ -124,6 +138,31 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
           )}
         </div>
       </section>
+
+      {jobsOn && page.jobs.length > 0 && (
+        <section className="card" id="job-stats" style={{ marginTop: 16 }}>
+          <div className="card__body">
+            <div className="card__title">Jobs: apply clicks</div>
+            <p className="small muted">How many times people pressed &ldquo;Apply&rdquo; on each listing. Only counts are kept, not who clicked.</p>
+            <table className="kv">
+              <thead><tr><th scope="col">Job</th><th scope="col">Last 30 days</th><th scope="col">All time</th></tr></thead>
+              <tbody>
+                {page.jobs.map((j) => (
+                  <tr key={j.id}>
+                    <th scope="row"><Link href={`/jobs/${page.slug}/${j.id}`}>{j.title}</Link></th>
+                    <td>{clicks.get(j.id)?.last30 ?? 0}</td>
+                    <td>{clicks.get(j.id)?.total ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="card__title" style={{ marginTop: 16 }}>Careers widget</div>
+            <p className="small muted">Show your open jobs on your own website: paste this where the list should appear. It updates itself when you change jobs here.</p>
+            <textarea className="textarea embed-code" readOnly rows={3} aria-label="Widget code" value={`<iframe src="${siteUrl()}/embed/jobs/${page.slug}" title="Jobs at ${page.title.replace(/"/g, "")}" width="100%" height="420" style="border:0"></iframe>`} />
+            <p className="small muted">Add <code>?theme=dark</code> to the address for dark websites. <a href={`/embed/jobs/${page.slug}`} target="_blank" rel="noopener">Preview</a></p>
+          </div>
+        </section>
+      )}
 
       {isSaas && launchesOn && (
         <section className="card" id="launch" style={{ marginTop: 16 }}>

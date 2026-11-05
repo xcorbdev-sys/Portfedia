@@ -100,6 +100,16 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
               <input id="saasPlatforms" name="saasPlatforms" className="input" defaultValue={page?.saas?.platforms.join(", ")} placeholder="Web, iOS, Android, API" />
             </div>
           </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="saasTechStack">Tech stack</label>
+              <input id="saasTechStack" name="saasTechStack" className="input" defaultValue={page?.saas?.techStack?.join(", ")} placeholder="Next.js, PostgreSQL, Stripe" />
+            </div>
+            <div className="field">
+              <label htmlFor="saasIntegrations">Integrations</label>
+              <input id="saasIntegrations" name="saasIntegrations" className="input" defaultValue={page?.saas?.integrations?.join(", ")} placeholder="Slack, Google Sheets, Zapier" />
+            </div>
+          </div>
           <span className="hint">Put the launch year in &ldquo;Founded&rdquo; and your product&apos;s address in &ldquo;Website&rdquo;. Add screenshots as products below.</span>
         </fieldset>
       )}

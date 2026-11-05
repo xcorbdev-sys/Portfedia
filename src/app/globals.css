@@ -897,3 +897,16 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .posts__tools { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 .mini-people, .mini-jobs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .mini-people a { display: flex; gap: 10px; align-items: center; color: var(--text); text-decoration: none; }
+.verify-all { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+
+/* SaaS changelog (#64), stack and integrations (#65) */
+.changelog { list-style: none; margin: 16px 0 0; padding: 0 0 0 16px; border-left: 2px solid var(--border); display: grid; gap: 16px; }
+.changelog li { position: relative; }
+.changelog li::before { content: ""; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+.changelog__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.changelog__head time { color: var(--text-3); font-size: .8rem; }
+.changelog p { margin: 6px 0 0; white-space: pre-wrap; color: var(--text-2); }
+.saas-meta { display: grid; gap: 8px; margin-top: 12px; }
+.saas-meta > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.saas-meta small { color: var(--text-3); min-width: 92px; }
+.embed-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; }

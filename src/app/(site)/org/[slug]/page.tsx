@@ -27,11 +27,13 @@ import { latestLaunch } from "@/lib/launches";
 import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
 import { attendAction, deleteUpdateAction, postUpdateAction, restoreUpdateAction } from "@/lib/actions/page-social";
 import { UndoNotice } from "@/components/UndoNotice";
+import { integratedBy, integrationPages, interestedPeople, listChangelog, raisingInterest } from "@/lib/org-extras";
+import { raisingInterestAction } from "@/lib/actions/org-extras";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 import { SafeImg } from "@/components/SafeImg";
 import { getFeatures } from "@/lib/features";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string; removed?: string; restored?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string; removed?: string; restored?: string; interest?: string; interestError?: string }> };
 
 const PREVIEW = 24;
 
@@ -63,7 +65,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 export default async function OrgPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { posted, updateError, removed, restored } = await searchParams;
+  const { posted, updateError, removed, restored, interest: interestDone, interestError } = await searchParams;
   const page = await load(slug);
   if (!page) {
     const moved = await findRenamedPage(slug); // former names and old addresses
@@ -97,6 +99,16 @@ export default async function OrgPage({ params, searchParams }: Props) {
   const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   // #58: speakers link to their profiles (an exact profile address, or a name only one profile has), with photos
+  // #64, #65, #70: SaaS changelog and integrations; interest in a raise
+  const ownerView = canPostUpdates(user, page);
+  const raisingOn = features.raising && page.raising?.active;
+  const [changelog, integrationLinks, worksWith, interest, interested] = await Promise.all([
+    isSaas ? listChangelog(page._id, 3) : Promise.resolve([]),
+    isSaas ? integrationPages(page.saas?.integrations ?? []) : Promise.resolve(new Map<string, string>()),
+    isSaas ? integratedBy(page.title, page.slug) : Promise.resolve([]),
+    raisingOn ? raisingInterest(page._id, user?.id) : Promise.resolve({ total: 0, mine: false }),
+    raisingOn && ownerView ? interestedPeople(page._id) : Promise.resolve([]),
+  ]);
   const speakerCards = isEvent && page.event?.speakers.length ? await speakerProfiles(page.event.speakers) : new Map<string, PageCard>();
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
@@ -264,7 +276,26 @@ export default async function OrgPage({ params, searchParams }: Props) {
               <div className="raising-card__actions">
                 {page.raising.url && <a className="btn btn--sm btn--primary" href={page.raising.url} rel="nofollow noopener" target="_blank">Learn more</a>}
                 {page.raising.email && <a className="btn btn--sm" href={`mailto:${page.raising.email}?subject=${encodeURIComponent(`${page.title}: investment`)}`}>Contact the founders</a>}
+                {!ownerView && (
+                  <form action={raisingInterestAction}>
+                    <input type="hidden" name="slug" value={page.slug} />
+                    <button className={`btn btn--sm${interest.mine ? " btn--active" : ""}`} type="submit">{interest.mine ? "✓ Interested" : "I'm interested"}</button>
+                  </form>
+                )}
+                {interest.total > 0 && <span className="small muted">{interest.total} interested</span>}
               </div>
+              {interestDone && interest.mine && <div className="notice notice--ok small">The founders were told you&apos;re interested. They&apos;ll get in touch if it&apos;s a fit.</div>}
+              {interestError && <div className="notice notice--error small">{interestError}</div>}
+              {ownerView && interested.length > 0 && (
+                <details className="interested">
+                  <summary>Who&apos;s interested ({interested.length}) · only you see this</summary>
+                  <ul>
+                    {interested.map((x, i) => (
+                      <li key={i}>{x.card ? <Link href={`/${x.card.slug}`}>{x.card.title}</Link> : x.name}{x.card?.subtitle ? <span className="muted small"> · {x.card.subtitle}</span> : null} <span className="muted small">· {formatDate(x.at)}</span></li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               <p className="raising-card__note">
                 Information provided by {page.title}. Portfedia doesn&apos;t collect or hold money and this is not investment advice.
               </p>
@@ -321,6 +352,39 @@ export default async function OrgPage({ params, searchParams }: Props) {
                 </span>
               </div>
             </div>
+          )}
+          {isSaas && (page.saas?.techStack.length || page.saas?.integrations.length || worksWith.length) ? (
+            <div className="saas-meta">
+              {page.saas!.techStack.length > 0 && (
+                <div><small>Built with</small>{page.saas!.techStack.map((t) => <span key={t} className="chip chip--muted">{t}</span>)}</div>
+              )}
+              {page.saas!.integrations.length > 0 && (
+                <div>
+                  <small>Integrates with</small>
+                  {page.saas!.integrations.map((t) => (integrationLinks.get(t) ? <Link key={t} className="chip" href={`/org/${integrationLinks.get(t)}`}>{t}</Link> : <span key={t} className="chip chip--muted">{t}</span>))}
+                </div>
+              )}
+              {worksWith.length > 0 && (
+                <div><small>Works with it</small>{worksWith.map((c) => <Link key={c.slug} className="chip" href={`/org/${c.slug}`}>{c.title}</Link>)}</div>
+              )}
+            </div>
+          ) : null}
+          {isSaas && (changelog.length > 0 || ownerView) && (
+            <section className="p-section" id="changelog">
+              <h2>Changelog</h2>
+              {changelog.length === 0 ? (
+                <p className="small muted">No releases yet. <Link href={`/org/${page.slug}/changelog`}>Add your first release</Link>.</p>
+              ) : (
+                <ol className="changelog">
+                  {changelog.map((r) => (
+                    <li key={r.id}>
+                      <div className="changelog__head">{r.version && <span className="chip">{r.version}</span>}<b>{r.title}</b><time>{formatDate(r.createdAt)}</time></div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <p style={{ marginTop: 10 }}><Link className="link-arrow" href={`/org/${page.slug}/changelog`}>{ownerView ? "Add a release · full changelog" : "Full changelog"}</Link></p>
+            </section>
           )}
           {isSaas && page.sectors.length > 0 && (
             <p className="small" style={{ margin: "10px 0 0" }}>

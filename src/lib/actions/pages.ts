@@ -212,6 +212,8 @@ function parseCategory(fd: FormData) {
         ? {
             pricing: (String(fd.get("saasPricing") ?? "") in SAAS_PRICING ? String(fd.get("saasPricing")) : "") as SaasInfo["pricing"],
             platforms: list("saasPlatforms", 8),
+            techStack: list("saasTechStack", 20),
+            integrations: list("saasIntegrations", 30),
           }
         : null,
   };

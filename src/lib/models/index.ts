@@ -167,7 +167,11 @@ const PageSchema = new Schema<any>(
     openTo: { type: [String], default: [] },
     // #89: what kind of organization page this is, with category-specific facts
     category: { type: String, enum: ["company", "investor", "event", "nonprofit", "public", "saas"], default: "company" },
-    saas: { type: new Schema<any>({ pricing: String, platforms: [String] }, { _id: false }), default: null },
+    saas: {
+      // #65: tech stack and integrations; integrationsKey (normalised names) finds "works with" pages
+      type: new Schema<any>({ pricing: String, platforms: [String], techStack: [String], integrations: [String], integrationsKey: [String] }, { _id: false }),
+      default: null,
+    },
     raising: {
       type: new Schema<any>(
         { active: Boolean, stage: String, amount: Number, currency: String, description: { type: String, maxlength: 600 }, url: String, email: String, since: Date },
@@ -645,3 +649,40 @@ const CommunityPostSchema = new Schema<any>(
 );
 CommunityPostSchema.index({ sector: 1, createdAt: -1 });
 export const CommunityPost = getModel("CommunityPost", CommunityPostSchema);
+
+/* ───────────── Companies and SaaS extras (#64, #67, #70) ───────────── */
+const ChangelogEntrySchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    version: { type: String, default: "" },
+    title: { type: String, required: true, maxlength: 120 },
+    notes: { type: String, default: "", maxlength: 3000 },
+    deletedAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+ChangelogEntrySchema.index({ pageId: 1, createdAt: -1 });
+export const ChangelogEntry = getModel("ChangelogEntry", ChangelogEntrySchema);
+
+const ApplyClickSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    jobId: { type: String, required: true },
+    day: { type: String, required: true }, // YYYY-MM-DD
+    count: { type: Number, default: 0 },
+  },
+  { timestamps: false },
+);
+ApplyClickSchema.index({ pageId: 1, jobId: 1, day: 1 }, { unique: true });
+export const ApplyClick = getModel("ApplyClick", ApplyClickSchema);
+
+const RaisingInterestSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+RaisingInterestSchema.index({ pageId: 1, userId: 1 }, { unique: true });
+export const RaisingInterest = getModel("RaisingInterest", RaisingInterestSchema);

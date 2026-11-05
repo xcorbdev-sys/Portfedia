@@ -166,7 +166,13 @@ export interface RaisingInfo {
   email: string;
   since: Date | null;
 }
-export interface SaasInfo { pricing: keyof typeof SAAS_PRICING | ""; platforms: string[] }
+export interface SaasInfo {
+  pricing: keyof typeof SAAS_PRICING | "";
+  platforms: string[];
+  /** #65: technologies the product is built with, and products it works with */
+  techStack: string[];
+  integrations: string[];
+}
 export interface EventInfo {
   start: Date | null;
   end: Date | null;

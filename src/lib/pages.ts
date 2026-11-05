@@ -63,7 +63,7 @@ function toPage(d: any): PageDoc {
     ticker: d.ticker?.symbol ? { exchange: d.ticker.exchange ?? "", symbol: d.ticker.symbol } : null,
     category: d.category ?? "company",
     investor: d.investor ? { fundSize: d.investor.fundSize ?? "", stages: d.investor.stages ?? [], focus: d.investor.focus ?? [] } : null,
-    saas: d.saas ? { pricing: d.saas.pricing ?? "", platforms: d.saas.platforms ?? [] } : null,
+    saas: d.saas ? { pricing: d.saas.pricing ?? "", platforms: d.saas.platforms ?? [], techStack: d.saas.techStack ?? [], integrations: d.saas.integrations ?? [] } : null,
     raising: d.raising?.active
       ? {
           active: true,
@@ -1089,7 +1089,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     category: input.category,
     investor: input.category === "investor" ? input.investor : null,
     event: input.category === "event" ? input.event : null,
-    saas: input.category === "saas" ? input.saas : null,
+    saas: input.category === "saas" && input.saas ? { ...input.saas, integrationsKey: input.saas.integrations.map((n) => searchKey(n)) } : null,
     ...(input.raising !== undefined ? { raising: input.raising } : {}),
     ...(input.brandColor !== undefined ? { brandColor: input.brandColor } : {}),
     ...(input.jobs !== undefined ? { jobs: input.jobs } : {}),
@@ -1121,7 +1121,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
   if (!ownsPage && prevCategory !== input.category && (prevCategory === "saas" || input.category === "saas")) {
     input = { ...input, category: prevCategory as OrgCategory, saas: page.saas ?? null };
     content.category = input.category;
-    content.saas = input.saas;
+    content.saas = input.saas ? { ...input.saas, integrationsKey: (input.saas.integrations ?? []).map((n) => searchKey(n)) } : null;
   }
 
   const prevSize = page.body?.length ?? 0;

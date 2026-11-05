@@ -91,12 +91,17 @@ export async function decidePositionsBulkAction(fd: FormData): Promise<void> {
   const org = await getPageBySlug(slug, ["org", "school"]);
   if (!org) redirect("/");
   const decision = fd.get("decision") === "rejected" ? "rejected" : "verified";
-  const items = fd.getAll("items").map(String).slice(0, 200);
+  let items = fd.getAll("items").map(String).slice(0, 200);
+  // #73: one click verifies everyone still waiting for review
+  if (fd.get("all") === "pending") {
+    const { listPositions } = await import("../org-admin");
+    items = (await listPositions(slug)).filter((p) => p.entry.verification === "unverified").slice(0, 500).map((p) => `${p.personSlug}|${p.index}`);
+  }
   for (const it of items) {
     const [person, index] = it.split("|");
     await decidePosition(user, org, str(person, 100), Number(index), decision);
     revalidatePath(`/${person}`);
   }
   revalidatePath(`/org/${slug}`);
-  redirect(`/org/${slug}/manage#people`);
+  redirect(`/org/${slug}/manage?done=${encodeURIComponent(`${items.length} position${items.length === 1 ? "" : "s"} ${decision}.`)}#people`);
 }

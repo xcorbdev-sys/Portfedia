@@ -890,6 +890,56 @@ async function createProfile(p, opts) {
   await admin.goto(`${BASE}/admin?section=reports`);
   check("reported messages reach moderators", (await admin.locator("text=Reported private messages").count()) >= 1);
 
+  // ── Companies and SaaS: changelog, stack and integrations, apply clicks, careers widget, raise interest, verify all
+  await elif.goto(`${BASE}/org/elif-analytics/changelog`);
+  await elif.fill("input[name=version]", "v2.0");
+  await elif.fill("input[name=title]", "Weekly email reports");
+  await elif.fill("textarea[name=notes]", "Get your dashboard by email every Monday.");
+  await elif.click('button:has-text("Add release")');
+  await elif.waitForURL(/added=1/);
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("SaaS changelog on the product page", (await anon.locator("#changelog >> text=Weekly email reports").count()) === 1);
+  await elif.goto(`${BASE}/org/elif-forms-pro/edit`);
+  for (let i = 0; i < 2; i++) await elif.click('button:has-text("Continue")');
+  await elif.fill("#saasTechStack", "Next.js, PostgreSQL");
+  await elif.fill("#saasIntegrations", "Elif Analytics, Slack");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/elif-forms-pro`);
+  check("integrations link to SaaS pages", (await elif.locator('.saas-meta a[href="/org/elif-analytics"]').count()) === 1 && (await elif.locator(".saas-meta >> text=PostgreSQL").count()) === 1);
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("integrated products show on the other side", (await anon.locator('.saas-meta a[href="/org/elif-forms-pro"]').count()) === 1);
+
+  await admin.goto(`${BASE}/org/northwind-robotics/edit`);
+  for (let i = 0; i < 2; i++) await admin.click('button:has-text("Continue")');
+  await visible(admin).getByPlaceholder("Apply link (https://…)").fill("https://northwind.example/careers/robotics");
+  await admin.click('button:has-text("Continue")');
+  await admin.click('button:has-text("Save changes")');
+  await admin.waitForURL(`${BASE}/org/northwind-robotics`);
+  const applyPath = new URL(jobUrl).pathname + "/apply";
+  const applyRes = await anon.request.get(`${BASE}${applyPath}`, { maxRedirects: 0 });
+  check("apply goes to the company's link", applyRes.status() === 303 && applyRes.headers()["location"] === "https://northwind.example/careers/robotics");
+  await admin.goto(`${BASE}/org/northwind-robotics/manage`);
+  check("companies see apply clicks", /Robotics Engineer\s*1\s*1/.test(await admin.locator("#job-stats").innerText()));
+  const embed = await anon.request.get(`${BASE}/embed/jobs/northwind-robotics`);
+  check("careers widget can be embedded", embed.status() === 200 && /Robotics Engineer/.test(await embed.text()) && !embed.headers()["x-frame-options"] && /frame-ancestors \*/.test(embed.headers()["content-security-policy"] || ""));
+  check("other pages still can't be framed", (await anon.request.get(`${BASE}/jobs`)).headers()["x-frame-options"] === "SAMEORIGIN");
+
+  await ayse.goto(`${BASE}/org/elif-analytics`);
+  await ayse.click('#raising button:has-text("I\'m interested")');
+  await ayse.waitForURL(/interest=/);
+  check("members say they're interested in a raise", (await ayse.locator('#raising button:has-text("✓ Interested")').count()) === 1);
+  await elif.goto(`${BASE}/org/elif-analytics`);
+  check("founders see who is interested", (await elif.locator("#raising .interested >> text=Who's interested (1)").count()) === 1);
+
+  await admin.goto(`${BASE}/org/bluefin-bank/manage`);
+  const waiting = await admin.locator(".verify-all button").count();
+  if (waiting) {
+    await admin.click(".verify-all button");
+    await admin.waitForURL(/done=/);
+  }
+  check("verify everyone waiting in one click", waiting === 1 && (await admin.locator(".verify-all").count()) === 0 && /verified/.test(await admin.locator(".notice--ok").first().innerText()));
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

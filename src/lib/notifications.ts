@@ -5,7 +5,7 @@ import { Follow, Notification, Page, User } from "./models";
 
 export type NotificationType =
   | "application" | "position" | "follower" | "page_update" | "claimed" | "raising" | "update" | "launch"
-  | "mention" | "thanks" | "feedback" | "search" | "intro" | "message" | "community";
+  | "mention" | "thanks" | "feedback" | "search" | "intro" | "message" | "community" | "interest";
 
 /** #39: kinds a member can switch off in Account → Notifications (decisions about their own pages always arrive). */
 export const MUTABLE_NOTIFICATIONS: { type: NotificationType; label: string }[] = [

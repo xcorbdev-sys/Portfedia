@@ -60,9 +60,10 @@ export default async function JobPage({ params }: Props) {
         ))}
       </ul>
       <div className="job-actions">
-        {!expired && job.url && <a className="btn btn--primary" href={job.url} rel="nofollow noopener" target="_blank">Apply on the company site</a>}
+        {/* #67: through /apply, which counts the click (no personal data) and forwards */}
+        {!expired && job.url && <a className="btn btn--primary" href={`/jobs/${page.slug}/${job.id}/apply`} rel="nofollow noopener" target="_blank">Apply on the company site</a>}
         {!expired && !job.url && job.applyEmail && (
-          <a className="btn btn--primary" href={`mailto:${job.applyEmail}?subject=${encodeURIComponent(`Application: ${job.title}`)}`}><Mail size={16} /> Apply by email</a>
+          <a className="btn btn--primary" href={`/jobs/${page.slug}/${job.id}/apply`} rel="nofollow"><Mail size={16} /> Apply by email</a>
         )}
         {user ? (
           <form action={toggleSavedJobAction}>
