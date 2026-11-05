@@ -495,4 +495,29 @@ const JobAlertSchema = new Schema<any>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 export const JobAlert = getModel("JobAlert", JobAlertSchema);
+
+/* ───────────── SaaS launch board ───────────── */
+const LaunchSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true, index: true },
+    launchedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    tagline: { type: String, required: true, maxlength: 120 },
+    // ISO week the launch competes in, e.g. "2026-W45"
+    week: { type: String, required: true, index: true },
+    votes: { type: Number, default: 0 },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+LaunchSchema.index({ week: 1, votes: -1 });
+export const Launch = getModel("Launch", LaunchSchema);
+
+const LaunchVoteSchema = new Schema<any>(
+  {
+    launchId: { type: Schema.Types.ObjectId, ref: "Launch", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+LaunchVoteSchema.index({ launchId: 1, userId: 1 }, { unique: true });
+export const LaunchVote = getModel("LaunchVote", LaunchVoteSchema);
 export const PageView = getModel("PageView", PageViewSchema);

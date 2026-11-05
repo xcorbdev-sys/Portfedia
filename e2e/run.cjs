@@ -662,6 +662,24 @@ async function createProfile(p, opts) {
   await ayse.goto(`${BASE}/notifications`);
   check("notified about a new raise", (await ayse.locator("text=Elif Analytics is raising a Seed round.").count()) === 1);
 
+  // ── Launch board: makers launch, members upvote (not their own product)
+  await elif.goto(`${BASE}/org/elif-analytics/manage`);
+  await elif.fill("#tagline", "Dashboards for small shops, set up in minutes");
+  await elif.click('button:has-text("Launch this week")');
+  await elif.waitForURL(/\/launches\?launched=1/);
+  check("SaaS launched on this week's board", (await elif.locator('.launch a[href="/org/elif-analytics"]').count()) === 1);
+  await elif.click(".launch__vote");
+  await elif.waitForURL(/error=/);
+  check("makers can't upvote their own product", /own product/.test(await elif.locator(".notice--error").innerText()));
+  await ayse.goto(`${BASE}/launches`);
+  await ayse.click(".launch__vote");
+  await ayse.locator(".launch__vote.is-voted").waitFor();
+  check("members upvote launches", (await ayse.locator(".launch__vote.is-voted b").innerText()) === "1");
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("launched note on the SaaS page", (await anon.locator(".launched-note").count()) === 1);
+  const badgeSvg = await (await anon.request.get(`${BASE}/org-badge/elif-analytics`)).text();
+  check("badge shows the week ranking", /#1 SaaS of the week/.test(badgeSvg));
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

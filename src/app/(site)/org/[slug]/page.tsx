@@ -22,6 +22,7 @@ import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
 import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
 import { NetworkSummary } from "@/components/NetworkDialog";
+import { latestLaunch } from "@/lib/launches";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -77,7 +78,7 @@ export default async function OrgPage({ params }: Props) {
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
   const isSaas = page.category === "saas";
-  const [makers, network] = await Promise.all([isSaas ? makersOf(page.slug) : Promise.resolve([]), followNetwork(page)]);
+  const [makers, network, launch] = await Promise.all([isSaas ? makersOf(page.slug) : Promise.resolve([]), followNetwork(page), isSaas ? latestLaunch(page._id) : Promise.resolve(null)]);
   const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
@@ -177,6 +178,11 @@ export default async function OrgPage({ params }: Props) {
                     <Link key={t} className="chip" href={`/tag/${slugify(t)}`}>{t}</Link>
                   ))}
                 </div>
+              )}
+              {launch && (
+                <Link href={`/launches?week=${launch.week}`} className="launched-note">
+                  🚀 Launched on Portfedia · #{launch.rank} of {launch.week}
+                </Link>
               )}
               <NetworkSummary slug={page.slug} name={page.title} faces={network.followers.slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, image: c.image?.thumbUrl ?? c.image?.url ?? "" }))} followerTotal={page.followerCount} />
               {page.summary && <p className="p-summary">{stripWikiLinks(page.summary)}</p>}

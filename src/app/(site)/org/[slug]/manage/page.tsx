@@ -11,6 +11,8 @@ import { mergeOrgAction, renameOrgAction, setOrgPlanAction, setVerifiedAction } 
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { InviteAdminForm } from "@/components/forms/OrgAdminForms";
 import { StatsCard } from "@/components/StatsCard";
+import { LAUNCH_EVERY_DAYS, latestLaunch } from "@/lib/launches";
+import { launchAction } from "@/lib/actions/launches";
 
 export const metadata: Metadata = { title: "Manage organization", robots: { index: false } };
 
@@ -42,6 +44,9 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
   const pending = positions.filter((p) => p.entry.verification === "unverified").length;
   const { claimed, error, done } = await searchParams;
   const isMod = isModerator(user);
+  const isSaas = page.category === "saas";
+  const launch = isSaas ? await latestLaunch(page._id) : null;
+  const canLaunchAgain = !launch || Date.now() - new Date(launch.createdAt).getTime() > LAUNCH_EVERY_DAYS * 86400000;
   const business = planActive(page.plan, "business");
 
   return (
@@ -118,10 +123,39 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
         </div>
       </section>
 
+      {isSaas && (
+        <section className="card" id="launch" style={{ marginTop: 16 }}>
+          <div className="card__body">
+            <div className="card__title">Launch on Portfedia</div>
+            {launch && (
+              <p className="small">
+                Launched in week <Link href={`/launches?week=${launch.week}`}>{launch.week}</Link>: <b>#{launch.rank}</b> with {launch.votes} upvote{launch.votes === 1 ? "" : "s"}.
+              </p>
+            )}
+            {canLaunchAgain ? (
+              <form action={launchAction} className="form" style={{ gap: 8 }}>
+                <input type="hidden" name="slug" value={slug} />
+                <label htmlFor="tagline" className="small muted">
+                  Put {page.title} on this week&apos;s launch board, where members upvote new products. Your followers are told. You can launch once every {LAUNCH_EVERY_DAYS} days; the page needs a logo and a summary.
+                </label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <input id="tagline" name="tagline" className="input" style={{ flex: "1 1 260px" }} required minLength={10} maxLength={120} placeholder="One line about your product, e.g. Dashboards for small shops" />
+                  <button className="btn btn--primary" type="submit">Launch this week</button>
+                </div>
+              </form>
+            ) : (
+              <p className="small muted" style={{ margin: 0 }}>You can launch again {LAUNCH_EVERY_DAYS} days after your last launch.</p>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="card" id="badge" style={{ marginTop: 16 }}>
         <div className="card__body">
           <div className="card__title">Badge for your website</div>
-          <p className="small muted">Show visitors that your organization is verified on Portfedia. Paste this HTML into your website.</p>
+          <p className="small muted">
+            {isSaas ? "Show visitors that your product is featured on Portfedia." : "Show visitors that your organization is verified on Portfedia."} Paste this HTML into your website.
+          </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/org-badge/${slug}`} alt={`${page.title} on Portfedia`} height={44} style={{ display: "block", marginBottom: 10 }} />
           <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", fontSize: "0.78rem" }}>

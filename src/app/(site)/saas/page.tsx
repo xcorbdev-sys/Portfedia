@@ -20,7 +20,7 @@ export default async function SaasPage({ searchParams }: { searchParams: Promise
   return (
     <Listing
       title={values.sector ? `SaaS projects in ${values.sector}` : "SaaS Projects"}
-      intro="Software products introduced by the people who build them."
+      intro="Software products introduced by the people who build them. See this week's launches on the Launches page."
       crumb="SaaS Projects"
       baseHref={href("/saas")}
       noun="projects"
