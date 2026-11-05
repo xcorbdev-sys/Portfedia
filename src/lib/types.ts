@@ -153,6 +153,19 @@ export const ORG_CATEGORIES = {
 export type OrgCategory = keyof typeof ORG_CATEGORIES;
 export interface InvestorInfo { fundSize: string; stages: string[]; focus: string[] }
 export const SAAS_PRICING = { free: "Free", freemium: "Freemium", paid: "Paid", "open-source": "Open source" } as const;
+export const RAISE_STAGES = ["Pre-seed", "Seed", "Series A", "Series B", "Series C+", "Bridge", "Grant", "Crowdfunding", "Debt"] as const;
+/** "Raising now": information only. Portfedia never collects, holds or transfers money. */
+export interface RaisingInfo {
+  active: boolean;
+  stage: string;
+  amount: number | null;
+  currency: string;
+  description: string;
+  /** The company's own page or a licensed crowdfunding platform */
+  url: string;
+  email: string;
+  since: Date | null;
+}
 export interface SaasInfo { pricing: keyof typeof SAAS_PRICING | ""; platforms: string[] }
 export interface EventInfo {
   start: Date | null;
@@ -216,6 +229,7 @@ export interface PageDoc {
   investor: InvestorInfo | null;
   event: EventInfo | null;
   saas: SaasInfo | null;
+  raising: RaisingInfo | null;
   /** Who created the page with the create form (pages made automatically have none) */
   createdById: string | null;
   plan: Plan;

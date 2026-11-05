@@ -642,6 +642,26 @@ async function createProfile(p, opts) {
   await anon.goto(`${BASE}/people?sector=${encodeURIComponent("Robotics & Automation")}`);
   check("people filtered by sector", (await anon.locator(`a[href="${aysePath}"]`).count()) === 1);
 
+  // ── Raising now: information only, with opt-in notifications
+  await ayse.goto(`${BASE}/raising`);
+  await ayse.click('button:has-text("Notify me about new raises")');
+  await ayse.locator('button:has-text("Stop notifications")').waitFor();
+  await elif.goto(`${BASE}/org/elif-analytics/edit`);
+  for (let i = 0; i < 2; i++) await elif.click('button:has-text("Continue")');
+  await elif.check("input[name=raisingActive]");
+  await elif.selectOption("#raisingStageSel", "Seed");
+  await elif.fill("#raisingAmount", "500000");
+  await elif.fill("#raisingDescription", "Raising to grow our analytics product for small shops.");
+  await elif.fill("#raisingEmail", "founders@elif-analytics.example");
+  await elif.click('button:has-text("Continue")');
+  await elif.click('button:has-text("Save changes")');
+  await elif.waitForURL(`${BASE}/org/elif-analytics`);
+  check("raising card on the company page", (await elif.locator("#raising >> text=Seed · USD 500,000").count()) === 1 && (await elif.locator("#raising >> text=doesn't collect or hold money").count()) === 1);
+  await anon.goto(`${BASE}/raising?stage=Seed`);
+  check("raising list with filters", (await anon.locator('a[href="/org/elif-analytics#raising"]').count()) === 1);
+  await ayse.goto(`${BASE}/notifications`);
+  check("notified about a new raise", (await ayse.locator("text=Elif Analytics is raising a Seed round.").count()) === 1);
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

@@ -208,6 +208,25 @@ export default async function OrgPage({ params }: Props) {
               <div className="fact"><Building2 /><span><small>Format</small><b>{page.event!.format || "—"}</b></span></div>
             </div>
           )}
+          {page.raising && (
+            <section className="raising-card" id="raising">
+              <div className="raising-card__head">
+                <span className="raising-card__badge">Raising now</span>
+                <b>
+                  {page.raising.stage}
+                  {page.raising.amount ? ` · ${page.raising.currency} ${page.raising.amount.toLocaleString("en-US")}` : ""}
+                </b>
+              </div>
+              {page.raising.description && <p>{page.raising.description}</p>}
+              <div className="raising-card__actions">
+                {page.raising.url && <a className="btn btn--sm btn--primary" href={page.raising.url} rel="nofollow noopener" target="_blank">Learn more</a>}
+                {page.raising.email && <a className="btn btn--sm" href={`mailto:${page.raising.email}?subject=${encodeURIComponent(`${page.title}: investment`)}`}>Contact the founders</a>}
+              </div>
+              <p className="raising-card__note">
+                Information provided by {page.title}. Portfedia doesn&apos;t collect or hold money and this is not investment advice.
+              </p>
+            </section>
+          )}
           {isSaas && (
             <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
               <div className="fact"><BadgeDollarSign /><span><small>Pricing</small><b>{page.saas?.pricing ? SAAS_PRICING[page.saas.pricing] : "—"}</b></span></div>

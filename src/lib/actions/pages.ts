@@ -19,7 +19,7 @@ import { findSimilarOrgs } from "../org-tools";
 import { pageHref } from "../wikitext";
 import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, SessionUser, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
-import { OPEN_TO, ORG_CATEGORIES, SAAS_PRICING, type OrgCategory, type SaasInfo } from "../types";
+import { OPEN_TO, ORG_CATEGORIES, RAISE_STAGES, SAAS_PRICING, type OrgCategory, type RaisingInfo, type SaasInfo } from "../types";
 import { cleanSectors } from "../sectors";
 import { CURRENCIES, JOB_TYPES, LEVELS as JOB_LEVELS, SALARY_PERIODS, WORKPLACES } from "../jobs";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
@@ -148,6 +148,24 @@ function parseOrgExtras(fd: FormData) {
     milestones: parseRows<Milestone>(fd, "milestones", 60, (r) => (str(r.text, 300) ? { year: year(r.year), text: str(r.text, 300) } : null)).sort((a, b) => (a.year ?? 0) - (b.year ?? 0)),
     press: parseRows<PressItem>(fd, "press", 60, (r) => (str(r.title, 200) && httpUrl(r.url) ? { title: str(r.title, 200), outlet: str(r.outlet, 120), year: year(r.year), url: httpUrl(r.url) } : null)),
     ticker: symbol ? { exchange, symbol } : null,
+  };
+}
+
+/** "Raising now" details; information only (Portfedia never handles the money). */
+function parseRaising(fd: FormData, prev: PageDoc | null): RaisingInfo | null {
+  if (!bool(fd.get("raisingActive"))) return null;
+  const amount = Math.round(Number(String(fd.get("raisingAmount") ?? "").replace(/[^\d.]/g, "")));
+  const stage = String(fd.get("raisingStage") ?? "");
+  const currency = String(fd.get("raisingCurrency") ?? "USD");
+  return {
+    active: true,
+    stage: (RAISE_STAGES as readonly string[]).includes(stage) ? stage : "Seed",
+    amount: Number.isFinite(amount) && amount > 0 && amount < 1e12 ? amount : null,
+    currency: ["USD", "EUR", "GBP", "TRY"].includes(currency) ? currency : "USD",
+    description: str(fd.get("raisingDescription"), 600),
+    url: httpUrl(fd.get("raisingUrl")),
+    email: email(fd.get("raisingEmail")),
+    since: prev?.raising?.since ?? new Date(),
   };
 }
 
@@ -507,6 +525,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       // Job listings: only the organization's own admins (and moderators) can publish them
       jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: featuredJobs && j.featured })) : undefined,
       ...parseCategory(fd),
+      raising: fd.has("raisingStage") ? parseRaising(fd, prevOrg) : undefined,
       // #97: brand colour is a Business-plan feature
       brandColor: business && fd.has("brandColor") ? (/^#[0-9a-f]{6}$/i.test(String(fd.get("brandColor"))) ? String(fd.get("brandColor")) : "") : undefined,
       editSummary: str(fd.get("editSummary"), 300),
@@ -517,6 +536,11 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       claimDomain: fd.has("claimDomain") ? str(fd.get("claimDomain"), 120).toLowerCase().replace(/^@/, "").replace(/^www\./, "") : undefined,
     });
     pageSlug = page.slug;
+    // Members who asked to hear about new raises get a notification when a company starts raising
+    if (page.raising && !prevOrg?.raising) {
+      const { notifyNewRaise } = await import("../raising");
+      await notifyNewRaise(page, user.id);
+    }
     // Moderators and the page's own admins can rename it here: the address changes and the old one redirects
     const canRename = user.role === "admin" || user.role === "moderator" || page.orgAdmins.includes(user.id);
     if (slug && canRename && title.length >= 2 && title !== page.title) {

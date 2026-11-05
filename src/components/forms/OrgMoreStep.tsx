@@ -6,6 +6,7 @@ import { ListEditor, ProjectsEditor } from "./Achievements";
 import { OrgInput } from "./shared";
 import { SAAS_PRICING } from "@/lib/types";
 import { CURRENCIES, JOB_TYPES, LEVELS, SALARY_PERIODS, WORKPLACES } from "@/lib/jobs";
+import { RAISE_STAGES } from "@/lib/types";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
 export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean }) {
@@ -31,6 +32,54 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
             </div>
           </div>
           <span className="hint">The portfolio is built automatically from funding rounds that list this investor.</span>
+        </fieldset>
+      )}
+      {["company", "saas", "nonprofit"].includes(category) && (
+        <fieldset className="repeat-item" style={{ border: "1px solid var(--border)" }}>
+          <legend className="small" style={{ fontWeight: 700, padding: "0 6px" }}>Fundraising</legend>
+          <label className="check">
+            <input type="checkbox" name="raisingActive" defaultChecked={Boolean(page?.raising)} /> We are raising money now (listed on the Raising page)
+          </label>
+          <div className="grid-3">
+            <div className="field">
+              <label htmlFor="raisingStageSel">Round</label>
+              <select id="raisingStageSel" name="raisingStage" className="select" defaultValue={page?.raising?.stage || "Seed"}>
+                {RAISE_STAGES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="raisingAmount">Target amount (optional)</label>
+              <input id="raisingAmount" name="raisingAmount" className="input" inputMode="numeric" defaultValue={page?.raising?.amount ?? ""} placeholder="e.g. 500000" />
+            </div>
+            <div className="field">
+              <label htmlFor="raisingCurrency">Currency</label>
+              <select id="raisingCurrency" name="raisingCurrency" className="select" defaultValue={page?.raising?.currency || "USD"}>
+                {["USD", "EUR", "GBP", "TRY"].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="raisingDescription">What you&apos;re raising for</label>
+            <textarea id="raisingDescription" name="raisingDescription" className="textarea textarea--plain" maxLength={600} defaultValue={page?.raising?.description} placeholder="Traction, what the money is for, who you'd like to hear from." />
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="raisingUrl">Link (pitch, deck or your crowdfunding page)</label>
+              <input id="raisingUrl" name="raisingUrl" type="url" className="input" defaultValue={page?.raising?.url} placeholder="https://…" />
+            </div>
+            <div className="field">
+              <label htmlFor="raisingEmail">Contact email for investors</label>
+              <input id="raisingEmail" name="raisingEmail" type="email" className="input" defaultValue={page?.raising?.email} placeholder="founders@…" />
+            </div>
+          </div>
+          <span className="hint">
+            Portfedia only shows this information; it never collects or holds money. Collecting money from the public (crowdfunding, donations)
+            needs a licensed platform or a permit, so link to one if you use it.
+          </span>
         </fieldset>
       )}
       {category === "saas" && (

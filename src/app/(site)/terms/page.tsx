@@ -54,6 +54,11 @@ export default async function TermsPage() {
         <li>Impersonating someone, creating fake profiles or organizations, or claiming an organization you don&apos;t represent.</li>
         <li>Publishing other people&apos;s personal data (such as private contact details) without a legal basis.</li>
         <li>Spam, advertising disguised as content, scraping the site at scale, and attempts to break or overload its security.</li>
+        <li>
+          Using Portfedia to collect money from the public. &ldquo;Raising now&rdquo; information and job listings are information only:
+          Portfedia doesn&apos;t collect, hold or transfer money, doesn&apos;t check them, and nothing on Portfedia is an offer of securities or
+          investment advice. Crowdfunding and donations must go through a licensed platform or be permitted by law.
+        </li>
       </ul>
 
       <h2>5. Reporting content and moderation</h2>

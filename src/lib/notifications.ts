@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { connectDB } from "./db";
 import { Follow, Notification, Page } from "./models";
 
-export type NotificationType = "application" | "position" | "follower" | "page_update" | "claimed";
+export type NotificationType = "application" | "position" | "follower" | "page_update" | "claimed" | "raising" | "update" | "launch";
 
 export async function notify(userIds: string[], n: { type: NotificationType; text: string; href: string; pageId?: string | null }) {
   const ids = [...new Set(userIds)].filter((id) => Types.ObjectId.isValid(id));

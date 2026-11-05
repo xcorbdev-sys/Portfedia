@@ -10,7 +10,7 @@ import { trashImage } from "./image-trash";
 import { readSnapshot } from "./snapshots";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  EventInfo, InvestorInfo, OrgCategory, Plan, SaasInfo,
+  EventInfo, InvestorInfo, OrgCategory, Plan, RaisingInfo, SaasInfo,
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 import { JOB_DAYS } from "./jobs";
@@ -64,6 +64,18 @@ function toPage(d: any): PageDoc {
     category: d.category ?? "company",
     investor: d.investor ? { fundSize: d.investor.fundSize ?? "", stages: d.investor.stages ?? [], focus: d.investor.focus ?? [] } : null,
     saas: d.saas ? { pricing: d.saas.pricing ?? "", platforms: d.saas.platforms ?? [] } : null,
+    raising: d.raising?.active
+      ? {
+          active: true,
+          stage: d.raising.stage ?? "",
+          amount: d.raising.amount ?? null,
+          currency: d.raising.currency ?? "USD",
+          description: d.raising.description ?? "",
+          url: d.raising.url ?? "",
+          email: d.raising.email ?? "",
+          since: d.raising.since ?? null,
+        }
+      : null,
     createdById: d.createdById ? String(d.createdById) : null,
     event: d.event
       ? { start: d.event.start ?? null, end: d.event.end ?? null, city: d.event.city ?? "", format: d.event.format ?? "", speakers: d.event.speakers ?? [], sponsors: d.event.sponsors ?? [] }
@@ -1004,6 +1016,8 @@ export interface OrgInput {
   investor: InvestorInfo | null;
   event: EventInfo | null;
   saas: SaasInfo | null;
+  /** undefined = keep (only the page's owners may change it) */
+  raising?: RaisingInfo | null;
   /** undefined = keep (Business plan only) */
   brandColor?: string;
   ticker: Ticker | null;
@@ -1073,6 +1087,7 @@ export async function saveOrgPage(user: SessionUser, slug: string | null, input:
     investor: input.category === "investor" ? input.investor : null,
     event: input.category === "event" ? input.event : null,
     saas: input.category === "saas" ? input.saas : null,
+    ...(input.raising !== undefined ? { raising: input.raising } : {}),
     ...(input.brandColor !== undefined ? { brandColor: input.brandColor } : {}),
     ...(input.jobs !== undefined ? { jobs: input.jobs } : {}),
     outLinks: extractWikiLinks(input.body),
