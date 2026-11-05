@@ -5,6 +5,7 @@ import { cachedSectors } from "@/lib/cached";
 import { SECTOR_GROUPS } from "@/lib/sectors";
 import { Breadcrumbs } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Sectors", description: "Browse companies and people on Portfedia by sector." };
 
@@ -12,6 +13,7 @@ const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").repla
 
 /** Every sector of the fixed list, grouped; sectors with pages link to their companies and people. */
 export default async function SectorsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireFeature("sectors"); // the section can be switched off in Admin → Sections
   await connection(); // data comes from the database at request time (cached briefly)
   const q = ((await searchParams).q ?? "").trim().slice(0, 80);
   const counts = new Map((await cachedSectors()).map((s) => [s.sector, s]));

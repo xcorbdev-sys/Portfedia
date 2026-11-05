@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/site";
 import { breadcrumbLd, jobPostingLd, ldJson } from "@/lib/seo";
 import { toggleSavedJobAction } from "@/lib/actions/jobs";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
 type Props = { params: Promise<{ org: string; id: string }> };
 
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function JobPage({ params }: Props) {
+  await requireFeature("jobs"); // the section can be switched off in Admin → Sections
   await connection();
   const { org, id } = await params;
   const res = await getJob(org, id);

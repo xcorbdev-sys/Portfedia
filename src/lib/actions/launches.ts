@@ -5,8 +5,10 @@ import { getCurrentUser, safeNext } from "../auth";
 import { launchProduct, toggleVote } from "../launches";
 import { str } from "../validate";
 import { rateLimit } from "../rate-limit";
+import { featureOn } from "../features";
 
 export async function launchAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("launches"))) redirect("/"); // section switched off
   const slug = str(fd.get("slug"), 120);
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/org/${slug}/manage`);
@@ -15,6 +17,7 @@ export async function launchAction(fd: FormData): Promise<void> {
 }
 
 export async function voteAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("launches"))) redirect("/"); // section switched off
   const back = safeNext(fd.get("back"), "/launches");
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(back)}`);

@@ -11,6 +11,7 @@ import { createJobAlertAction } from "@/lib/actions/jobs";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
 import { Pagination, paginate } from "@/components/Pagination";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Jobs", description: "Open positions at companies and SaaS projects on Portfedia." };
 
@@ -18,6 +19,7 @@ const KEYS = ["q", "type", "workplace", "level", "location", "sector"] as const;
 type SP = Partial<Record<(typeof KEYS)[number] | "page", string>>;
 
 export default async function JobsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("jobs"); // the section can be switched off in Admin → Sections
   await connection(); // data comes from the database at request time (cached briefly)
   const sp = await searchParams;
   const f = Object.fromEntries(KEYS.map((k) => [k, (sp[k] ?? "").trim().slice(0, 120)])) as Record<(typeof KEYS)[number], string>;

@@ -27,6 +27,7 @@ import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
 import { attendAction, deleteUpdateAction, postUpdateAction } from "@/lib/actions/page-social";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 import { SafeImg } from "@/components/SafeImg";
+import { getFeatures } from "@/lib/features";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string }> };
 
@@ -70,6 +71,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
   if (page.type === "person") permanentRedirect(`/${page.slug}`);
 
   const user = await getCurrentUser();
+  const features = await getFeatures();
   const investorSlugs = page.fundingRounds.flatMap((r) => r.investors.map((i) => i.slug));
   const relatedSlugs = [...page.leadership.map((l) => l.slug), ...page.acquisitions.map((a) => a.slug), page.parent?.slug ?? ""].filter(Boolean);
   const [existing, following, derived] = await Promise.all([
@@ -85,11 +87,11 @@ export default async function OrgPage({ params, searchParams }: Props) {
   const [makers, network, launch, updates, going] = await Promise.all([
     isSaas ? makersOf(page.slug) : Promise.resolve([]),
     followNetwork(page),
-    isSaas ? latestLaunch(page._id) : Promise.resolve(null),
-    listUpdates(page._id),
-    page.category === "event" ? attendance(page._id, user?.id) : Promise.resolve(null),
+    isSaas && features.launches ? latestLaunch(page._id) : Promise.resolve(null),
+    features.updates ? listUpdates(page._id) : Promise.resolve([]),
+    page.category === "event" && features.events ? attendance(page._id, user?.id) : Promise.resolve(null),
   ]);
-  const canPost = canPostUpdates(user, page);
+  const canPost = features.updates && canPostUpdates(user, page);
   const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
@@ -112,7 +114,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
   for (const t of article.toc) if (t.level === 2) nav.push({ id: t.id, label: t.title });
   if (page.products.length) nav.push({ id: "products", label: "Products" });
   if (page.leadership.length) nav.push({ id: "leadership", label: "Leadership" });
-  if (page.status === "claimed" && page.jobs.length) nav.push({ id: "jobs", label: "Open Positions" });
+  if (page.status === "claimed" && page.jobs.length && features.jobs) nav.push({ id: "jobs", label: "Open Positions" });
   if (page.fundingRounds.length) nav.push({ id: "funding", label: "Funding" });
   if (page.acquisitions.length || relations.acquiredBy.length) nav.push({ id: "acquisitions", label: "Acquisitions" });
   if (page.category === "event" && page.event?.speakers.length) nav.push({ id: "speakers", label: "Speakers" });
@@ -245,7 +247,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
               </span>
             </div>
           )}
-          {page.raising && (
+          {page.raising && features.raising && (
             <section className="raising-card" id="raising">
               <div className="raising-card__head">
                 <span className="raising-card__badge">Raising now</span>
@@ -422,7 +424,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
           )}
           <ProductsSection page={page} />
           <LeadershipSection page={page} existing={existing} byName={leaderLinks} />
-          <JobsSection page={page} />
+          {features.jobs && <JobsSection page={page} />}
           {page.fundingRounds.length > 0 && (
             <section className="p-section" id="funding">
               <h2>Funding</h2>

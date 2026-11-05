@@ -4,12 +4,14 @@ import { listPages, sectorsFor } from "@/lib/pages";
 import { SAAS_PRICING } from "@/lib/types";
 import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "SaaS Projects", description: "Software products introduced by their makers on Portfedia." };
 
 type SP = Record<string, string | undefined>;
 
 export default async function SaasPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("saas"); // the section can be switched off in Admin → Sections
   const { values, page, href } = listParams(await searchParams, ["q", "sector", "pricing", "sort"]);
   const pricing = values.pricing in SAAS_PRICING ? values.pricing : "";
   const [data, sectors] = await Promise.all([

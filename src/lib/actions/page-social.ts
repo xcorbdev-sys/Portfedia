@@ -6,8 +6,10 @@ import { deleteUpdate, postUpdate, toggleAttendance } from "../page-social";
 import { revalidatePath } from "../revalidate";
 import { str } from "../validate";
 import { rateLimit } from "../rate-limit";
+import { featureOn } from "../features";
 
 export async function postUpdateAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("updates"))) redirect("/"); // section switched off
   const slug = str(fd.get("slug"), 120);
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/org/${slug}`);
@@ -26,6 +28,7 @@ export async function deleteUpdateAction(fd: FormData): Promise<void> {
 }
 
 export async function attendAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("events"))) redirect("/"); // section switched off
   const slug = str(fd.get("slug"), 120);
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/org/${slug}`);

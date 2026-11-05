@@ -9,24 +9,26 @@ import { logoutAction } from "@/lib/actions/auth";
 import { Thumb } from "./ui";
 import { MenuCloser } from "./client";
 import { ResendVerificationButton } from "./forms/AuthForms";
+import { getFeatures, type FeatureKey } from "@/lib/features";
 
 // #60: the mobile menu also lists pages that only appear in the desktop footer
-const MOBILE_EXTRA = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/events", label: "Events" },
-  { href: "/investors", label: "Investors" },
-  { href: "/raising", label: "Raising now" },
-  { href: "/launches", label: "Launches" },
-  { href: "/mentors", label: "Mentors" },
-  { href: "/help", label: "Help" },
+// `feature`: hidden when an admin switches that section off
+const MOBILE_EXTRA: { href: string; label: string; feature?: FeatureKey }[] = [
+  { href: "/jobs", label: "Jobs", feature: "jobs" },
+  { href: "/events", label: "Events", feature: "events" },
+  { href: "/investors", label: "Investors", feature: "investors" },
+  { href: "/raising", label: "Raising now", feature: "raising" },
+  { href: "/launches", label: "Launches", feature: "launches" },
+  { href: "/mentors", label: "Mentors", feature: "mentors" },
+  { href: "/help", label: "Help", feature: "help" },
 ];
 
-const NAV = [
+const ALL_NAV: { href: string; label: string; feature?: FeatureKey }[] = [
   { href: "/people", label: "People" },
   { href: "/companies", label: "Companies" },
-  { href: "/saas", label: "SaaS" },
-  { href: "/education", label: "Education" },
-  { href: "/sectors", label: "Sectors" },
+  { href: "/saas", label: "SaaS", feature: "saas" },
+  { href: "/education", label: "Education", feature: "education" },
+  { href: "/sectors", label: "Sectors", feature: "sectors" },
 ];
 
 /** The Portfedia mark: a serif P with a turning page, on a blue tile. */
@@ -60,6 +62,10 @@ export function Brand() {
 }
 
 export async function Header({ showSearch = true }: { showSearch?: boolean }) {
+  const features = await getFeatures();
+  const on = (n: { feature?: FeatureKey }) => !n.feature || features[n.feature];
+  const NAV = ALL_NAV.filter(on);
+  const extra = MOBILE_EXTRA.filter(on);
   const user = await getCurrentUser();
   // #38: everything the header needs, in parallel (one round trip instead of five sequential ones)
   const [myPage, pending, unread] = user
@@ -162,7 +168,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                   {pending > 0 && <span className="menu__badge">{pending}</span>}
                 </Link>
               )}
-              {[...NAV, ...MOBILE_EXTRA].map((n) => (
+              {[...NAV, ...extra].map((n) => (
                 <Link key={n.href} href={n.href}>{n.label}</Link>
               ))}
             </div>

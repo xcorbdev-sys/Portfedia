@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { HELP_ARTICLES } from "@/lib/help";
 import { Breadcrumbs } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Help center", description: "Answers about profiles, verification, company pages and privacy on Portfedia." };
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  await connection();
+  await requireFeature("help"); // the section can be switched off in Admin → Sections
   return (
     <div className="container" style={{ paddingBottom: 56, maxWidth: 820 }}>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Help" }]} />

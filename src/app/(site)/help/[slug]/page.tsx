@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HELP_ARTICLES, helpArticle } from "@/lib/help";
 import { renderArticle } from "@/lib/wikitext";
 import { Breadcrumbs } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
-export function generateStaticParams() {
-  return HELP_ARTICLES.map((a) => ({ slug: a.slug }));
-}
-export const dynamicParams = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const a = helpArticle((await params).slug);
@@ -16,6 +14,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function HelpArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  await connection();
+  await requireFeature("help"); // the section can be switched off in Admin → Sections
   const a = helpArticle((await params).slug);
   if (!a) notFound();
   const html = renderArticle(a.body, new Map());

@@ -3,12 +3,14 @@ import Link from "next/link";
 import { listPages } from "@/lib/pages";
 import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Education", description: "Universities, schools and other educational institutions on Portfedia, with their alumni." };
 
 type SP = Record<string, string | undefined>;
 
 export default async function EducationPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("education"); // the section can be switched off in Admin → Sections
   const { values, page, href } = listParams(await searchParams, ["q", "sort"]);
   const data = await listPages({ types: ["school"], q: values.q, sort: values.sort as never, page });
   return (

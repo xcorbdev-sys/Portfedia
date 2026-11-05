@@ -24,6 +24,17 @@ export async function saveGlobeAction(fd: FormData): Promise<void> {
   redirect(`/admin?section=home&${res.skipped.length ? "error" : "done"}=${encodeURIComponent(msg)}`);
 }
 
+/** Admin → Sections: switch parts of the site on or off everywhere. */
+export async function saveFeaturesAction(fd: FormData): Promise<void> {
+  await moderator();
+  const { FEATURES, saveFeatures } = await import("../features");
+  const { revalidateTag, revalidatePath: revalidateAll } = await import("next/cache");
+  await saveFeatures(Object.fromEntries(Object.keys(FEATURES).map((k) => [k, fd.get(`f_${k}`) === "on"])));
+  revalidateTag("features", { expire: 0 });
+  revalidateAll("/", "layout"); // menus and footers on every page
+  redirect("/admin?section=sections&done=" + encodeURIComponent("Sections saved. Changes show on every page right away."));
+}
+
 export type CollectionState = { error?: string; ok?: string } | undefined;
 
 export async function saveCollectionAction(_: CollectionState, fd: FormData): Promise<CollectionState> {

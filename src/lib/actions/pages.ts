@@ -23,6 +23,7 @@ import { OPEN_TO, ORG_CATEGORIES, RAISE_STAGES, SAAS_PRICING, type OrgCategory, 
 import { cleanSectors } from "../sectors";
 import { CURRENCIES, JOB_TYPES, LEVELS as JOB_LEVELS, SALARY_PERIODS, WORKPLACES } from "../jobs";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
+import { featureOn } from "../features";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -467,6 +468,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (orgGuard) return { error: orgGuard };
   const orgExtras = parseOrgExtras(fd);
+  if (!slug && fd.get("category") === "saas" && !(await featureOn("saas"))) return { error: "SaaS projects can't be added right now." };
   // SaaS projects pick from the SaaS categories, other organizations from the industry list
   const orgSectors = cleanSectors(parseJsonList(fd.get("sectors")), fd.get("category") === "saas");
   // "Part of": a company can't be its own parent, nor the parent of its parent
@@ -537,7 +539,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     });
     pageSlug = page.slug;
     // Members who asked to hear about new raises get a notification when a company starts raising
-    if (page.raising && !prevOrg?.raising) {
+    if (page.raising && !prevOrg?.raising && (await featureOn("raising"))) {
       const { notifyNewRaise } = await import("../raising");
       await notifyNewRaise(page, user.id);
     }

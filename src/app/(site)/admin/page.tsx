@@ -10,7 +10,8 @@ import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
 import { AdminImport } from "@/components/AdminImport";
-import { saveGlobeAction } from "@/lib/actions/admin";
+import { saveFeaturesAction, saveGlobeAction } from "@/lib/actions/admin";
+import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 import { r2Configured } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
@@ -20,7 +21,7 @@ type SP = { section?: string; tab?: string; q?: string; error?: string; reason?:
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
   const sp = await searchParams;
-  const section = ["reports", "users", "import", "overview", "home"].includes(sp.section ?? "") ? sp.section! : "applications";
+  const section = ["reports", "users", "import", "overview", "home", "sections"].includes(sp.section ?? "") ? sp.section! : "applications";
   const [pendingApps, openReports] = await Promise.all([countPendingApplications(), countOpenReports()]);
 
   return (
@@ -34,6 +35,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
         <Link href="/admin?section=home" aria-current={section === "home" ? "page" : undefined}>Home page</Link>
+        <Link href="/admin?section=sections" aria-current={section === "sections" ? "page" : undefined}>Sections</Link>
       </nav>
       {!r2Configured() && (
         <div className="notice notice--error" style={{ marginBottom: 14 }}>
@@ -50,6 +52,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {section === "users" && <Users q={sp.q ?? ""} />}
       {section === "import" && <AdminImport />}
       {section === "home" && <HomeGlobe />}
+      {section === "sections" && <Sections />}
     </div>
   );
 }
@@ -222,6 +225,40 @@ async function Reports({ tab: raw, reason }: { tab?: string; reason?: string }) 
         </ul>
       )}
     </>
+  );
+}
+
+/* ───────────── Sections (feature switches) ───────────── */
+
+async function Sections() {
+  const features = await getFeatures();
+  return (
+    <section className="card">
+      <div className="card__body">
+        <h2 className="card__title">Sections of the site</h2>
+        <p className="small muted">
+          Switch a section off and it disappears everywhere: its pages show &ldquo;not found&rdquo;, it leaves the menus, the footer and the
+          site map, its parts on other pages are hidden and its emails stop. Nothing is deleted; switch it on again and everything is back.
+          People, companies and search are always on.
+        </p>
+        <form action={saveFeaturesAction} className="feature-list">
+          {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (
+            <label key={k} className="feature-row">
+              <span className="switch">
+                <input type="checkbox" name={`f_${k}`} defaultChecked={features[k]} />
+                <span aria-hidden="true" />
+              </span>
+              <span>
+                <b>{FEATURES[k].label}</b>
+                {FEATURES[k].href && <span className="muted small"> · {FEATURES[k].href}</span>}
+                <span className="small muted feature-row__info">{FEATURES[k].info}</span>
+              </span>
+            </label>
+          ))}
+          <button className="btn btn--primary" type="submit" style={{ width: "fit-content", marginTop: 8 }}>Save</button>
+        </form>
+      </div>
+    </section>
   );
 }
 

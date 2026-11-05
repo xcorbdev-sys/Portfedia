@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isoWeek, launchesOfWeek, previousWeek, validWeek, type LaunchRow } from "@/lib/launches";
 import { voteAction } from "@/lib/actions/launches";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "SaaS launches", description: "New SaaS products launched on Portfedia this week, ranked by the community." };
 
@@ -43,6 +44,7 @@ function LaunchList({ items, open, back }: { items: LaunchRow[]; open: boolean; 
 }
 
 export default async function LaunchesPage({ searchParams }: { searchParams: Promise<{ week?: string; launched?: string; error?: string }> }) {
+  await requireFeature("launches"); // the section can be switched off in Admin → Sections
   await connection();
   const sp = await searchParams;
   const current = isoWeek();

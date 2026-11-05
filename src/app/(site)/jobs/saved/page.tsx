@@ -4,10 +4,12 @@ import { requireUser } from "@/lib/auth";
 import { savedJobs } from "@/lib/job-tools";
 import { toggleSavedJobAction } from "@/lib/actions/jobs";
 import { Breadcrumbs, Thumb } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Saved jobs", robots: { index: false } };
 
 export default async function SavedJobsPage() {
+  await requireFeature("jobs"); // the section can be switched off in Admin → Sections
   const user = await requireUser("/jobs/saved");
   const jobs = await savedJobs(user.id);
   return (

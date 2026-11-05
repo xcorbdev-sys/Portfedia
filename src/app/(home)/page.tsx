@@ -10,6 +10,7 @@ import { pageHref } from "@/lib/wikitext";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
 import { SafeImg } from "@/components/SafeImg";
+import { getFeatures } from "@/lib/features";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -19,7 +20,7 @@ const HERO_IMAGE = ["hero.webp", "hero.png"].find((f) => existsSync(join(process
 export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   await connection(); // always run at request time
   const { deleted } = await searchParams;
-  const data = await cachedHomeData();
+  const [data, features] = await Promise.all([cachedHomeData(), getFeatures()]);
   return (
     <>
       <section className="hero">
@@ -83,6 +84,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           hasPeople={data.featuredPeople.length > 0}
           hasCompanies={data.featuredOrgs.length > 0}
           hasSaas={data.featuredSaas.length > 0}
+          showSaas={features.saas}
         />
         <div className="cta-band" style={{ marginTop: 36 }}>
           <div>

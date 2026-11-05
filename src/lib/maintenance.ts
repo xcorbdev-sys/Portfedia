@@ -132,7 +132,7 @@ export async function runMaintenance() {
       unverifiedAccounts: await deleteStaleUnverifiedAccounts(),
       compressedRevisions: await compressOldRevisions(),
       purgedImages: await purgeImageTrash(),
-      jobAlertEmails: await (await import("./job-tools")).sendJobAlerts(),
+      jobAlertEmails: (await (await import("./features")).featureOn("jobs")) ? await (await import("./job-tools")).sendJobAlerts() : 0,
       ms: 0,
       at: new Date().toISOString(),
     };

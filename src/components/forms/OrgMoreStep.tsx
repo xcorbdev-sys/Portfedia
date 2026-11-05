@@ -9,7 +9,7 @@ import { CURRENCIES, JOB_TYPES, LEVELS, SALARY_PERIODS, WORKPLACES } from "@/lib
 import { RAISE_STAGES } from "@/lib/types";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
-export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean }) {
+export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false, features = {} }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean; features?: { jobs?: boolean; raising?: boolean } }) {
   const [parent, setParent] = useState(page?.parent?.title ?? "");
   const day = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "");
   return (
@@ -34,7 +34,7 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
           <span className="hint">The portfolio is built automatically from funding rounds that list this investor.</span>
         </fieldset>
       )}
-      {["company", "saas", "nonprofit"].includes(category) && (
+      {features.raising !== false && ["company", "saas", "nonprofit"].includes(category) && (
         <fieldset className="repeat-item" style={{ border: "1px solid var(--border)" }}>
           <legend className="small" style={{ fontWeight: 700, padding: "0 6px" }}>Fundraising</legend>
           <label className="check">
@@ -239,7 +239,7 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
           <input id="tickerSymbol" name="tickerSymbol" className="input" maxLength={20} defaultValue={page?.ticker?.symbol} placeholder="e.g. ASELS" />
         </div>
       </div>
-      {canManageJobs ? (
+      {features.jobs === false ? null : canManageJobs ? (
         <ListEditor
           name="jobs"
           label="Open positions"

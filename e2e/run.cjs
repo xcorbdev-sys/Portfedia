@@ -698,6 +698,30 @@ async function createProfile(p, opts) {
   await elif.locator('#attending button:has-text("✓ Going")').waitFor();
   check("members say they're going to an event", /1 going/.test(await elif.locator("#attending").innerText()));
 
+  // ── Admin switches sections off and on: everything about them disappears and comes back
+  const setSections = async (off) => {
+    await admin.goto(`${BASE}/admin?section=sections`);
+    for (const k of ["jobs", "saas", "raising", "launches"]) {
+      const box = admin.locator(`input[name=f_${k}]`);
+      if (off.includes(k)) await box.uncheck();
+      else await box.check();
+    }
+    await admin.click('.feature-list button:has-text("Save")');
+    await admin.waitForURL(/section=sections&done=/);
+  };
+  await setSections(["jobs", "saas"]);
+  check("switched-off section returns 404", (await anon.goto(`${BASE}/jobs`)).status() === 404 && (await anon.goto(`${BASE}/saas`)).status() === 404);
+  await anon.goto(`${BASE}/people`);
+  check("switched-off sections leave the menus and footer", (await anon.locator('header a[href="/saas"], footer a[href="/saas"], footer a[href="/jobs"], header a[href="/jobs"]').count()) === 0);
+  await anon.goto(`${BASE}/org/northwind-robotics`);
+  check("company pages hide switched-off parts", (await anon.locator("#jobs").count()) === 0);
+  await elif.goto(`${BASE}/create`);
+  check("no SaaS option while SaaS is off", (await elif.locator('input[name=kind][value="saas"]').count()) === 0);
+  await setSections([]);
+  check("switched back on", (await anon.goto(`${BASE}/jobs`)).status() === 200);
+  await anon.goto(`${BASE}/org/northwind-robotics`);
+  check("company job section is back", (await anon.locator("#jobs").count()) === 1);
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

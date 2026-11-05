@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/site";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
 import { Pagination, paginate } from "@/components/Pagination";
+import { requireFeature } from "@/lib/features";
 
 const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
 
@@ -37,6 +38,7 @@ function EventList({ items }: { items: EventRow[] }) {
 }
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ q?: string; city?: string; page?: string }> }) {
+  await requireFeature("events"); // the section can be switched off in Admin → Sections
   await connection();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 80);

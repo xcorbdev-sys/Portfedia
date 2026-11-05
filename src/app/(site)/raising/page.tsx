@@ -10,12 +10,14 @@ import { raiseNotificationsAction } from "@/lib/actions/raising";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
 import { Pagination } from "@/components/Pagination";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Raising now", description: "Companies and SaaS projects on Portfedia that are raising money now." };
 
 type SP = { q?: string; stage?: string; sector?: string; page?: string };
 
 export default async function RaisingPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("raising"); // the section can be switched off in Admin → Sections
   await connection();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 80);

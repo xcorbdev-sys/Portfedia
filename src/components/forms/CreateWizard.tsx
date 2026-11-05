@@ -39,6 +39,7 @@ export function CreateWizard({
   initialKind,
   quota,
   mySaas = [],
+  features = {},
 }: {
   myPage: PageDoc | null;
   defaultName: string;
@@ -46,6 +47,7 @@ export function CreateWizard({
   initialKind: Kind | null;
   quota: QuotaView;
   mySaas?: LinkableProject[];
+  features?: { jobs?: boolean; raising?: boolean; saas?: boolean };
 }) {
   const router = useRouter();
   const [kind, setKind] = useState<Kind>(initialKind ?? (myPage ? "org" : "person"));
@@ -54,7 +56,7 @@ export function CreateWizard({
 
   if (started && kind === "person") return <PersonForm page={null} defaultName={defaultName} mySaas={mySaas} onBackToType={() => setStarted(false)} />;
   if (started && kind !== "person" && !full) {
-    return <OrgForm page={null} defaultTitle={initialTitle} initialCategory={kind === "saas" ? "saas" : "company"} onBackToType={() => setStarted(false)} />;
+    return <OrgForm page={null} defaultTitle={initialTitle} initialCategory={kind === "saas" ? "saas" : "company"} features={features} onBackToType={() => setStarted(false)} />;
   }
 
   return (
@@ -62,7 +64,7 @@ export function CreateWizard({
       <Stepper labels={["Profile Type", "Basic Info", "Details", "Sources & Submit"]} current={0} />
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="visually-hidden">Profile type</legend>
-        <div className="choice-grid choice-grid--3">
+        <div className={`choice-grid${features.saas !== false ? " choice-grid--3" : ""}`}>
           <label className="choice">
             <input type="radio" name="kind" value="person" checked={kind === "person"} onChange={() => setKind("person")} />
             <User />
@@ -80,6 +82,7 @@ export function CreateWizard({
             <span>Create a profile for a company, holding, fund or institution.</span>
             <QuotaNote q={quota.company} what="company pages" />
           </label>
+          {features.saas !== false && (
           <label className="choice">
             <input type="radio" name="kind" value="saas" checked={kind === "saas"} onChange={() => setKind("saas")} />
             <Rocket />
@@ -87,6 +90,7 @@ export function CreateWizard({
             <span>Introduce your software product. You manage its page yourself.</span>
             <QuotaNote q={quota.saas} what="SaaS projects" />
           </label>
+          )}
         </div>
       </fieldset>
       {full && (

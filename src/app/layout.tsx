@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
 import { paidPlansEnabled } from "@/lib/pages";
+import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 
 // Wordmark typeface: Merriweather Black (SIL Open Font License), bundled so builds need no network
 const logoFont = localFont({ src: "./fonts/merriweather-latin-900-normal.woff2", weight: "900", variable: "--font-logo", display: "swap" });
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Reading the request makes every page dynamic, which the per-request CSP nonce requires
   await headers();
+  const features = await getFeatures();
   return (
     <html lang="en" className={logoFont.variable}>
       <body>
@@ -40,17 +42,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav aria-label="Footer">
               <Link href="/people">People</Link>
               <Link href="/companies">Companies</Link>
-              <Link href="/saas">SaaS Projects</Link>
-              <Link href="/launches">Launches</Link>
-              <Link href="/sectors">Sectors</Link>
-              <Link href="/education">Education</Link>
-              <Link href="/jobs">Jobs</Link>
-              <Link href="/events">Events</Link>
-              <Link href="/mentors">Mentors</Link>
-              <Link href="/investors">Investors</Link>
-              <Link href="/raising">Raising now</Link>
+              {(Object.keys(FEATURES) as FeatureKey[])
+                .filter((k) => features[k] && FEATURES[k].href && k !== "help")
+                .map((k) => (
+                  <Link key={k} href={FEATURES[k].href}>{FEATURES[k].footer}</Link>
+                ))}
               {paidPlansEnabled() && <Link href="/pricing">Pricing</Link>}
-              <Link href="/help">Help</Link>
+              {features.help && <Link href="/help">Help</Link>}
               <Link href="/random" prefetch={false}>Random profile</Link>
               <Link href="/terms">Terms</Link>
               <Link href="/copyright">Copyright</Link>

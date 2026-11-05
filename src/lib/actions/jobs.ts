@@ -6,9 +6,11 @@ import { addAlert, deleteAlert, toggleSavedJob } from "../job-tools";
 import { JOB_TYPES, LEVELS, WORKPLACES } from "../jobs";
 import { str } from "../validate";
 import { rateLimit } from "../rate-limit";
+import { featureOn } from "../features";
 
 
 export async function toggleSavedJobAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("jobs"))) redirect("/"); // section switched off
   const org = str(fd.get("org"), 120);
   const id = str(fd.get("id"), 20);
   const back = safeNext(fd.get("back"), `/jobs/${org}/${id}`);
@@ -21,6 +23,7 @@ export async function toggleSavedJobAction(fd: FormData): Promise<void> {
 const pick = (list: readonly string[], v: unknown) => (list.includes(String(v ?? "")) ? String(v) : "");
 
 export async function createJobAlertAction(fd: FormData): Promise<void> {
+  if (!(await featureOn("jobs"))) redirect("/"); // section switched off
   const user = await getCurrentUser();
   const filters = {
     q: str(fd.get("q"), 80),

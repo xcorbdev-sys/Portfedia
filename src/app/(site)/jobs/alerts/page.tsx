@@ -4,10 +4,12 @@ import { requireUser } from "@/lib/auth";
 import { describeAlert, listAlerts } from "@/lib/job-tools";
 import { deleteJobAlertAction } from "@/lib/actions/jobs";
 import { Breadcrumbs } from "@/components/ui";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Job alerts", robots: { index: false } };
 
 export default async function JobAlertsPage({ searchParams }: { searchParams: Promise<{ created?: string; deleted?: string; error?: string }> }) {
+  await requireFeature("jobs"); // the section can be switched off in Admin → Sections
   const user = await requireUser("/jobs/alerts");
   const sp = await searchParams;
   const alerts = await listAlerts(user.id);

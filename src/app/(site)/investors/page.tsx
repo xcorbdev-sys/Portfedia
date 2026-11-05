@@ -5,6 +5,7 @@ import { listInvestors } from "@/lib/pages";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
 import { Pagination, paginate } from "@/components/Pagination";
+import { requireFeature } from "@/lib/features";
 
 const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
 
@@ -12,6 +13,7 @@ const norm = (s: string) => s.toLocaleLowerCase("en-US").normalize("NFKD").repla
 export const metadata: Metadata = { title: "Investors", description: "Venture capital firms, angels and funds on Portfedia, with the companies they backed." };
 
 export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ q?: string; stage?: string; page?: string }> }) {
+  await requireFeature("investors"); // the section can be switched off in Admin → Sections
   await connection();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 80);

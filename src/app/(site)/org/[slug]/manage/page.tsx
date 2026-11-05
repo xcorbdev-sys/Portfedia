@@ -13,6 +13,7 @@ import { InviteAdminForm } from "@/components/forms/OrgAdminForms";
 import { StatsCard } from "@/components/StatsCard";
 import { LAUNCH_EVERY_DAYS, latestLaunch } from "@/lib/launches";
 import { launchAction } from "@/lib/actions/launches";
+import { featureOn } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Manage organization", robots: { index: false } };
 
@@ -45,7 +46,8 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
   const { claimed, error, done } = await searchParams;
   const isMod = isModerator(user);
   const isSaas = page.category === "saas";
-  const launch = isSaas ? await latestLaunch(page._id) : null;
+  const launchesOn = await featureOn("launches");
+  const launch = isSaas && launchesOn ? await latestLaunch(page._id) : null;
   const canLaunchAgain = !launch || Date.now() - new Date(launch.createdAt).getTime() > LAUNCH_EVERY_DAYS * 86400000;
   const business = planActive(page.plan, "business");
 
@@ -123,7 +125,7 @@ export default async function ManageOrgPage({ params, searchParams }: { params: 
         </div>
       </section>
 
-      {isSaas && (
+      {isSaas && launchesOn && (
         <section className="card" id="launch" style={{ marginTop: 16 }}>
           <div className="card__body">
             <div className="card__title">Launch on Portfedia</div>

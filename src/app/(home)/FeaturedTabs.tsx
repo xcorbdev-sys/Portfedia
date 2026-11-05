@@ -13,6 +13,7 @@ export function FeaturedTabs({
   hasPeople,
   hasCompanies,
   hasSaas,
+  showSaas = true,
 }: {
   people: React.ReactNode;
   companies: React.ReactNode;
@@ -20,6 +21,7 @@ export function FeaturedTabs({
   hasPeople: boolean;
   hasCompanies: boolean;
   hasSaas: boolean;
+  showSaas?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("people");
   const empty = tab === "people" ? !hasPeople : tab === "companies" ? !hasCompanies : !hasSaas;
@@ -35,7 +37,7 @@ export function FeaturedTabs({
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === "people"} onClick={() => setTab("people")}>People</button>
         <button role="tab" aria-selected={tab === "companies"} onClick={() => setTab("companies")}>Companies</button>
-        <button role="tab" aria-selected={tab === "saas"} onClick={() => setTab("saas")}>SaaS</button>
+        {showSaas && <button role="tab" aria-selected={tab === "saas"} onClick={() => setTab("saas")}>SaaS</button>}
       </div>
       <div role="tabpanel">
         {empty ? (

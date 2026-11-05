@@ -33,6 +33,7 @@ export function OrgForm({
   featuredJobs = false,
   initialCategory = "company",
   canRename = false,
+  features,
 }: {
   page: PageDoc | null;
   defaultTitle?: string;
@@ -49,6 +50,8 @@ export function OrgForm({
   initialCategory?: string;
   /** Moderators and the page's own admins may rename an existing page */
   canRename?: boolean;
+  /** Switched-off sections hide their form parts (Admin → Sections) */
+  features?: { jobs?: boolean; raising?: boolean; saas?: boolean };
 }) {
   const [state, formAction, pending] = useActionState(saveSafely, undefined);
   const [step, setStep] = useState(0);
@@ -143,7 +146,7 @@ export function OrgForm({
         <div className="field">
           <label htmlFor="category">Category</label>
           <select id="category" name="category" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {Object.entries(ORG_CATEGORIES).map(([k, v]) => (
+            {Object.entries(ORG_CATEGORIES).filter(([k]) => k !== "saas" || features?.saas !== false || page?.category === "saas").map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
@@ -250,7 +253,7 @@ export function OrgForm({
           <h2>More</h2>
           <p className="muted small">Products, leadership, offices, history and more. Everything here is optional.</p>
         </div>
-        <OrgMoreStep page={page} canManageJobs={canManageJobs} category={category} business={business} featuredJobs={featuredJobs} />
+        <OrgMoreStep page={page} canManageJobs={canManageJobs} category={category} business={business} featuredJobs={featuredJobs} features={features} />
       </div>
 
       <div className="step form" hidden={step !== LAST} ref={(el) => { stepRefs.current[LAST] = el; }}>

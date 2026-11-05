@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { cachedCollections, cachedJobs, cachedSitemapPart } from "@/lib/cached";
 import { siteUrl } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
+import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -13,12 +14,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ part: stri
   const rows = await cachedSitemapPart(part);
   const urls: { loc: string; lastmod?: string }[] = rows.map((r) => ({ loc: `${base}${pageHref(r.type, r.slug)}`, lastmod: new Date(r.updatedAt).toISOString() }));
   if (part === 0) {
+    const features = await getFeatures();
     const collections = await cachedCollections();
     urls.unshift(
-      ...["/", "/people", "/companies", "/saas", "/education", "/sectors", "/jobs", "/events", "/investors", "/help"].map((p) => ({ loc: `${base}${p}` })),
+      ...["/", "/people", "/companies", ...(Object.keys(FEATURES) as FeatureKey[]).filter((k) => features[k] && FEATURES[k].href).map((k) => FEATURES[k].href)].map((p) => ({ loc: `${base}${p}` })),
       ...collections.map((c) => ({ loc: `${base}/collections/${c.slug}` })),
       // Each open job has its own page (Google for Jobs reads them)
-      ...(await cachedJobs()).map((l) => ({ loc: `${base}/jobs/${l.org.slug}/${l.job.id}`, ...(l.job.postedAt ? { lastmod: new Date(l.job.postedAt).toISOString() } : {}) })),
+      ...(features.jobs ? await cachedJobs() : []).map((l) => ({ loc: `${base}/jobs/${l.org.slug}/${l.job.id}`, ...(l.job.postedAt ? { lastmod: new Date(l.job.postedAt).toISOString() } : {}) })),
     );
   }
   if (urls.length === 0) return new Response("Not found", { status: 404 });
