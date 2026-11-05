@@ -16,7 +16,7 @@ export async function withLock<T>(name: string, ttlMs: number, fn: () => Promise
     const got = await Meta.findOneAndUpdate(
       { key: `lock:${name}`, $or: [{ lockedUntil: null }, { lockedUntil: { $lt: now } }] },
       { $set: { lockedUntil: new Date(now.getTime() + ttlMs) } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     if (!got) return null;
   } catch (err) {

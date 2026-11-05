@@ -218,7 +218,7 @@ export async function confirmEmailManually(userId: string): Promise<string | nul
 /** Gives or removes the blue "verified" badge on a profile or organization page. */
 export async function setPageVerified(slug: string, verified: boolean): Promise<{ type: string; slug: string } | null> {
   await connectDB();
-  const page = await Page.findOneAndUpdate({ slug }, { $set: { verified } }, { new: true, projection: { type: 1, slug: 1 } }).lean<{ type: string; slug: string }>();
+  const page = await Page.findOneAndUpdate({ slug }, { $set: { verified } }, { returnDocument: "after", projection: { type: 1, slug: 1 } }).lean<{ type: string; slug: string }>();
   return page ?? null;
 }
 

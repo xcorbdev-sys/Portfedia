@@ -43,7 +43,7 @@ export async function processOutbox(batch = 20): Promise<number> {
       const job = await Job.findOneAndUpdate(
         { status: { $in: ["queued", "processing"] }, runAt: { $lte: now }, $or: [{ lockedUntil: null }, { lockedUntil: { $lt: now } }] },
         { $set: { status: "processing", lockedUntil: new Date(now.getTime() + 60_000) }, $inc: { attempts: 1 } },
-        { sort: { runAt: 1 }, new: true },
+        { sort: { runAt: 1 }, returnDocument: "after" },
       ).lean<{ _id: unknown; type: string; payload: Record<string, unknown>; attempts: number }>();
       if (!job) break;
       const handler = handlers.get(job.type);

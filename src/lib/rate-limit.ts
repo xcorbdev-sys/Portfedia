@@ -13,7 +13,7 @@ export async function addToCounter(key: string, amount: number, windowMs: number
     const doc = await RateCounter.findOneAndUpdate(
       { _id: `${key}:${win}` },
       { $inc: { count: amount }, $setOnInsert: { expiresAt: new Date((win + 2) * windowMs) } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     ).lean<{ count: number }>();
     return doc?.count ?? amount;
   } catch {
