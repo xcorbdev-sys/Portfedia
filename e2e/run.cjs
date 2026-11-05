@@ -56,6 +56,7 @@ function photo(color) {
 async function createOrg(page, o) {
   await page.goto(`${BASE}/create?type=${o.type || "org"}&title=${encodeURIComponent(o.name)}`);
   if (o.kind) await page.selectOption("#type", o.kind);
+  if (o.category) await page.selectOption("#category", o.category);
   await page.fill("#sector", o.sector);
   await page.press("#sector", "Enter"); // picks the first match from the sector list
   await page.fill("#tags", o.tags);
@@ -679,6 +680,22 @@ async function createProfile(p, opts) {
   check("launched note on the SaaS page", (await anon.locator(".launched-note").count()) === 1);
   const badgeSvg = await (await anon.request.get(`${BASE}/org-badge/elif-analytics`)).text();
   check("badge shows the week ranking", /#1 SaaS of the week/.test(badgeSvg));
+
+  // ── Organization updates (owners only), mentors page, event attendance
+  await elif.goto(`${BASE}/org/elif-analytics`);
+  await elif.fill("#updates textarea[name=text]", "We just shipped weekly email reports.");
+  await elif.click('#updates button:has-text("Post update")');
+  await elif.waitForURL(/posted=1/);
+  check("owners post updates", (await elif.locator("#updates >> text=We just shipped weekly email reports.").count()) === 1);
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("visitors see updates but not the form", (await anon.locator("#updates >> text=weekly email reports").count()) === 1 && (await anon.locator("#updates textarea").count()) === 0);
+  const mentorsRes = await anon.goto(`${BASE}/mentors`);
+  check("mentors page", mentorsRes.status() === 200 && (await anon.locator("h1:has-text('Mentors')").count()) === 1);
+  await createOrg(admin, { category: "event", name: "RoboConf 2027", sector: "Events & Conferences", tags: "Robotics", summary: "A robotics conference", founded: "2027", hq: "Istanbul", employees: "1–10", website: "https://roboconf.example" });
+  await elif.goto(`${BASE}/org/roboconf-2027`);
+  await elif.click('#attending button:has-text("I\'m going")');
+  await elif.locator('#attending button:has-text("✓ Going")').waitFor();
+  check("members say they're going to an event", /1 going/.test(await elif.locator("#attending").innerText()));
 
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {

@@ -9,7 +9,7 @@ import { slugify } from "@/lib/slug";
 import { pageHref, renderArticle, stripWikiLinks } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
 import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
-import { Breadcrumbs, VerifiedBadge } from "@/components/ui";
+import { Breadcrumbs, Thumb, VerifiedBadge } from "@/components/ui";
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
 import { EntityGrid, PersonRows } from "@/components/EntityCards";
@@ -23,9 +23,11 @@ import { countView } from "@/lib/views";
 import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
 import { NetworkSummary } from "@/components/NetworkDialog";
 import { latestLaunch } from "@/lib/launches";
+import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
+import { attendAction, deleteUpdateAction, postUpdateAction } from "@/lib/actions/page-social";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string }> };
 
 const PREVIEW = 24;
 
@@ -55,8 +57,9 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function OrgPage({ params }: Props) {
+export default async function OrgPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { posted, updateError } = await searchParams;
   const page = await load(slug);
   if (!page) {
     const moved = await findRenamedPage(slug); // former names and old addresses
@@ -78,7 +81,14 @@ export default async function OrgPage({ params }: Props) {
   const isEvent = page.category === "event" && page.event;
   const isInvestor = page.category === "investor";
   const isSaas = page.category === "saas";
-  const [makers, network, launch] = await Promise.all([isSaas ? makersOf(page.slug) : Promise.resolve([]), followNetwork(page), isSaas ? latestLaunch(page._id) : Promise.resolve(null)]);
+  const [makers, network, launch, updates, going] = await Promise.all([
+    isSaas ? makersOf(page.slug) : Promise.resolve([]),
+    followNetwork(page),
+    isSaas ? latestLaunch(page._id) : Promise.resolve(null),
+    listUpdates(page._id),
+    page.category === "event" ? attendance(page._id, user?.id) : Promise.resolve(null),
+  ]);
+  const canPost = canPostUpdates(user, page);
   const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
@@ -86,7 +96,7 @@ export default async function OrgPage({ params }: Props) {
   const canEdit = canEditOrg(user, page);
   const reserved = [
     "overview", "about", "products", "leadership", "jobs", "funding", "acquisitions", "investments", "group", "milestones", "offices", "press",
-    "trend", "key-people", "people", "former-people", "alumni", "alumni-work", "connections", "sources", "network",
+    "trend", "key-people", "people", "former-people", "alumni", "alumni-work", "connections", "sources", "network", "updates", "raising", "attending",
   ];
   const article = renderArticle(page.body, existing, reserved);
   const ib = page.infobox;
@@ -214,6 +224,26 @@ export default async function OrgPage({ params }: Props) {
               <div className="fact"><Building2 /><span><small>Format</small><b>{page.event!.format || "—"}</b></span></div>
             </div>
           )}
+          {going && (
+            <div className="attending" id="attending">
+              {user ? (
+                <form action={attendAction}>
+                  <input type="hidden" name="slug" value={page.slug} />
+                  <button className={`btn btn--sm${going.going ? " btn--active" : " btn--primary"}`} type="submit">{going.going ? "✓ Going" : "I'm going"}</button>
+                </form>
+              ) : (
+                <Link className="btn btn--sm btn--primary" href={`/login?next=/org/${page.slug}`}>I&apos;m going</Link>
+              )}
+              <span className="small muted">{going.total.toLocaleString("en-US")} going</span>
+              <span className="attending__faces">
+                {going.people.slice(0, 8).map((p) => (
+                  <Link key={p.slug} href={`/${p.slug}`} title={p.title}>
+                    <Thumb image={p.image} name={p.title} variant="round" />
+                  </Link>
+                ))}
+              </span>
+            </div>
+          )}
           {page.raising && (
             <section className="raising-card" id="raising">
               <div className="raising-card__head">
@@ -231,6 +261,43 @@ export default async function OrgPage({ params }: Props) {
               <p className="raising-card__note">
                 Information provided by {page.title}. Portfedia doesn&apos;t collect or hold money and this is not investment advice.
               </p>
+            </section>
+          )}
+          {(updates.length > 0 || canPost) && (
+            <section className="p-section" id="updates">
+              <h2>Updates</h2>
+              {posted && <div className="notice notice--ok small">Posted. Your followers were notified.</div>}
+              {updateError && <div className="notice notice--error small">{updateError}</div>}
+              {canPost && (
+                <form action={postUpdateAction} className="update-form">
+                  <input type="hidden" name="slug" value={page.slug} />
+                  <textarea name="text" className="textarea textarea--plain" required minLength={5} maxLength={1000} placeholder={`Share news from ${page.title}: a launch, a hire, a milestone…`} aria-label="Update" />
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input name="url" type="url" className="input" style={{ flex: "1 1 220px" }} placeholder="Link (optional)" aria-label="Link" />
+                    <button className="btn btn--primary" type="submit">Post update</button>
+                  </div>
+                </form>
+              )}
+              {updates.length === 0 ? (
+                <p className="small muted">No updates yet.</p>
+              ) : (
+                <ul className="updates">
+                  {updates.map((u) => (
+                    <li key={u.id}>
+                      <time dateTime={new Date(u.createdAt).toISOString()}>{formatDate(u.createdAt)}</time>
+                      <p>{u.text}</p>
+                      {u.url && <a href={u.url} rel="nofollow ugc noopener" className="external small">{u.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60)}</a>}
+                      {canPost && (
+                        <form action={deleteUpdateAction}>
+                          <input type="hidden" name="slug" value={page.slug} />
+                          <input type="hidden" name="id" value={u.id} />
+                          <button type="submit" className="read-more small">Delete</button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
           {isSaas && (

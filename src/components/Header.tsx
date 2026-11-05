@@ -17,6 +17,7 @@ const MOBILE_EXTRA = [
   { href: "/investors", label: "Investors" },
   { href: "/raising", label: "Raising now" },
   { href: "/launches", label: "Launches" },
+  { href: "/mentors", label: "Mentors" },
   { href: "/help", label: "Help" },
 ];
 

@@ -520,4 +520,27 @@ const LaunchVoteSchema = new Schema<any>(
 );
 LaunchVoteSchema.index({ launchId: 1, userId: 1 }, { unique: true });
 export const LaunchVote = getModel("LaunchVote", LaunchVoteSchema);
+
+/* ───────────── Organization updates and event attendance ───────────── */
+const PageUpdateSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    text: { type: String, required: true, maxlength: 1000 },
+    url: { type: String, default: "" },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+PageUpdateSchema.index({ pageId: 1, createdAt: -1 });
+export const PageUpdate = getModel("PageUpdate", PageUpdateSchema);
+
+const AttendanceSchema = new Schema<any>(
+  {
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+AttendanceSchema.index({ pageId: 1, userId: 1 }, { unique: true });
+export const Attendance = getModel("Attendance", AttendanceSchema);
 export const PageView = getModel("PageView", PageViewSchema);
