@@ -6,6 +6,7 @@ import { OPEN_TO } from "@/lib/types";
 import { pageHref } from "@/lib/wikitext";
 import { slugify } from "@/lib/slug";
 import { buildTimeline, profileCompleteness } from "@/lib/profile-insights";
+import { SafeImg } from "@/components/SafeImg";
 
 const Ext = ({ url, children }: { url: string; children: React.ReactNode }) =>
   url ? (
@@ -57,9 +58,9 @@ export function ProjectsSection({ page, linked = {} }: { page: PageDoc; linked?:
         {page.projects.map((p) => (
           <li key={p.id} className="card project-card">
             {p.image ? (
-              <img src={p.image.url} alt="" loading="lazy" className="project-card__img" />
+              <SafeImg src={p.image.url} alt="" loading="lazy" className="project-card__img" fallback={null} />
             ) : p.pageSlug && linked[p.pageSlug]?.logo ? (
-              <img src={linked[p.pageSlug].logo} alt="" loading="lazy" className="project-card__img project-card__img--logo" />
+              <SafeImg src={linked[p.pageSlug].logo} alt="" loading="lazy" className="project-card__img project-card__img--logo" fallback={null} />
             ) : null}
             <div className="card__body">
               <div className="project-card__title">

@@ -528,8 +528,9 @@ async function createProfile(p, opts) {
   await admin.goto(`${BASE}/admin?section=home`);
   await admin.fill("#globe-people", `ayse-demir\n${BASE}/org/elif-analytics\nno-such-person`);
   await admin.click('button:has-text("Save")');
-  await admin.waitForSelector(".notice--error");
-  check("admin picks people and companies for the globe (invalid ones are reported)", /Saved 2 entries/.test(await admin.locator(".notice--error").innerText()) && /no-such-person/.test(await admin.locator(".notice--error").innerText()));
+  const globeMsg = admin.locator(".notice--error:has-text('Saved')");
+  await globeMsg.waitFor();
+  check("admin picks people and companies for the globe (invalid ones are reported)", /Saved 2 entries/.test(await globeMsg.innerText()) && /no-such-person/.test(await globeMsg.innerText()));
   await anon.goto(`${BASE}/`);
   check(
     "picked profile and company are on the globe",

@@ -9,6 +9,7 @@ import { HeroArt, NODES } from "@/components/HeroArt";
 import { pageHref } from "@/lib/wikitext";
 import { FeaturedTabs } from "./FeaturedTabs";
 import { ldJson, websiteLd } from "@/lib/seo";
+import { SafeImg } from "@/components/SafeImg";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -59,7 +60,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
                     aria-label={p.title}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.photo} alt="" width={48} height={48} loading="lazy" decoding="async" />
+                    <SafeImg src={p.photo} alt="" width={48} height={48} loading="lazy" decoding="async" fallback={<span className="globe-avatar__initials">{p.title.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>} />
                   </Link>
                 ))}
               </>

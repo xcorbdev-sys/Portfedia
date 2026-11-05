@@ -800,3 +800,4 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .attending__faces .thumb { width: 30px; height: 30px; border: 2px solid var(--surface); font-size: 0.6rem; }
 /* Title rows with a button: the button moves under the title on narrow screens */
 .section__head { flex-wrap: wrap; gap: 10px; }
+.globe-avatar__initials { display: grid; place-items: center; width: 100%; height: 100%; font-size: 0.7rem; font-weight: 700; color: var(--primary); background: var(--primary-soft); }

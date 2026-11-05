@@ -26,6 +26,7 @@ import { latestLaunch } from "@/lib/launches";
 import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
 import { attendAction, deleteUpdateAction, postUpdateAction } from "@/lib/actions/page-social";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
+import { SafeImg } from "@/components/SafeImg";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string }> };
 
@@ -168,7 +169,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
           <header className="p-head" id="overview">
             <div className="p-photo p-photo--logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {page.image ? <img src={page.image.url} alt={`${page.title} logo`} width={128} height={128} /> : initials(page.title)}
+              {page.image ? <SafeImg src={page.image.url} alt={`${page.title} logo`} width={128} height={128} fallback={initials(page.title)} /> : initials(page.title)}
             </div>
             <div className="p-head__title">
               <h1 className="p-name">

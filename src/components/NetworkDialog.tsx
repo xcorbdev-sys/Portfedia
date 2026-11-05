@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { SafeImg } from "./SafeImg";
 
 type Kind = "followers" | "following";
 type Item = { slug: string; type: string; title: string; subtitle: string; image: string };
@@ -88,7 +89,7 @@ export function NetworkSummary({
         <button type="button" onClick={() => show("followers")} className="net-summary__btn">
           {faces.length > 0 && (
             <span className="net-summary__faces" aria-hidden="true">
-              {faces.slice(0, 4).map((f) => (f.image ? <img key={f.slug} src={f.image} alt="" width={22} height={22} /> : <span key={f.slug} className="net-summary__initials">{initialsOf(f.title)}</span>))}
+              {faces.slice(0, 4).map((f) => (f.image ? <SafeImg key={f.slug} src={f.image} alt="" width={22} height={22} fallback={<span className="net-summary__initials">{initialsOf(f.title)}</span>} /> : <span key={f.slug} className="net-summary__initials">{initialsOf(f.title)}</span>))}
             </span>
           )}
           <span>
@@ -158,7 +159,7 @@ export function NetworkSummary({
               {items.map((i) => (
                 <li key={i.slug}>
                   <Link href={hrefOf(i)} onClick={close}>
-                    {i.image ? <img src={i.image} alt="" width={44} height={44} className={i.type === "person" ? "" : "is-logo"} /> : <span className={`net-dialog__initials${i.type === "person" ? "" : " is-logo"}`}>{initialsOf(i.title)}</span>}
+                    {i.image ? <SafeImg src={i.image} alt="" width={44} height={44} className={i.type === "person" ? "" : "is-logo"} fallback={<span className={`net-dialog__initials${i.type === "person" ? "" : " is-logo"}`}>{initialsOf(i.title)}</span>} /> : <span className={`net-dialog__initials${i.type === "person" ? "" : " is-logo"}`}>{initialsOf(i.title)}</span>}
                     <span className="net-dialog__who">
                       <b>{i.title}</b>
                       {i.subtitle && <span>{i.subtitle}</span>}

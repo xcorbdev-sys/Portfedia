@@ -11,6 +11,7 @@ import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
 import { AdminImport } from "@/components/AdminImport";
 import { saveGlobeAction } from "@/lib/actions/admin";
+import { r2Configured } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
@@ -34,6 +35,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
         <Link href="/admin?section=home" aria-current={section === "home" ? "page" : undefined}>Home page</Link>
       </nav>
+      {!r2Configured() && (
+        <div className="notice notice--error" style={{ marginBottom: 14 }}>
+          <b>Uploaded images are stored on the server&apos;s disk.</b> Unless <code>/app/uploads</code> is a persistent volume, every deploy
+          deletes them (photos and logos disappear). Set the R2_* variables (Cloudflare R2), or add persistent storage for{" "}
+          <code>/app/uploads</code> in Coolify.
+        </div>
+      )}
       {sp.error && <div className="notice notice--error" style={{ marginBottom: 14 }}>{sp.error}</div>}
       {sp.done && <div className="notice notice--ok" style={{ marginBottom: 14 }}>{sp.done}</div>}
       {section === "overview" && <Overview />}

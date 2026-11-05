@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { SafeImg } from "./SafeImg";
 import { initials } from "@/lib/site";
 import type { StoredImage } from "@/lib/types";
 
@@ -31,7 +32,7 @@ export function Thumb({
   const cls = `thumb ${variant === "round" ? "thumb--round" : variant === "logo" ? "thumb--logo" : ""} ${className}`;
   return (
     <span className={cls} aria-hidden="true">
-      {image ? <img src={image.thumbUrl ?? image.url} alt="" loading="lazy" decoding="async" width={96} height={96} /> : initials(name)}
+      {image ? <SafeImg src={image.thumbUrl ?? image.url} alt="" loading="lazy" decoding="async" width={96} height={96} fallback={initials(name)} /> : initials(name)}
     </span>
   );
 }

@@ -20,7 +20,7 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const OUTPUT_SIZE = 400;
 const LOCAL_DIR = path.join(process.cwd(), "uploads");
 
-const r2Configured = () =>
+export const r2Configured = () =>
   Boolean(
     process.env.R2_ACCOUNT_ID &&
       process.env.R2_ACCESS_KEY_ID &&

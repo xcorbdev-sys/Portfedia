@@ -27,6 +27,7 @@ import { Breadcrumbs, GitHubIcon, LinkedInIcon, VerifiedBadge } from "@/componen
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
 import { EntityGrid } from "@/components/EntityCards";
+import { SafeImg } from "@/components/SafeImg";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -167,7 +168,7 @@ export default async function PersonPage({ params }: Props) {
           <header className="p-head" id="overview">
             <OpenToPhoto page={page}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {page.image ? <img src={page.image.url} alt={page.title} width={128} height={128} /> : initials(page.title)}
+              {page.image ? <SafeImg src={page.image.url} alt={page.title} width={128} height={128} fallback={initials(page.title)} /> : initials(page.title)}
             </OpenToPhoto>
             <div className="p-head__title">
               <h1 className="p-name">
