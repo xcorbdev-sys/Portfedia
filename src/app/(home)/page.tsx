@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { connection } from "next/server";
 import Link from "next/link";
+import { SearchSuggest } from "@/components/SearchSuggest";
 import { ArrowRight, Building2, FileText, Layers, Search, User } from "lucide-react";
 import { cachedHomeData } from "@/lib/cached";
 import { EntityGrid } from "@/components/EntityCards";
@@ -40,7 +41,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
             <form action="/search" className="hero-search" role="search">
               <Search className="icon" aria-hidden="true" />
               <label htmlFor="home-q" className="visually-hidden">Search</label>
-              <input id="home-q" name="q" type="search" placeholder="Search people, companies, investors or topics..." autoComplete="off" />
+              <SearchSuggest id="home-q" placeholder="Search people, companies, investors or topics..." />
               <button type="submit" aria-label="Search"><ArrowRight size={18} /></button>
             </form>
             )}

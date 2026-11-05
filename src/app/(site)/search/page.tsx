@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { searchPages } from "@/lib/pages";
+import { fuzzyCards } from "@/lib/suggest";
+import { saveSearchAction } from "@/lib/actions/searches";
 import { slugify } from "@/lib/slug";
 import { pageHref } from "@/lib/wikitext";
 import { ResultList } from "@/components/EntityCards";
@@ -28,6 +30,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const pageNo = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const data = await searchPages({ q, types, sectors, page: pageNo });
+  // #36: nothing starts like the text: show close matches (typos, other spellings)
+  const close = q && data.total === 0 ? (await fuzzyCards(q, 20)).filter((c) => !types.length || types.includes(c.type)) : [];
   const pages = Math.max(1, Math.ceil(data.total / 40));
   const pageHrefFor = (n: number) => {
     const p = new URLSearchParams();
@@ -42,6 +46,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (sp.go && q) {
     const exact = data.results.find((r) => r.slug === slugify(q));
     if (exact) redirect(pageHref(exact.type, exact.slug));
+    if (close.length === 1) redirect(pageHref(close[0]!.type, close[0]!.slug));
   }
 
   const totalAll = Object.values(data.typeCounts).reduce((a, b) => a + (b ?? 0), 0);
@@ -87,6 +92,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <h1 className="results-title">
           {q ? <>Search results for &ldquo;{q}&rdquo; ({data.total})</> : <>Browse all profiles ({data.total})</>}
         </h1>
+        {(q || sectors.length > 0) && (
+          <form action={saveSearchAction} className="save-search" style={{ marginBottom: 10 }}>
+            <input type="hidden" name="kind" value={types.length === 1 ? (types[0] === "person" ? "people" : "companies") : "all"} />
+            <input type="hidden" name="q" value={q} />
+            <input type="hidden" name="sector" value={sectors[0] ?? ""} />
+            <button className="btn btn--sm" type="submit">Save this search</button>
+            <span className="small muted">We&apos;ll tell you about new matches.</span>
+          </form>
+        )}
         <nav className="tabs" aria-label="Result type">
           <Link href={tabHref()} aria-current={types.length !== 1 ? "page" : undefined}>All ({totalAll})</Link>
           {TYPES.map((t) => (
@@ -105,6 +119,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 {pageNo < pages && <Link className="btn btn--sm" href={pageHrefFor(pageNo + 1)}>Next</Link>}
               </nav>
             )}
+          </>
+        ) : close.length > 0 ? (
+          <>
+            <p className="notice notice--info did-you-mean">No exact match for &ldquo;{q}&rdquo;. Did you mean:</p>
+            <ResultList items={close} />
           </>
         ) : (
           <div className="empty">

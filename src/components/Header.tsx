@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Bell, Building2, ClipboardCheck, LogIn, LogOut, Menu, Plus, Rocket, Search, Settings, ShieldCheck, User } from "lucide-react";
+import { SearchSuggest } from "./SearchSuggest";
+import { Bell, Building2, ClipboardCheck, LogIn, LogOut, Menu, Plus, Rocket, Search, Settings, ShieldCheck, User, BellPlus } from "lucide-react";
 import { unreadCount } from "@/lib/notifications";
 import { inboxCountForPage } from "@/lib/feedback";
 import { Inbox } from "lucide-react";
@@ -94,7 +95,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
             <form action="/search" className="header-search" role="search">
               <Search className="icon" aria-hidden="true" />
               <label htmlFor="hq" className="visually-hidden">Search Portfedia</label>
-              <input id="hq" name="q" type="search" placeholder="Search Portfedia..." autoComplete="off" />
+              <SearchSuggest id="hq" placeholder="Search Portfedia..." />
               <input type="hidden" name="go" value="1" />
             </form>
           )}
@@ -144,6 +145,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                 )}
                 <Link href="/my-pages#companies"><Building2 size={16} /> My companies</Link>
                 <Link href="/my-pages#saas"><Rocket size={16} /> My SaaS</Link>
+                <Link href="/account/searches"><BellPlus size={16} /> Saved searches</Link>
                 <Link href="/create"><Plus size={16} /> New profile</Link>
                 <Link href="/account"><Settings size={16} /> Account</Link>
                 <form action={logoutAction}>

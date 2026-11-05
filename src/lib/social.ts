@@ -18,7 +18,7 @@ export async function notifyMentions(author: SessionUser, prevBody: string, next
   const people = await Page.find({ slug: { $in: added.slice(0, 30) }, type: "person", ...PUBLIC_FILTER }, { ownerId: 1, slug: 1 }).lean<{ _id: unknown; ownerId?: unknown }[]>();
   for (const p of people) {
     if (!p.ownerId || String(p.ownerId) === author.id) continue;
-    await notify([String(p.ownerId)], { type: "page_update", text: `${author.name} mentioned you on ${source.title}.`, href: source.href, pageId: String(p._id) });
+    await notify([String(p.ownerId)], { type: "mention", text: `${author.name} mentioned you on ${source.title}.`, href: source.href, pageId: String(p._id) });
   }
 }
 
@@ -68,6 +68,6 @@ export async function giveThanks(user: SessionUser, page: PageDoc): Promise<bool
     throw err;
   }
   await Page.updateOne({ _id: page._id }, { $inc: { thanksCount: 1 } });
-  if (page.ownerId) await notify([page.ownerId], { type: "follower", text: `${user.name} thanked you. 💙`, href: `/${page.slug}`, pageId: page._id });
+  if (page.ownerId) await notify([page.ownerId], { type: "thanks", text: `${user.name} thanked you. 💙`, href: `/${page.slug}`, pageId: page._id });
   return true;
 }

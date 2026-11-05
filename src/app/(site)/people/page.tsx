@@ -26,6 +26,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       baseHref={href("/people")}
       noun="profiles"
       {...data}
+      saveSearch={{ kind: "people", q: values.q, sector: values.sector }}
       filters={{
         action: "/people",
         q: values.q,

@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connectDB } from "@/lib/db";
+import { User } from "@/lib/models";
+import { MUTABLE_NOTIFICATIONS } from "@/lib/notifications";
+import { notificationPrefsAction } from "@/lib/actions/searches";
 import { listSessions, requireUser } from "@/lib/auth";
 import { revokeOtherSessionsAction, revokeSessionAction, viewStatsCardAction } from "@/lib/actions/auth";
 import { formatDateTime } from "@/lib/site";
@@ -8,7 +12,7 @@ import { claimDomainOf } from "@/lib/org-admin";
 import { WorkVerifyForm } from "@/components/forms/OrgAdminForms";
 import { siteUrl } from "@/lib/site";
 import {
-  ChangeEmailForm, ChangePasswordForm, DeleteAccountForm, EmailPrefsForm, ResendVerificationButton, SlugForm,
+  ChangeEmailForm, ChangePasswordForm, DeleteAccountForm, ResendVerificationButton, SlugForm,
 } from "@/components/forms/AuthForms";
 
 export const metadata: Metadata = { title: "Account", robots: { index: false } };
@@ -28,10 +32,13 @@ function Section({ id, title, children, danger }: { id: string; title: string; c
   );
 }
 
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ reset?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ reset?: string; prefs?: string }> }) {
   const user = await requireUser("/account");
   const page = await getPersonPageOf(user.id);
-  const { reset } = await searchParams;
+  const { reset, prefs } = await searchParams;
+  await connectDB();
+  const me = await User.findById(user.id, { mutedNotifications: 1, emailPrefs: 1 }).lean<{ mutedNotifications?: string[]; emailPrefs?: { profileUpdates?: boolean; searchAlerts?: boolean } }>();
+  const muted = new Set(me?.mutedNotifications ?? []);
   const [sessions, hideStats] = await Promise.all([listSessions(user.id), viewStatsHidden(user.id)]);
   const host = siteUrl().replace(/^https?:\/\//, "");
   // Domain each position can be verified with (work email at that organization)
@@ -142,8 +149,30 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         )}
       </Section>
 
-      <Section id="notifications" title="Email notifications">
-        <EmailPrefsForm profileUpdates={user.emailPrefs.profileUpdates} />
+      <Section id="notifications" title="Notifications">
+        {prefs && <div className="notice notice--ok">Notification settings saved.</div>}
+        <form action={notificationPrefsAction} className="form notif-prefs">
+          <fieldset>
+            <legend>In Portfedia (the bell)</legend>
+            {MUTABLE_NOTIFICATIONS.map((n) => (
+              <label key={n.type} className="check">
+                <input type="checkbox" name={`n_${n.type}`} defaultChecked={!muted.has(n.type)} /> {n.label}
+              </label>
+            ))}
+            <span className="hint">Decisions about your own pages (reviews, claims, verified positions) always arrive.</span>
+          </fieldset>
+          <fieldset>
+            <legend>By email</legend>
+            <label className="check">
+              <input type="checkbox" name="e_profileUpdates" defaultChecked={me?.emailPrefs?.profileUpdates !== false} /> About my profile (application decisions and important changes)
+            </label>
+            <label className="check">
+              <input type="checkbox" name="e_searchAlerts" defaultChecked={me?.emailPrefs?.searchAlerts !== false} /> New results for my <Link href="/account/searches">saved searches</Link>
+            </label>
+            <span className="hint">Job alerts are managed on the <Link href="/jobs/alerts">job alerts</Link> page. Security emails (email confirmation, password reset) are always sent. We never send marketing emails.</span>
+          </fieldset>
+          <button className="btn" type="submit" style={{ width: "fit-content" }}>Save</button>
+        </form>
         <form action={viewStatsCardAction} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
           <input type="hidden" name="show" value={hideStats ? "1" : "0"} />
           <span className="small">&ldquo;Profile views&rdquo; card on your profile (only you see it): <b>{hideStats ? "hidden" : "shown"}</b></span>

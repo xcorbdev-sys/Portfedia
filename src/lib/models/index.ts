@@ -22,6 +22,8 @@ const UserSchema = new Schema<any>(
     bannedAt: { type: Date, default: null },
     // Wants a notification when a company starts raising (the /raising page)
     notifyRaises: { type: Boolean, default: false },
+    // #39: in-site notification kinds the member switched off
+    mutedNotifications: { type: [String], default: [] },
     // Upgraded by an admin: may create more company pages and SaaS projects
     upgradedAt: { type: Date, default: null },
     // #96: plan for people (set by admins until payments exist)
@@ -30,7 +32,7 @@ const UserSchema = new Schema<any>(
     // The owner chose to hide the "Profile views" card on their profile
     hideViewStats: { type: Boolean, default: false },
     emailPrefs: {
-      type: new Schema<any>({ profileUpdates: { type: Boolean, default: true } }, { _id: false }),
+      type: new Schema<any>({ profileUpdates: { type: Boolean, default: true }, searchAlerts: { type: Boolean, default: true } }, { _id: false }),
       default: () => ({}),
     },
   },
@@ -561,3 +563,18 @@ const BlogPostSchema = new Schema<any>(
 );
 BlogPostSchema.index({ published: 1, publishedAt: -1 });
 export const BlogPost = getModel("BlogPost", BlogPostSchema);
+
+/* ───────────── Saved searches with alerts (#37) ───────────── */
+const SavedSearchSchema = new Schema<any>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    kind: { type: String, enum: ["all", "people", "companies", "saas"], default: "all" },
+    q: { type: String, default: "" },
+    sector: { type: String, default: "" },
+    lastSentAt: { type: Date, default: () => new Date() },
+    // Pages already reported, so an edited page isn't announced twice
+    seen: { type: [String], default: [] },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+export const SavedSearch = getModel("SavedSearch", SavedSearchSchema);

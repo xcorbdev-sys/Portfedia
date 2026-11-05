@@ -28,6 +28,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
       baseHref={href("/companies")}
       noun="companies"
       {...data}
+      saveSearch={{ kind: "companies", q: values.q, sector: values.sector }}
       filters={{
         action: "/companies",
         q: values.q,

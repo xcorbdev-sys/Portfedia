@@ -133,6 +133,7 @@ export async function runMaintenance() {
       compressedRevisions: await compressOldRevisions(),
       purgedImages: await purgeImageTrash(),
       jobAlertEmails: (await (await import("./features")).featureOn("jobs")) ? await (await import("./job-tools")).sendJobAlerts() : 0,
+      searchAlertEmails: await (await import("./saved-searches")).sendSearchAlerts(),
       ms: 0,
       at: new Date().toISOString(),
     };

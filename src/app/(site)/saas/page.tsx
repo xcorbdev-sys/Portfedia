@@ -27,6 +27,7 @@ export default async function SaasPage({ searchParams }: { searchParams: Promise
       baseHref={href("/saas")}
       noun="projects"
       {...data}
+      saveSearch={{ kind: "saas", q: values.q, sector: values.sector }}
       filters={{
         action: "/saas",
         q: values.q,

@@ -18,7 +18,7 @@ export async function createSuggestion(user: SessionUser, page: PageDoc, message
     proposedBody: proposedBody !== null && proposedBody !== page.body ? proposedBody : null,
     baseBody: page.body,
   });
-  if (page.ownerId) await notify([page.ownerId], { type: "page_update", text: `${user.name} suggested an edit to your profile.`, href: "/inbox", pageId: page._id });
+  if (page.ownerId) await notify([page.ownerId], { type: "feedback", text: `${user.name} suggested an edit to your profile.`, href: "/inbox", pageId: page._id });
 }
 
 export interface SuggestionRow {
@@ -66,7 +66,7 @@ export async function decideSuggestion(owner: SessionUser, id: string, accept: b
     });
   }
   await notify([String(sug.authorId)], {
-    type: "page_update",
+    type: "feedback",
     text: accept ? `${page.title} accepted your suggested edit. Thank you!` : `${page.title} didn't accept your suggested edit.`,
     href: `/${page.slug}`,
     pageId: String(page._id),
@@ -83,7 +83,7 @@ export async function upsertTestimonial(user: SessionUser, page: PageDoc, relati
     { $set: { authorName: user.name, relationship, text, status: "pending" } },
     { upsert: true },
   );
-  if (page.ownerId) await notify([page.ownerId], { type: "page_update", text: `${user.name} wrote a recommendation for you.`, href: "/inbox", pageId: page._id });
+  if (page.ownerId) await notify([page.ownerId], { type: "feedback", text: `${user.name} wrote a recommendation for you.`, href: "/inbox", pageId: page._id });
 }
 
 export interface TestimonialRow {
@@ -130,7 +130,7 @@ export async function decideTestimonial(owner: SessionUser, id: string, action: 
     t.status = action === "publish" ? "published" : "hidden";
     await t.save();
     if (action === "publish") {
-      await notify([String(t.authorId)], { type: "page_update", text: `${page.title} published your recommendation.`, href: `/${page.slug}#recommendations`, pageId: String(page._id) });
+      await notify([String(t.authorId)], { type: "feedback", text: `${page.title} published your recommendation.`, href: `/${page.slug}#recommendations`, pageId: String(page._id) });
     }
   }
   return null;

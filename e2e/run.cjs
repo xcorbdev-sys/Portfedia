@@ -775,6 +775,28 @@ async function createProfile(p, opts) {
   const sm = await (await anon.request.get(`${BASE}/sitemaps/0.xml`)).text();
   check("sitemap has cities, alternatives and blog", /\/cities\/istanbul</.test(sm) && /\/saas\/elif-analytics\/alternatives</.test(sm) && /\/blog\/welcome-to-the-portfedia-blog</.test(sm));
 
+  // ── Smarter search: typos, Turkish letters, suggestions with photos; saved searches; notification settings
+  await anon.goto(`${BASE}/search?q=${encodeURIComponent("Nortwind Robotcs")}`);
+  check("typos find the page (did you mean)", (await anon.locator('.did-you-mean').count()) === 1 && (await anon.locator('a[href="/org/northwind-robotics"]').count()) >= 1);
+  const sug = await (await anon.request.get(`${BASE}/api/suggest?q=${encodeURIComponent("aişe")}`)).json();
+  check("suggestions fold Turkish letters", sug.some((h) => h.href === aysePath));
+  await anon.goto(`${BASE}/people`);
+  await anon.fill("#hq", "northw");
+  await anon.locator(".suggest__list a[href='/org/northwind-robotics']").waitFor({ timeout: 5000 });
+  await anon.keyboard.press("ArrowDown");
+  await anon.keyboard.press("Enter");
+  await anon.waitForURL(`${BASE}/org/northwind-robotics`);
+  check("header search suggests pages while typing", true);
+  await ayse.goto(`${BASE}/companies?sector=Banking`);
+  await ayse.click('button:has-text("Save this search")');
+  await ayse.waitForURL(/\/account\/searches\?saved=1/);
+  check("saved searches", (await ayse.locator(".saved-searches >> text=Companies · Banking").count()) === 1);
+  await ayse.goto(`${BASE}/account`);
+  await ayse.locator("input[name=n_follower]").uncheck();
+  await ayse.click('.notif-prefs button:has-text("Save")');
+  await ayse.waitForURL(/prefs=1/);
+  check("notification kinds can be switched off", !(await ayse.locator("input[name=n_follower]").isChecked()) && (await ayse.locator("input[name=n_update]").isChecked()));
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);
