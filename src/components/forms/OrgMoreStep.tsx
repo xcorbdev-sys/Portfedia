@@ -5,6 +5,7 @@ import type { PageDoc } from "@/lib/types";
 import { ListEditor, ProjectsEditor } from "./Achievements";
 import { OrgInput } from "./shared";
 import { SAAS_PRICING } from "@/lib/types";
+import { CURRENCIES, JOB_TYPES, LEVELS, SALARY_PERIODS, WORKPLACES } from "@/lib/jobs";
 
 /** Structure, history and more for organization pages (products, offices, leadership, …). */
 export function OrgMoreStep({ page, canManageJobs, category, business, featuredJobs = false }: { page: PageDoc | null; canManageJobs: boolean; category: string; business: boolean; featuredJobs?: boolean }) {
@@ -193,15 +194,30 @@ export function OrgMoreStep({ page, canManageJobs, category, business, featuredJ
         <ListEditor
           name="jobs"
           label="Open positions"
-          hint="Shown on this page and on /jobs. Remove a position when it's filled."
+          hint="Each position gets its own page and can appear in Google's job search. Listings stay up for 60 days (saving the page with changes renews them). Remove a position when it's filled."
           addLabel="Add position"
-          initial={(page?.jobs ?? []).map((j) => ({ id: j.id, title: j.title, location: j.location, type: j.type, url: j.url, featured: j.featured ? "true" : "" }))}
-          blank={{ id: Math.random().toString(36).slice(2, 10), title: "", location: "", type: "Full-time", url: "", featured: "" }}
+          initial={(page?.jobs ?? []).map((j) => ({
+            id: j.id, title: j.title, location: j.location, type: j.type, url: j.url, featured: j.featured ? "true" : "",
+            workplace: j.workplace || "On-site", level: j.level || "", salaryMin: j.salaryMin ? String(j.salaryMin) : "", salaryMax: j.salaryMax ? String(j.salaryMax) : "",
+            currency: j.currency || "USD", salaryPeriod: j.salaryPeriod || "year", description: j.description || "", applyEmail: j.applyEmail || "",
+          }))}
+          blank={{
+            id: Math.random().toString(36).slice(2, 10), title: "", location: "", type: "Full-time", url: "", featured: "",
+            workplace: "On-site", level: "", salaryMin: "", salaryMax: "", currency: "USD", salaryPeriod: "year", description: "", applyEmail: "",
+          }}
           fields={[
             { key: "title", placeholder: "Job title *", max: 120 },
-            { key: "location", placeholder: "Location (or Remote)", max: 120 },
-            { key: "type", placeholder: "Type", kind: "select", options: ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].map((v) => ({ value: v, label: v })) },
+            { key: "location", placeholder: "City, country", max: 120 },
+            { key: "workplace", placeholder: "Workplace", kind: "select", options: WORKPLACES.map((v) => ({ value: v, label: v })) },
+            { key: "type", placeholder: "Type", kind: "select", options: JOB_TYPES.map((v) => ({ value: v, label: v })) },
+            { key: "level", placeholder: "Level", kind: "select", options: [{ value: "", label: "Any level" }, ...LEVELS.map((v) => ({ value: v, label: v }))] },
+            { key: "salaryMin", placeholder: "Salary from (optional)", max: 12 },
+            { key: "salaryMax", placeholder: "Salary to", max: 12 },
+            { key: "currency", placeholder: "Currency", kind: "select", options: CURRENCIES.map((v) => ({ value: v, label: v })) },
+            { key: "salaryPeriod", placeholder: "Per", kind: "select", options: SALARY_PERIODS.map((v) => ({ value: v, label: `per ${v}` })) },
+            { key: "description", placeholder: "What the role is, what you're looking for, benefits… *", kind: "textarea", max: 5000 },
             { key: "url", placeholder: "Apply link (https://…)", kind: "url" },
+            { key: "applyEmail", placeholder: "…or apply by email", max: 200 },
             ...(featuredJobs
               ? [{ key: "featured", placeholder: "Featured", kind: "select" as const, options: [{ value: "", label: "Normal" }, { value: "true", label: "Featured (Business)" }] }]
               : []),

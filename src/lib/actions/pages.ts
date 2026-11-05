@@ -21,6 +21,7 @@ import type { FormState } from "./auth";
 import type { Acquisition, Award, FundingRound, Job, LanguageLevel, Leader, Milestone, Office, OpenTo, PageDoc, Patent, SessionUser, PressItem, Project, Publication, SourceRef, StoredImage, Talk, Volunteering } from "../types";
 import { OPEN_TO, ORG_CATEGORIES, SAAS_PRICING, type OrgCategory, type SaasInfo } from "../types";
 import { cleanSectors } from "../sectors";
+import { CURRENCIES, JOB_TYPES, LEVELS as JOB_LEVELS, SALARY_PERIODS, WORKPLACES } from "../jobs";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 
 const MAX_BODY = 100_000;
@@ -203,8 +204,34 @@ function parseJobs(fd: FormData, prev: PageDoc | null): Job[] {
     let id = /^[a-z0-9]{6,16}$/.test(String(r.id)) ? String(r.id) : "";
     if (!id || seen.has(id)) id = Math.random().toString(36).slice(2, 10);
     seen.add(id);
-    const type = ["Full-time", "Part-time", "Contract", "Internship", "Temporary"].includes(String(r.type)) ? String(r.type) : "Full-time";
-    return { id, title, location: str(r.location, 120), type, url: httpUrl(r.url), postedAt: prevById.get(id)?.postedAt ?? new Date(), featured: bool(r.featured) };
+    const pick = <T extends readonly string[]>(list: T, v: unknown, fallback: string) => ((list as readonly string[]).includes(String(v)) ? String(v) : fallback);
+    const money = (v: unknown) => {
+      const n = Math.round(Number(String(v ?? "").replace(/[^\d.]/g, "")));
+      return Number.isFinite(n) && n > 0 && n < 100_000_000 ? n : null;
+    };
+    let salaryMin = money(r.salaryMin);
+    let salaryMax = money(r.salaryMax);
+    if (salaryMin && salaryMax && salaryMin > salaryMax) [salaryMin, salaryMax] = [salaryMax, salaryMin];
+    const prevJob = prevById.get(id);
+    const description = String(r.description ?? "").trim().slice(0, 5000);
+    return {
+      id,
+      title,
+      location: str(r.location, 120),
+      type: pick(JOB_TYPES, r.type, "Full-time"),
+      url: httpUrl(r.url),
+      // An edited listing counts as fresh again (it stays up for JOB_DAYS from here)
+      postedAt: prevJob && prevJob.title === title && (prevJob.description ?? "") === description ? prevJob.postedAt : new Date(),
+      featured: bool(r.featured),
+      workplace: pick(WORKPLACES, r.workplace, "On-site"),
+      level: pick(JOB_LEVELS, r.level, ""),
+      salaryMin,
+      salaryMax,
+      currency: pick(CURRENCIES, r.currency, "USD"),
+      salaryPeriod: pick(SALARY_PERIODS, r.salaryPeriod, "year"),
+      description,
+      applyEmail: email(r.applyEmail),
+    };
   });
 }
 

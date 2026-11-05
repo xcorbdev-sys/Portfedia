@@ -745,3 +745,15 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
   .stepper li { gap: 6px; }
   .stepper li::after { min-width: 8px; }
 }
+
+/* Jobs */
+.job-links { display: flex; gap: 14px; font-size: 0.85rem; font-weight: 600; flex-wrap: wrap; }
+.job-links a { display: inline-flex; align-items: center; gap: 5px; }
+.job-alert-cta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 0; }
+.job-head { display: flex; gap: 16px; align-items: center; margin-top: 10px; }
+.job-head .thumb { width: 64px; height: 64px; flex: none; }
+.job-head__org { font-weight: 600; }
+.job-facts { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--text-2); font-size: 0.9rem; }
+.job-facts li { display: inline-flex; align-items: center; gap: 6px; }
+.job-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.job-desc { white-space: pre-wrap; line-height: 1.7; }

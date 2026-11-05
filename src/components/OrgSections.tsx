@@ -7,6 +7,7 @@ import { pageHref } from "@/lib/wikitext";
 import { formatDate } from "@/lib/site";
 import { employeeTrend } from "@/lib/profile-insights";
 import { EntityGrid } from "./EntityCards";
+import { JOB_DAYS } from "@/lib/jobs";
 
 const linkIf = (existing: Map<string, PageType>, slug: string, text: string) => {
   const t = existing.get(slug);
@@ -203,17 +204,18 @@ export function PressSection({ page }: { page: PageDoc }) {
 }
 
 export function JobsSection({ page }: { page: PageDoc }) {
-  if (page.status !== "claimed" || page.jobs.length === 0) return null;
+  const fresh = page.jobs.filter((j) => j.postedAt && new Date(j.postedAt).getTime() > Date.now() - JOB_DAYS * 86400_000);
+  if (page.status !== "claimed" || fresh.length === 0) return null;
   return (
     <section className="p-section" id="jobs">
       <h2>Open positions</h2>
       <ul className="item-list">
-        {page.jobs.map((j) => (
+        {fresh.map((j) => (
           <li key={j.id}>
             <span className="item-list__icon" aria-hidden="true"><Briefcase size={16} /></span>
             <span style={{ flex: 1 }}>
-              {j.url ? <a href={j.url} rel="nofollow noopener" className="external"><b>{j.title}</b></a> : <b>{j.title}</b>}
-              <small>{[j.location, j.type, j.postedAt && `posted ${formatDate(j.postedAt)}`].filter(Boolean).join(" · ")}</small>
+              <Link href={`/jobs/${page.slug}/${j.id}`}><b>{j.title}</b></Link>
+              <small>{[j.location, j.workplace, j.type, j.postedAt && `posted ${formatDate(j.postedAt)}`].filter(Boolean).join(" · ")}</small>
             </span>
           </li>
         ))}

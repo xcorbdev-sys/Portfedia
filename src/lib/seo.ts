@@ -1,5 +1,6 @@
 import { siteUrl } from "./site";
-import type { PageDoc } from "./types";
+import type { Job, PageDoc } from "./types";
+import { EMPLOYMENT_TYPE, JOB_DAYS } from "./jobs";
 import { stripWikiLinks } from "./wikitext";
 
 /**
@@ -78,4 +79,46 @@ export function websiteLd() {
 }
 
 /** Serialises JSON-LD safely inside a <script> tag. */
+/** Google for Jobs: https://developers.google.com/search/docs/appearance/structured-data/job-posting */
+export function jobPostingLd(org: PageDoc, job: Job) {
+  const posted = job.postedAt ? new Date(job.postedAt) : new Date();
+  const remote = job.workplace === "Remote";
+  const [city, ...rest] = (job.location || org.infobox.headquarters || "").split(",").map((x) => x.trim());
+  return {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    title: job.title,
+    description: (job.description || "").replace(/\n/g, "<br>"),
+    datePosted: posted.toISOString().slice(0, 10),
+    validThrough: new Date(posted.getTime() + JOB_DAYS * 86400_000).toISOString(),
+    employmentType: EMPLOYMENT_TYPE[job.type] ?? "FULL_TIME",
+    identifier: { "@type": "PropertyValue", name: org.title, value: job.id },
+    hiringOrganization: {
+      "@type": "Organization",
+      name: org.title,
+      ...(org.infobox.website ? { sameAs: org.infobox.website } : {}),
+      ...(org.image?.url ? { logo: org.image.url.startsWith("http") ? org.image.url : `${siteUrl()}${org.image.url}` } : {}),
+    },
+    ...(remote
+      ? { jobLocationType: "TELECOMMUTE", ...(city ? { applicantLocationRequirements: { "@type": "Country", name: rest.pop() || city } } : {}) }
+      : city
+        ? { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: city, ...(rest.length ? { addressCountry: rest[rest.length - 1] } : {}) } } }
+        : {}),
+    ...(job.salaryMin || job.salaryMax
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: job.currency || "USD",
+            value: {
+              "@type": "QuantitativeValue",
+              ...(job.salaryMin && job.salaryMax ? { minValue: job.salaryMin, maxValue: job.salaryMax } : { value: job.salaryMin || job.salaryMax }),
+              unitText: (job.salaryPeriod || "year").toUpperCase(),
+            },
+          },
+        }
+      : {}),
+    directApply: false,
+  };
+}
+
 export const ldJson = (data: unknown) => JSON.stringify(data).replace(/</g, "\\u003c");

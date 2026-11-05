@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { cachedCollections, cachedSitemapPart } from "@/lib/cached";
+import { cachedCollections, cachedJobs, cachedSitemapPart } from "@/lib/cached";
 import { siteUrl } from "@/lib/site";
 import { pageHref } from "@/lib/wikitext";
 
@@ -15,8 +15,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ part: stri
   if (part === 0) {
     const collections = await cachedCollections();
     urls.unshift(
-      ...["/", "/people", "/companies", "/sectors", "/collections", "/jobs", "/events", "/investors", "/help"].map((p) => ({ loc: `${base}${p}` })),
+      ...["/", "/people", "/companies", "/saas", "/education", "/sectors", "/jobs", "/events", "/investors", "/help"].map((p) => ({ loc: `${base}${p}` })),
       ...collections.map((c) => ({ loc: `${base}/collections/${c.slug}` })),
+      // Each open job has its own page (Google for Jobs reads them)
+      ...(await cachedJobs()).map((l) => ({ loc: `${base}/jobs/${l.org.slug}/${l.job.id}`, ...(l.job.postedAt ? { lastmod: new Date(l.job.postedAt).toISOString() } : {}) })),
     );
   }
   if (urls.length === 0) return new Response("Not found", { status: 404 });

@@ -120,7 +120,26 @@ export interface Acquisition { title: string; slug: string; year: number | null;
 export interface Leader { name: string; slug: string; role: string; kind: "board" | "executive" }
 export interface Milestone { year: number | null; text: string }
 export interface PressItem { title: string; outlet: string; year: number | null; url: string }
-export interface Job { id: string; title: string; location: string; type: string; url: string; postedAt: Date | null; featured?: boolean }
+export interface Job {
+  id: string;
+  title: string;
+  location: string;
+  type: string;
+  url: string;
+  postedAt: Date | null;
+  featured?: boolean;
+  /** On-site, Hybrid or Remote */
+  workplace?: string;
+  level?: string;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  currency?: string;
+  salaryPeriod?: string;
+  /** What the job is about (needed for the job's own page and Google for Jobs) */
+  description?: string;
+  /** Apply by email instead of a link */
+  applyEmail?: string;
+}
 export interface Ticker { exchange: string; symbol: string }
 
 export const ORG_CATEGORIES = {

@@ -13,6 +13,7 @@ import type {
   EventInfo, InvestorInfo, OrgCategory, Plan, SaasInfo,
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
+import { JOB_DAYS } from "./jobs";
 
 /* ───────────── Mapping ───────────── */
 
@@ -1202,18 +1203,35 @@ export async function getAlumniEmployers(schoolSlug: string) {
 }
 
 /** All open positions of organizations that manage their page (#44). */
-export async function listJobs(limit = 200) {
+export async function listJobs(limit = 500) {
   await connectDB();
+  const fresh = new Date(Date.now() - JOB_DAYS * 86400_000);
   const rows = await Page.aggregate([
     { $match: { type: { $in: ["org", "school"] }, status: "claimed", "jobs.0": { $exists: true } } },
     { $unwind: "$jobs" },
+    // Listings older than JOB_DAYS are no longer shown (saving the page with changes renews them)
+    { $match: { "jobs.postedAt": { $gte: fresh } } },
     // #97: featured jobs of Business organizations come first
     { $addFields: { _featured: { $cond: [{ $and: [{ $eq: ["$jobs.featured", true] }, { $eq: ["$plan.name", "business"] }] }, 1, 0] } } },
     { $sort: { _featured: -1, "jobs.postedAt": -1 } },
     { $limit: limit },
-    { $project: { slug: 1, title: 1, image: 1, type: 1, job: "$jobs", featured: "$_featured" } },
+    { $project: { slug: 1, title: 1, image: 1, type: 1, sectors: 1, category: 1, job: "$jobs", featured: "$_featured" } },
   ]);
-  return rows.map((r) => ({ org: { slug: r.slug as string, title: r.title as string, image: r.image?.url ? (r.image as StoredImage) : null }, job: r.job as Job, featured: r.featured === 1 }));
+  return rows.map((r) => ({
+    org: { slug: r.slug as string, title: r.title as string, image: r.image?.url ? (r.image as StoredImage) : null, sectors: (r.sectors as string[]) ?? [], saas: r.category === "saas" },
+    job: r.job as Job,
+    featured: r.featured === 1,
+  }));
+}
+
+/** One job listing with its organization, or null when it doesn't exist or has expired. */
+export async function getJob(orgSlug: string, jobId: string) {
+  const page = await getPageBySlug(orgSlug, ["org", "school"]);
+  if (!page || page.status !== "claimed") return null;
+  const job = page.jobs.find((j) => j.id === jobId);
+  if (!job) return null;
+  const expired = !job.postedAt || new Date(job.postedAt).getTime() < Date.now() - JOB_DAYS * 86400_000;
+  return { page, job, expired };
 }
 
 /* ───────────── Plans (#96, #97) and page views ───────────── */

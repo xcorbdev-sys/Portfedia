@@ -191,7 +191,19 @@ const PageSchema = new Schema<any>(
     formerNames: { type: [String], default: [] },
     milestones: { type: [new Schema<any>({ year: Number, text: String }, { _id: false })], default: [] },
     press: { type: [new Schema<any>({ title: String, outlet: String, year: Number, url: String }, { _id: false })], default: [] },
-    jobs: { type: [new Schema<any>({ id: String, title: String, location: String, type: String, url: String, postedAt: Date, featured: Boolean }, { _id: false })], default: [] },
+    jobs: {
+      type: [
+        new Schema<any>(
+          {
+            id: String, title: String, location: String, type: String, url: String, postedAt: Date, featured: Boolean,
+            workplace: String, level: String, salaryMin: Number, salaryMax: Number, currency: String, salaryPeriod: String,
+            description: { type: String, maxlength: 5000 }, applyEmail: String,
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     ticker: { type: new Schema<any>({ exchange: String, symbol: String }, { _id: false }), default: null },
     // Organizations: funding rounds; investors are linked to their pages by slug
     fundingRounds: {
@@ -446,4 +458,32 @@ export const Meta = getModel("Meta", MetaSchema);
 export const ImageTrash = getModel("ImageTrash", ImageTrashSchema);
 export const RateCounter = getModel("RateCounter", RateCounterSchema);
 export const LoginLog = getModel("LoginLog", LoginLogSchema);
+
+/* ───────────── Jobs: saved listings and alerts ───────────── */
+const SavedJobSchema = new Schema<any>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    jobId: { type: String, required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+SavedJobSchema.index({ userId: 1, pageId: 1, jobId: 1 }, { unique: true });
+export const SavedJob = getModel("SavedJob", SavedJobSchema);
+
+/** "Email me new jobs like these": the filters of a jobs search, checked once a day */
+const JobAlertSchema = new Schema<any>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    q: { type: String, default: "" },
+    type: { type: String, default: "" },
+    workplace: { type: String, default: "" },
+    level: { type: String, default: "" },
+    location: { type: String, default: "" },
+    sector: { type: String, default: "" },
+    lastSentAt: { type: Date, default: () => new Date() },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+export const JobAlert = getModel("JobAlert", JobAlertSchema);
 export const PageView = getModel("PageView", PageViewSchema);
