@@ -44,6 +44,8 @@ export async function notificationPrefsAction(fd: FormData): Promise<void> {
     { _id: user.id },
     { $set: { mutedNotifications: muted, "emailPrefs.profileUpdates": bool(fd.get("e_profileUpdates")), "emailPrefs.searchAlerts": bool(fd.get("e_searchAlerts")) } },
   );
+  const { setMessagesFrom } = await import("../messages");
+  await setMessagesFrom(user.id, str(fd.get("messagesFrom"), 20));
   revalidatePath("/account");
   redirect("/account?prefs=1#notifications");
 }

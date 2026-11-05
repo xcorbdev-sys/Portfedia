@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Types } from "mongoose";
 import { getCurrentUser } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import { Follow, LoginLog, Page, Report, Revision, User } from "@/lib/models";
+import { CommunityPost, Conversation, Follow, IntroRequest, LoginLog, Message, Page, Report, Revision, SavedSearch, User } from "@/lib/models";
 import { readSnapshot } from "@/lib/snapshots";
 
 /** GDPR / KVKK right of access: everything we hold about the signed-in user, as JSON. */
@@ -25,6 +25,13 @@ export async function GET() {
     Revision.find({ authorId: oid, ...(profile ? { pageId: { $ne: profile._id } } : {}) }, { snapshot: 0, snapshotZ: 0, __v: 0 }).sort({ createdAt: 1 }).lean(),
   ]);
   const managedOrganizations = await Page.find({ orgAdmins: oid }, { slug: 1, title: 1 }).lean();
+  const conversations = await Conversation.find({ members: oid }, { members: 1, createdAt: 1 }).lean();
+  const [messagesSent, savedSearches, communityPosts, introductions] = await Promise.all([
+    Message.find({ senderId: oid }, { _id: 0, conversationId: 1, text: 1, createdAt: 1 }).sort({ createdAt: 1 }).lean(),
+    SavedSearch.find({ userId: oid, deletedAt: null }, { _id: 0, kind: 1, q: 1, sector: 1, createdAt: 1 }).lean(),
+    CommunityPost.find({ authorId: oid, deletedAt: null }, { _id: 0, sector: 1, text: 1, createdAt: 1 }).lean(),
+    IntroRequest.find({ requesterId: oid }, { _id: 0, note: 1, status: 1, createdAt: 1 }).lean(),
+  ]);
 
   const body = JSON.stringify(
     {
@@ -38,6 +45,11 @@ export async function GET() {
       following: followedPages,
       reportsYouSent: reports,
       signInsLastYear: signIns,
+      conversations: conversations.length,
+      messagesSent,
+      savedSearches,
+      communityPosts,
+      introductionsAsked: introductions,
     },
     null,
     2,

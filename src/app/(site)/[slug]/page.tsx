@@ -4,6 +4,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { featureOn } from "@/lib/features";
 import { findRenamedPage } from "@/lib/account";
 import { canView, isMembersOnly, isPublic, forVisitors } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
@@ -213,6 +214,7 @@ export default async function PersonPage({ params }: Props) {
                 editHref={isOwner ? "/edit" : null}
                 personLinks={!isOwner}
                 thanks={user?.id === page.ownerId ? null : { given: thanked, count: page.thanksCount }}
+                messageHref={page.ownerId && user?.id !== page.ownerId && (await featureOn("messages")) ? (user ? `/${page.slug}/message` : `/login?next=/${page.slug}/message`) : null}
                 qr
               />
             ) : (

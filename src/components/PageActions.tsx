@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ellipsis, Flag, Heart, History, MessageSquareQuote, Pencil, PencilLine, Printer, QrCode, UserCheck, UserPlus } from "lucide-react";
+import { Ellipsis, Flag, MessageCircle, Heart, History, MessageSquareQuote, Pencil, PencilLine, Printer, QrCode, UserCheck, UserPlus } from "lucide-react";
 import { thankAction, toggleFollowAction } from "@/lib/actions/pages";
 import { PrintButton, ShareButton } from "./client";
 
@@ -13,6 +13,7 @@ export function PageActions({
   personLinks = false,
   thanks = null,
   qr = false,
+  messageHref = null,
 }: {
   slug: string;
   title: string;
@@ -26,6 +27,8 @@ export function PageActions({
   thanks?: { given: boolean; count: number } | null;
   /** Link to the printable QR card (person pages) */
   qr?: boolean;
+  /** "Message" (#61), on other members' profiles */
+  messageHref?: string | null;
 }) {
   return (
     <div className="p-actions no-print">
@@ -40,6 +43,11 @@ export function PageActions({
           {following ? "Following" : "Follow"}
         </button>
       </form>
+      {messageHref && (
+        <Link className="btn" href={messageHref}>
+          <MessageCircle size={16} /> Message
+        </Link>
+      )}
       {thanks && (
         <form action={thankAction}>
           <input type="hidden" name="slug" value={slug} />

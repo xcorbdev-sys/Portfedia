@@ -824,6 +824,72 @@ async function createProfile(p, opts) {
   await tpl.click('.template-picker button:has-text("Founder")');
   check("profile templates fill in a structure", /## Founding/.test(await tpl.inputValue("#body")));
 
+  // ── Community: alumni network, event speakers, sector communities, introductions, messages
+  const alumniRes = await anon.goto(`${BASE}/org/ankara-technical-university/alumni`);
+  check("alumni network page", alumniRes.status() === 200 && (await anon.locator("h1:has-text('Ankara Technical University alumni')").count()) === 1);
+  await admin.goto(`${BASE}/org/roboconf-2027/edit`);
+  for (let i = 0; i < 2; i++) await admin.click('button:has-text("Continue")');
+  await admin.fill("#speakers", "Ayşe Demir, Unknown Speaker");
+  await admin.click('button:has-text("Continue")');
+  await admin.click('button:has-text("Save changes")');
+  await admin.waitForURL(`${BASE}/org/roboconf-2027`);
+  check("event speakers link to their profiles", (await admin.locator(`#speakers a[href="${aysePath}"]`).count()) === 1 && (await admin.locator("#speakers >> text=Unknown Speaker").count()) === 1 && (await admin.locator('#speakers a[href="/unknown-speaker"]').count()) === 0);
+  await anon.goto(`${BASE}/sectors`);
+  await anon.click('a[href="/sectors/banking"]');
+  await anon.waitForURL(`${BASE}/sectors/banking`);
+  check("sector community page", (await anon.locator("h1:has-text('Banking')").count()) === 1 && (await anon.locator('a[href="/org/bluefin-bank"]').count()) >= 1);
+  await deniz.goto(`${BASE}/sectors/banking`);
+  await deniz.click('button:has-text("Join community")');
+  await deniz.waitForURL(/joined=1/);
+  await deniz.fill("textarea[name=text]", "Anyone going to the open banking meetup next week?");
+  await deniz.click('#posts button:has-text("Post")');
+  await deniz.waitForURL(/posted=1/);
+  await anon.goto(`${BASE}/sectors/banking`);
+  check("members post in communities", (await anon.locator(".posts >> text=open banking meetup").count()) === 1);
+
+  await deniz.goto(`${BASE}${aysePath}`);
+  await deniz.click('.p-actions button:has-text("Follow")');
+  await deniz.waitForSelector('.p-actions button:has-text("Following")');
+  await deniz.goto(`${BASE}/elif-sahin/message`);
+  check("shared connections are offered for an introduction", (await deniz.locator(`input[name=via][value="${aysePath.slice(1)}"]`).count()) === 1);
+  await deniz.fill("textarea[name=note]", "I design banking apps and would love to learn how Elif builds dashboards.");
+  await deniz.click('button:has-text("Ask for an introduction")');
+  await deniz.waitForURL(/\/intros\?asked=1/);
+  await ayse.goto(`${BASE}/intros`);
+  await ayse.fill("input[name=words]", "Deniz is great, you two should talk.");
+  await ayse.click('button:has-text("Introduce them")');
+  await ayse.waitForURL(/forwarded=1/);
+  await elif.goto(`${BASE}/messages?tab=requests`);
+  check("introduction arrives as a message request", (await elif.locator(".conv-list >> text=Deniz Aksoy").count()) === 1);
+
+  await deniz.goto(`${BASE}${aysePath}`);
+  await deniz.click('.p-actions a:has-text("Message")');
+  await deniz.waitForURL(`${BASE}${aysePath}/message`);
+  await deniz.fill("textarea[name=text]", "Hi Ayşe, thanks for the intro!");
+  await deniz.click('form button:has-text("Send")');
+  await deniz.waitForURL(/\/messages\/[a-f0-9]{24}\?sent=1/);
+  const convUrl = deniz.url().split("?")[0];
+  check("first message is a request: no second message until a reply", (await deniz.locator(".thread-reply").count()) === 0);
+  await ayse.goto(`${BASE}/messages?tab=requests`);
+  await ayse.click(".conv-list a:has-text('Deniz Aksoy')");
+  await ayse.fill("#reply", "You're welcome!");
+  await ayse.click('button:has-text("Reply and accept")');
+  await ayse.locator(".thread li", { hasText: "welcome!" }).waitFor();
+  await deniz.goto(convUrl);
+  check("conversation continues after a reply", (await deniz.locator(".thread li").count()) === 2 && (await deniz.locator(".thread-reply").count()) === 1);
+  await ayse.goto(convUrl);
+  await ayse.click(".conv-tools summary");
+  await ayse.fill("input[name=details]", "Testing reports");
+  await ayse.click('.conv-tools button:has-text("Report")');
+  await ayse.waitForURL(/reported=1/);
+  await ayse.click(".conv-tools summary");
+  await ayse.click('.conv-tools button:has-text("Block")');
+  await ayse.waitForURL(/blocked=1/);
+  await deniz.goto(`${BASE}${aysePath}/message`);
+  check("blocked members can't message", (await deniz.locator("text=You can't message this person.").count()) === 1);
+  await admin.goto(`${BASE}/admin?section=reports`);
+  check("reported messages reach moderators", (await admin.locator("text=Reported private messages").count()) >= 1);
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

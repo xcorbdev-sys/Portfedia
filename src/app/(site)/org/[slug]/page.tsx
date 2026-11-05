@@ -21,7 +21,7 @@ import {
 import { findRenamedPage } from "@/lib/account";
 import { cachedOrgDerived } from "@/lib/cached";
 import { countView } from "@/lib/views";
-import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, talksAtEvent } from "@/lib/pages";
+import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByName, speakerProfiles, talksAtEvent, type PageCard } from "@/lib/pages";
 import { NetworkSummary } from "@/components/NetworkDialog";
 import { latestLaunch } from "@/lib/launches";
 import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
@@ -96,6 +96,8 @@ export default async function OrgPage({ params, searchParams }: Props) {
   const canPost = features.updates && canPostUpdates(user, page);
   const team = await keyPeopleOf(page, people.current, makers);
   const leaderLinks = await personSlugsByName(page.leadership.filter((l) => !existing.has(l.slug)).map((l) => l.name));
+  // #58: speakers link to their profiles (an exact profile address, or a name only one profile has), with photos
+  const speakerCards = isEvent && page.event?.speakers.length ? await speakerProfiles(page.event.speakers) : new Map<string, PageCard>();
   const eventTalks = isEvent ? await talksAtEvent(page.title) : [];
   const brand = featureUnlocked(page.plan, "business") && page.brandColor ? page.brandColor : "";
   const canEdit = canEditOrg(user, page);
@@ -399,11 +401,23 @@ export default async function OrgPage({ params, searchParams }: Props) {
           {isEvent && page.event!.speakers.length > 0 && (
             <section className="p-section" id="speakers">
               <h2>Speakers</h2>
-              <div className="chips">
-                {page.event!.speakers.map((sp) => (
-                  <Link key={sp.slug} className="chip" href={`/${sp.slug}`}>{sp.name}</Link>
-                ))}
-              </div>
+              <ul className="speakers">
+                {page.event!.speakers.map((sp) => {
+                  const card = speakerCards.get(sp.name);
+                  return (
+                    <li key={sp.name}>
+                      {card ? (
+                        <Link href={`/${card.slug}`}>
+                          <Thumb image={card.image} name={card.title} />
+                          <span><b>{card.title}</b>{card.subtitle && <small>{card.subtitle}</small>}</span>
+                        </Link>
+                      ) : (
+                        <span className="speakers__plain"><Thumb image={null} name={sp.name} /><span><b>{sp.name}</b></span></span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           )}
           {isEvent && page.event!.sponsors.length > 0 && (
@@ -481,9 +495,9 @@ export default async function OrgPage({ params, searchParams }: Props) {
             <section className="p-section" id="alumni">
               <h2>Alumni</h2>
               <EntityGrid items={alumni.slice(0, PREVIEW)} className="entity-grid--3" />
-              {alumni.length > PREVIEW && (
+              {page.type === "school" && (
                 <p style={{ marginTop: 10 }}>
-                  <Link className="link-arrow" href={`/org/${page.slug}/people?list=alumni`}>See all {alumni.length}</Link>
+                  <Link className="link-arrow" href={`/org/${page.slug}/alumni`}>Alumni network: all {alumni.length}, by year, field and employer</Link>
                 </p>
               )}
             </section>

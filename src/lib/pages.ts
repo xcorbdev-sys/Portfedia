@@ -1382,5 +1382,55 @@ export async function deleteAccount(userId: string): Promise<void> {
   await Suggestion.deleteMany({ authorId: oid });
   await Session.deleteMany({ userId: oid });
   await Token.deleteMany({ userId: oid });
+  // Messages, introductions, saved searches and community posts (#37, #55, #56, #61)
+  const { Conversation, Message, IntroRequest, SavedSearch, CommunityPost } = await import("./models");
+  const convs = await Conversation.find({ members: oid }, { _id: 1 }).lean<{ _id: unknown }[]>();
+  await Message.deleteMany({ conversationId: { $in: convs.map((c) => c._id) } });
+  await Conversation.deleteMany({ members: oid });
+  await IntroRequest.deleteMany({ $or: [{ requesterId: oid }, { viaUserId: oid }] });
+  await SavedSearch.deleteMany({ userId: oid });
+  await CommunityPost.deleteMany({ authorId: oid });
   await User.deleteOne({ _id: oid });
+}
+
+/** #58: event speakers who have a profile (by its exact address, or a name only one profile has), keyed by the typed name. */
+export async function speakerProfiles(speakers: { name: string; slug: string }[]): Promise<Map<string, PageCard>> {
+  const byName = await personSlugsByName(speakers.map((s) => s.name));
+  const slugs = speakers.map((s) => byName[s.name] ?? s.slug).filter(Boolean);
+  const cards = new Map((await getCards(slugs)).filter((c) => c.type === "person").map((c) => [c.slug, c]));
+  const out = new Map<string, PageCard>();
+  for (const s of speakers) {
+    const card = cards.get(byName[s.name] ?? s.slug);
+    if (card) out.set(s.name, card);
+  }
+  return out;
+}
+
+/* ───────────── Alumni network (#59) ───────────── */
+
+export interface AlumniRow { card: PageCard; year: number | null; degree: string; field: string; employer: { slug: string; title: string } | null; hideEducation: boolean }
+
+/** Everyone who studied at a school, with what they studied, when they finished and where they work now. */
+export async function alumniDirectory(schoolSlug: string): Promise<AlumniRow[]> {
+  await connectDB();
+  const docs = await Page.find(
+    { type: "person", "educations.schoolSlug": schoolSlug, ...PUBLIC_FILTER },
+    { ...CARD_FIELDS, status: 1, educations: 1, membersOnlyFields: 1 },
+  )
+    .sort({ followerCount: -1, title: 1 })
+    .limit(5000)
+    .lean();
+  return docs.map((d) => {
+    const e = (d.educations as Education[]).find((x) => x.schoolSlug === schoolSlug)!;
+    const cur = (d.experiences as Experience[] | undefined)?.find((x) => x.current && x.verification !== "rejected");
+    const hidden: string[] = Array.isArray(d.membersOnlyFields) ? d.membersOnlyFields : [];
+    return {
+      card: toCard(d, [e.field, e.degree, e.endYear].filter(Boolean).join(", ")),
+      year: e.endYear ?? null,
+      degree: e.degree ?? "",
+      field: e.field ?? "",
+      employer: cur && !hidden.includes("career") ? { slug: cur.orgSlug, title: cur.orgTitle } : null,
+      hideEducation: hidden.includes("education"),
+    };
+  });
 }

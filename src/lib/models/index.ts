@@ -24,6 +24,11 @@ const UserSchema = new Schema<any>(
     notifyRaises: { type: Boolean, default: false },
     // #39: in-site notification kinds the member switched off
     mutedNotifications: { type: [String], default: [] },
+    // #61: who may start a conversation with this member, and members they blocked
+    messagesFrom: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
+    blockedUsers: { type: [Schema.Types.ObjectId], default: [] },
+    // #56: sector communities the member joined
+    communities: { type: [String], default: [] },
     // Upgraded by an admin: may create more company pages and SaaS projects
     upgradedAt: { type: Date, default: null },
     // #96: plan for people (set by admins until payments exist)
@@ -583,3 +588,60 @@ const SavedSearchSchema = new Schema<any>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 export const SavedSearch = getModel("SavedSearch", SavedSearchSchema);
+
+/* ───────────── Messages (#61) and introductions (#55) ───────────── */
+const ConversationSchema = new Schema<any>(
+  {
+    members: { type: [Schema.Types.ObjectId], required: true }, // two users, sorted
+    starterId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // A conversation is a request until the other member replies (the starter can't send more meanwhile)
+    accepted: { type: Boolean, default: false },
+    lastMessageAt: { type: Date, default: () => new Date() },
+    lastText: { type: String, default: "" },
+    unreadFor: { type: [Schema.Types.ObjectId], default: [] },
+    hiddenFor: { type: [Schema.Types.ObjectId], default: [] },
+    blockedBy: { type: Schema.Types.ObjectId, default: null },
+    introId: { type: Schema.Types.ObjectId, default: null },
+  },
+  { timestamps: true },
+);
+ConversationSchema.index({ members: 1, lastMessageAt: -1 });
+ConversationSchema.index({ starterId: 1, createdAt: -1 });
+export const Conversation = getModel("Conversation", ConversationSchema);
+
+const MessageSchema = new Schema<any>(
+  {
+    conversationId: { type: Schema.Types.ObjectId, ref: "Conversation", required: true },
+    senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    text: { type: String, required: true, maxlength: 2000 },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+MessageSchema.index({ conversationId: 1, createdAt: 1 });
+export const Message = getModel("Message", MessageSchema);
+
+const IntroRequestSchema = new Schema<any>(
+  {
+    requesterId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    viaUserId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    targetPageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
+    note: { type: String, default: "", maxlength: 1000 },
+    status: { type: String, enum: ["pending", "forwarded", "declined"], default: "pending" },
+  },
+  { timestamps: true },
+);
+IntroRequestSchema.index({ requesterId: 1, targetPageId: 1 });
+export const IntroRequest = getModel("IntroRequest", IntroRequestSchema);
+
+/* ───────────── Sector communities (#56) ───────────── */
+const CommunityPostSchema = new Schema<any>(
+  {
+    sector: { type: String, required: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    text: { type: String, required: true, maxlength: 2000 },
+    deletedAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+CommunityPostSchema.index({ sector: 1, createdAt: -1 });
+export const CommunityPost = getModel("CommunityPost", CommunityPostSchema);

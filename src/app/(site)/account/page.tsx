@@ -3,6 +3,8 @@ import Link from "next/link";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models";
 import { MUTABLE_NOTIFICATIONS } from "@/lib/notifications";
+import { MESSAGES_FROM } from "@/lib/messages";
+import { featureOn } from "@/lib/features";
 import { notificationPrefsAction } from "@/lib/actions/searches";
 import { listSessions, requireUser } from "@/lib/auth";
 import { revokeOtherSessionsAction, revokeSessionAction, viewStatsCardAction } from "@/lib/actions/auth";
@@ -37,7 +39,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const page = await getPersonPageOf(user.id);
   const { reset, prefs } = await searchParams;
   await connectDB();
-  const me = await User.findById(user.id, { mutedNotifications: 1, emailPrefs: 1 }).lean<{ mutedNotifications?: string[]; emailPrefs?: { profileUpdates?: boolean; searchAlerts?: boolean } }>();
+  const me = await User.findById(user.id, { mutedNotifications: 1, emailPrefs: 1, messagesFrom: 1 }).lean<{ mutedNotifications?: string[]; emailPrefs?: { profileUpdates?: boolean; searchAlerts?: boolean }; messagesFrom?: string }>();
+  const messagesOn = await featureOn("messages");
   const muted = new Set(me?.mutedNotifications ?? []);
   const [sessions, hideStats] = await Promise.all([listSessions(user.id), viewStatsHidden(user.id)]);
   const host = siteUrl().replace(/^https?:\/\//, "");
@@ -161,6 +164,17 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             ))}
             <span className="hint">Decisions about your own pages (reviews, claims, verified positions) always arrive.</span>
           </fieldset>
+          {messagesOn && (
+            <fieldset>
+              <legend>Who can send me messages</legend>
+              {Object.entries(MESSAGES_FROM).map(([k, v]) => (
+                <label key={k} className="check">
+                  <input type="radio" name="messagesFrom" value={k} defaultChecked={(me?.messagesFrom ?? "everyone") === k} /> {v}
+                </label>
+              ))}
+              <span className="hint">People you already talk to can always reply. Blocked members can never message you.</span>
+            </fieldset>
+          )}
           <fieldset>
             <legend>By email</legend>
             <label className="check">

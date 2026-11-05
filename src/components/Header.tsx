@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SearchSuggest } from "./SearchSuggest";
-import { Bell, Building2, ClipboardCheck, LogIn, LogOut, Menu, Plus, Rocket, Search, Settings, ShieldCheck, User, BellPlus } from "lucide-react";
+import { unreadConversations } from "@/lib/messages";
+import { Bell, Building2, ClipboardCheck, LogIn, LogOut, Menu, Plus, Rocket, Search, Settings, ShieldCheck, User, BellPlus, MessageCircle } from "lucide-react";
 import { unreadCount } from "@/lib/notifications";
 import { inboxCountForPage } from "@/lib/feedback";
 import { Inbox } from "lucide-react";
@@ -75,6 +76,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
     ? await Promise.all([getPersonPageOf(user.id), isModerator(user) ? countPendingApplications() : Promise.resolve(0), unreadCount(user.id)])
     : [null, 0, 0];
   const inbox = myPage ? await inboxCountForPage(myPage._id) : 0;
+  const messages = user && features.messages ? await unreadConversations(user.id) : 0;
   return (
     <header className="site-header">
       <MenuCloser />
@@ -112,6 +114,12 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
               {unread > 0 && <span className="bell__count">{unread > 99 ? "99+" : unread}</span>}
             </Link>
           )}
+          {user && features.messages && (
+            <Link href="/messages" className="bell header-messages" aria-label={messages ? `Messages (${messages} unread)` : "Messages"}>
+              <MessageCircle size={19} />
+              {messages > 0 && <span className="bell__count">{messages > 99 ? "99+" : messages}</span>}
+            </Link>
+          )}
           {user ? (
             <details className="menu">
               <summary className="avatar-btn" aria-label="Account menu">
@@ -145,6 +153,12 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
                 )}
                 <Link href="/my-pages#companies"><Building2 size={16} /> My companies</Link>
                 <Link href="/my-pages#saas"><Rocket size={16} /> My SaaS</Link>
+                {features.messages && (
+                  <Link href="/messages">
+                    <MessageCircle size={16} /> Messages
+                    {messages > 0 && <span className="menu__badge">{messages}</span>}
+                  </Link>
+                )}
                 <Link href="/account/searches"><BellPlus size={16} /> Saved searches</Link>
                 <Link href="/create"><Plus size={16} /> New profile</Link>
                 <Link href="/account"><Settings size={16} /> Account</Link>

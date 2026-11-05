@@ -5,7 +5,8 @@ import { cachedSectors } from "@/lib/cached";
 import { SECTOR_GROUPS } from "@/lib/sectors";
 import { Breadcrumbs } from "@/components/ui";
 import { ListFilters } from "@/components/ListFilters";
-import { requireFeature } from "@/lib/features";
+import { featureOn, requireFeature } from "@/lib/features";
+import { slugify } from "@/lib/slug";
 
 export const metadata: Metadata = { title: "Sectors", description: "Browse companies and people on Portfedia by sector." };
 
@@ -16,6 +17,7 @@ export default async function SectorsPage({ searchParams }: { searchParams: Prom
   await requireFeature("sectors"); // the section can be switched off in Admin → Sections
   await connection(); // data comes from the database at request time (cached briefly)
   const q = ((await searchParams).q ?? "").trim().slice(0, 80);
+  const communities = await featureOn("communities");
   const counts = new Map((await cachedSectors()).map((s) => [s.sector, s]));
   const groups = SECTOR_GROUPS.map((g) => ({
     group: g.group,
@@ -38,7 +40,7 @@ export default async function SectorsPage({ searchParams }: { searchParams: Prom
                 const c = counts.get(s);
                 return (
                   <li key={s} className={c ? "" : "is-empty"}>
-                    <span className="sector-group__name">{s}</span>
+                    <span className="sector-group__name">{communities ? <Link href={`/sectors/${slugify(s)}`}>{s}</Link> : s}</span>
                     <span className="sector-group__links">
                       {c?.orgs ? <Link href={`/companies?sector=${encodeURIComponent(s)}`}>{c.orgs} compan{c.orgs === 1 ? "y" : "ies"}</Link> : null}
                       {c?.people ? <Link href={`/people?sector=${encodeURIComponent(s)}`}>{c.people} {c.people === 1 ? "person" : "people"}</Link> : null}

@@ -22,6 +22,8 @@ export const FEATURES = {
   raising: { label: "Raising now", href: "/raising", footer: "Raising now", info: "Fundraising details on company pages, the Raising now list and its notifications." },
   mentors: { label: "Mentors", href: "/mentors", footer: "Mentors", info: "The mentors list." },
   updates: { label: "Company updates", href: "", footer: "", info: "Short news posts on company and SaaS pages." },
+  messages: { label: "Messages and introductions", href: "", footer: "", info: "Private messages between members (with requests, blocking and reporting) and introductions through a shared connection." },
+  communities: { label: "Sector communities", href: "", footer: "", info: "A page per sector where members join and post, with the sector's people, companies and jobs." },
   cities: { label: "Cities", href: "/cities", footer: "Cities", info: "City pages that list the people, companies, SaaS projects and events of each city." },
   blog: { label: "Blog", href: "/blog", footer: "Blog", info: "The editorial blog written by admins." },
   feeds: { label: "RSS feeds", href: "/feeds", footer: "RSS", info: "RSS feeds of new people, companies, SaaS projects, jobs, launches and blog posts." },
