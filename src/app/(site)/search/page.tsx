@@ -7,6 +7,7 @@ import { pageHref } from "@/lib/wikitext";
 import { ResultList } from "@/components/EntityCards";
 import { AutoSubmit } from "@/components/client";
 import type { PageType } from "@/lib/types";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
@@ -19,6 +20,7 @@ const TYPES: { value: PageType; label: string; tab: string }[] = [
 ];
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("search"); // the section can be switched off in Admin → Sections
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 100);
   const types = arr(sp.type).filter((t): t is PageType => ["person", "org", "school"].includes(t));

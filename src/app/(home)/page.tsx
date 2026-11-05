@@ -36,12 +36,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
               Reliable, connected and continuously updated information about people, companies, investors and institutions.{" "}
               <b>Portfedia</b> is designed to help you understand the business world better.
             </p>
+            {features.search && (
             <form action="/search" className="hero-search" role="search">
               <Search className="icon" aria-hidden="true" />
               <label htmlFor="home-q" className="visually-hidden">Search</label>
               <input id="home-q" name="q" type="search" placeholder="Search people, companies, investors or topics..." autoComplete="off" />
               <button type="submit" aria-label="Search"><ArrowRight size={18} /></button>
             </form>
+            )}
           </div>
           <div className="hero-art">
             {HERO_IMAGE ? (
@@ -85,6 +87,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           hasCompanies={data.featuredOrgs.length > 0}
           hasSaas={data.featuredSaas.length > 0}
           showSaas={features.saas}
+          showPeople={features.people}
+          showCompanies={features.companies}
         />
         <div className="cta-band" style={{ marginTop: 36 }}>
           <div>

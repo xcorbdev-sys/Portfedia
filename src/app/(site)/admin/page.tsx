@@ -239,7 +239,7 @@ async function Sections() {
         <p className="small muted">
           Switch a section off and it disappears everywhere: its pages show &ldquo;not found&rdquo;, it leaves the menus, the footer and the
           site map, its parts on other pages are hidden and its emails stop. Nothing is deleted; switch it on again and everything is back.
-          People, companies and search are always on.
+          Profile and company pages themselves always stay reachable.
         </p>
         <form action={saveFeaturesAction} className="feature-list">
           {(Object.keys(FEATURES) as FeatureKey[]).map((k) => (

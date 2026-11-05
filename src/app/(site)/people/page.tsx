@@ -4,12 +4,14 @@ import { listPages, sectorsFor } from "@/lib/pages";
 import { OPEN_TO } from "@/lib/types";
 import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "People", description: "Profiles of entrepreneurs, executives, investors and professionals on Portfedia." };
 
 type SP = Record<string, string | undefined>;
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("people"); // the section can be switched off in Admin → Sections
   const { values, page, href } = listParams(await searchParams, ["q", "sector", "openTo", "sort"]);
   const openTo = values.openTo in OPEN_TO ? values.openTo : "";
   const [data, sectors] = await Promise.all([

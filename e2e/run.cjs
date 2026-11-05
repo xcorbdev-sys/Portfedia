@@ -717,8 +717,26 @@ async function createProfile(p, opts) {
   check("company pages hide switched-off parts", (await anon.locator("#jobs").count()) === 0);
   await elif.goto(`${BASE}/create`);
   check("no SaaS option while SaaS is off", (await elif.locator('input[name=kind][value="saas"]').count()) === 0);
+  await admin.goto(`${BASE}/admin?section=sections`);
+  for (const k of ["search", "people"]) await admin.locator(`input[name=f_${k}]`).uncheck();
+  await admin.click('.feature-list button:has-text("Save")');
+  await admin.waitForURL(/section=sections&done=/);
+  await anon.goto(`${BASE}/`);
+  check(
+    "search and people can be switched off too",
+    (await anon.goto(`${BASE}/search?q=a`)).status() === 404 &&
+      (await anon.goto(`${BASE}/people`)).status() === 404 &&
+      (await anon.goto(`${BASE}/`)) !== null &&
+      (await anon.locator(".hero-search").count()) === 0 &&
+      (await anon.locator('footer a[href="/people"]').count()) === 0 &&
+      (await anon.goto(`${BASE}${aysePath}`)).status() === 200,
+  );
+  await admin.goto(`${BASE}/admin?section=sections`);
+  for (const k of ["search", "people"]) await admin.locator(`input[name=f_${k}]`).check();
+  await admin.click('.feature-list button:has-text("Save")');
+  await admin.waitForURL(/section=sections&done=/);
   await setSections([]);
-  check("switched back on", (await anon.goto(`${BASE}/jobs`)).status() === 200);
+  check("switched back on", (await anon.goto(`${BASE}/jobs`)).status() === 200 && (await anon.goto(`${BASE}/people`)).status() === 200);
   await anon.goto(`${BASE}/org/northwind-robotics`);
   check("company job section is back", (await anon.locator("#jobs").count()) === 1);
 

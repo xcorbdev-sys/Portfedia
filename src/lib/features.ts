@@ -5,9 +5,13 @@ import { notFound } from "next/navigation";
 /**
  * Sections an admin can switch off (Admin → Sections). A switched-off section disappears everywhere:
  * its pages return 404, links leave the menus and footer, related parts of other pages are hidden and
- * its background jobs stop. People, companies and search are the core and can't be switched off.
+ * its background jobs stop. For People and Companies the lists switch off; profile and company pages stay
+ * reachable, since they are the encyclopedia itself.
  */
 export const FEATURES = {
+  search: { label: "Search", href: "/search", footer: "", info: "The search page, the search box in the header and the big search box on the home page." },
+  people: { label: "People", href: "/people", footer: "People", info: "The people list, its menu links and the People tab on the home page. Profiles stay reachable." },
+  companies: { label: "Companies", href: "/companies", footer: "Companies", info: "The companies list, its menu links and the Companies tab on the home page. Company pages stay reachable." },
   saas: { label: "SaaS projects", href: "/saas", footer: "SaaS Projects", info: "The SaaS section, SaaS pages in lists and the SaaS option when creating a page." },
   launches: { label: "Launches", href: "/launches", footer: "Launches", info: "The weekly launch board, upvotes and launch notes on SaaS pages." },
   education: { label: "Education", href: "/education", footer: "Education", info: "The list of universities and schools." },

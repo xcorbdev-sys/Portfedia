@@ -40,10 +40,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="container site-footer__inner">
             <span>© {new Date().getFullYear()} Portfedia · Information on profiles is provided by their owners; ✓ items are confirmed by the other party.</span>
             <nav aria-label="Footer">
-              <Link href="/people">People</Link>
-              <Link href="/companies">Companies</Link>
               {(Object.keys(FEATURES) as FeatureKey[])
-                .filter((k) => features[k] && FEATURES[k].href && k !== "help")
+                .filter((k) => features[k] && FEATURES[k].footer && k !== "help")
                 .map((k) => (
                   <Link key={k} href={FEATURES[k].href}>{FEATURES[k].footer}</Link>
                 ))}

@@ -4,12 +4,14 @@ import { listPages, sectorsFor } from "@/lib/pages";
 import { ORG_CATEGORIES, type OrgCategory } from "@/lib/types";
 import { listParams, SORTS } from "@/lib/list-params";
 import { Listing } from "@/components/Listing";
+import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Companies", description: "Companies, holdings, funds and organizations on Portfedia." };
 
 type SP = Record<string, string | undefined>;
 
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireFeature("companies"); // the section can be switched off in Admin → Sections
   const { values, page, href } = listParams(await searchParams, ["q", "sector", "category", "sort"]);
   // SaaS projects (/saas) and universities and schools (/education) have their own sections
   const category = values.category in ORG_CATEGORIES && values.category !== "saas" ? (values.category as OrgCategory) : undefined;

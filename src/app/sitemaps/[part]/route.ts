@@ -17,7 +17,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ part: stri
     const features = await getFeatures();
     const collections = await cachedCollections();
     urls.unshift(
-      ...["/", "/people", "/companies", ...(Object.keys(FEATURES) as FeatureKey[]).filter((k) => features[k] && FEATURES[k].href).map((k) => FEATURES[k].href)].map((p) => ({ loc: `${base}${p}` })),
+      ...["/", ...(Object.keys(FEATURES) as FeatureKey[]).filter((k) => features[k] && FEATURES[k].href && k !== "search").map((k) => FEATURES[k].href)].map((p) => ({ loc: `${base}${p}` })),
       ...collections.map((c) => ({ loc: `${base}/collections/${c.slug}` })),
       // Each open job has its own page (Google for Jobs reads them)
       ...(features.jobs ? await cachedJobs() : []).map((l) => ({ loc: `${base}/jobs/${l.org.slug}/${l.job.id}`, ...(l.job.postedAt ? { lastmod: new Date(l.job.postedAt).toISOString() } : {}) })),

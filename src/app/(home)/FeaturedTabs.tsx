@@ -14,6 +14,8 @@ export function FeaturedTabs({
   hasCompanies,
   hasSaas,
   showSaas = true,
+  showPeople = true,
+  showCompanies = true,
 }: {
   people: React.ReactNode;
   companies: React.ReactNode;
@@ -22,8 +24,12 @@ export function FeaturedTabs({
   hasCompanies: boolean;
   hasSaas: boolean;
   showSaas?: boolean;
+  showPeople?: boolean;
+  showCompanies?: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("people");
+  // The first tab whose section is switched on
+  const [tab, setTab] = useState<Tab>(showPeople ? "people" : showCompanies ? "companies" : "saas");
+  if (!showPeople && !showCompanies && !showSaas) return null;
   const empty = tab === "people" ? !hasPeople : tab === "companies" ? !hasCompanies : !hasSaas;
   const viewAll = tab === "people" ? "/people" : tab === "companies" ? "/companies" : "/saas";
   return (
@@ -35,8 +41,8 @@ export function FeaturedTabs({
         </Link>
       </div>
       <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "people"} onClick={() => setTab("people")}>People</button>
-        <button role="tab" aria-selected={tab === "companies"} onClick={() => setTab("companies")}>Companies</button>
+        {showPeople && <button role="tab" aria-selected={tab === "people"} onClick={() => setTab("people")}>People</button>}
+        {showCompanies && <button role="tab" aria-selected={tab === "companies"} onClick={() => setTab("companies")}>Companies</button>}
         {showSaas && <button role="tab" aria-selected={tab === "saas"} onClick={() => setTab("saas")}>SaaS</button>}
       </div>
       <div role="tabpanel">

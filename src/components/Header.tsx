@@ -24,8 +24,8 @@ const MOBILE_EXTRA: { href: string; label: string; feature?: FeatureKey }[] = [
 ];
 
 const ALL_NAV: { href: string; label: string; feature?: FeatureKey }[] = [
-  { href: "/people", label: "People" },
-  { href: "/companies", label: "Companies" },
+  { href: "/people", label: "People", feature: "people" },
+  { href: "/companies", label: "Companies", feature: "companies" },
   { href: "/saas", label: "SaaS", feature: "saas" },
   { href: "/education", label: "Education", feature: "education" },
   { href: "/sectors", label: "Sectors", feature: "sectors" },
@@ -83,12 +83,12 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
           ))}
         </nav>
         <div className="header-right">
-          {showSearch && (
+          {showSearch && features.search && (
             <Link href="/search" className="btn btn--icon btn--ghost header-search-btn" aria-label="Search">
               <Search size={19} />
             </Link>
           )}
-          {showSearch && (
+          {showSearch && features.search && (
             <form action="/search" className="header-search" role="search">
               <Search className="icon" aria-hidden="true" />
               <label htmlFor="hq" className="visually-hidden">Search Portfedia</label>
@@ -161,7 +161,7 @@ export async function Header({ showSearch = true }: { showSearch?: boolean }) {
             </summary>
             <div className="menu__panel">
               {!user && <Link href="/login" className="menu-login"><LogIn size={16} /> Log in</Link>}
-              <Link href="/search"><Search size={16} /> Search</Link>
+              {features.search && <Link href="/search"><Search size={16} /> Search</Link>}
               {user && isModerator(user) && (
                 <Link href="/admin">
                   <ShieldCheck size={16} /> Admin panel
