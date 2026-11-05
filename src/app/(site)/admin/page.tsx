@@ -10,7 +10,9 @@ import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
 import { AdminImport } from "@/components/AdminImport";
-import { deleteBlogPostAction, saveBlogPostAction, saveFeaturesAction, saveGlobeAction } from "@/lib/actions/admin";
+import { deleteBlogPostAction, requireTermsAcceptanceAction, saveBlogPostAction, saveFeaturesAction, saveGlobeAction } from "@/lib/actions/admin";
+import { suspiciousAccounts } from "@/lib/suspicious";
+import { termsVersion } from "@/lib/legal";
 import { allBlogPosts, getBlogPostById } from "@/lib/blog";
 import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 import { r2Configured } from "@/lib/storage";
@@ -22,7 +24,7 @@ type SP = { section?: string; tab?: string; q?: string; error?: string; reason?:
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
   const sp = await searchParams;
-  const section = ["reports", "users", "import", "overview", "home", "sections", "blog"].includes(sp.section ?? "") ? sp.section! : "applications";
+  const section = ["reports", "users", "import", "overview", "home", "sections", "blog", "suspicious"].includes(sp.section ?? "") ? sp.section! : "applications";
   const [pendingApps, openReports] = await Promise.all([countPendingApplications(), countOpenReports()]);
 
   return (
@@ -34,6 +36,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin" aria-current={section === "applications" ? "page" : undefined}>Applications ({pendingApps})</Link>
         <Link href="/admin?section=reports" aria-current={section === "reports" ? "page" : undefined}>Reports ({openReports})</Link>
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
+        <Link href="/admin?section=suspicious" aria-current={section === "suspicious" ? "page" : undefined}>Suspicious</Link>
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
         <Link href="/admin?section=home" aria-current={section === "home" ? "page" : undefined}>Home page</Link>
         <Link href="/admin?section=blog" aria-current={section === "blog" ? "page" : undefined}>Blog</Link>
@@ -56,6 +59,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {section === "home" && <HomeGlobe />}
       {section === "sections" && <Sections />}
       {section === "blog" && <Blog edit={sp.edit} />}
+      {section === "suspicious" && <Suspicious />}
     </div>
   );
 }
@@ -260,6 +264,59 @@ async function Sections() {
           ))}
           <button className="btn btn--primary" type="submit" style={{ width: "fit-content", marginTop: 8 }}>Save</button>
         </form>
+      </div>
+      <div className="card__body" style={{ borderTop: "1px solid var(--border)" }}>
+        <h2 className="card__title">Updated terms</h2>
+        <p className="small muted">
+          Changed the Terms of Use or Privacy Policy in a way members should agree to? Describe the change and press the button: every member is
+          asked to read and accept the new version the next time they open the site (the date of acceptance is kept). Current version:{" "}
+          <b>{(await termsVersion()).slice(0, 10)}</b>.
+        </p>
+        <form action={requireTermsAcceptanceAction} className="form" style={{ display: "grid", gap: 8 }}>
+          <textarea name="changes" className="textarea" rows={3} required minLength={10} maxLength={2000} placeholder="e.g. We now keep sign-in logs for 1 year instead of 2." aria-label="What changed" />
+          <button className="btn" type="submit" style={{ width: "fit-content" }}>Ask everyone to accept the updated terms</button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+/* ───────────── Suspicious accounts (#88) ───────────── */
+
+async function Suspicious() {
+  const rows = await suspiciousAccounts();
+  return (
+    <section className="card">
+      <div className="card__body">
+        <h2 className="card__title">Accounts worth a look</h2>
+        <p className="small muted">
+          Signals from the last 30 days: shared network addresses, throw-away email domains, open reports about their profile, being blocked by people
+          they messaged, and new profiles with the same name as an existing one. Nothing is done automatically; open the account to review or ban it.
+        </p>
+        {rows.length === 0 ? (
+          <div className="empty">Nothing suspicious right now. 🎉</div>
+        ) : (
+          <ul className="result-list suspicious">
+            {rows.map((r) => (
+              <li key={r.id}>
+                <div className="result" style={{ gridTemplateColumns: "1fr auto" }}>
+                  <span>
+                    <b>{r.name}</b> <span className="muted small">{r.email} · joined {formatDate(r.createdAt)}</span>{" "}
+                    {r.bannedAt && <span className="status-pill status-pill--rejected">banned</span>}
+                    <ul className="small" style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                      {r.reasons.map((x) => <li key={x}>{x}</li>)}
+                    </ul>
+                  </span>
+                  <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span className="chip chip--muted" title="Higher means more signals">{r.score}</span>
+                    {r.profileSlug && <Link className="btn btn--sm btn--ghost" href={`/${r.profileSlug}`}>Profile</Link>}
+                    <Link className="btn btn--sm" href={`/admin?section=users&q=${encodeURIComponent(r.email)}`}>Review</Link>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );

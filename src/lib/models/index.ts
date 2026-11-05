@@ -24,6 +24,9 @@ const UserSchema = new Schema<any>(
     notifyRaises: { type: Boolean, default: false },
     // #39: in-site notification kinds the member switched off
     mutedNotifications: { type: [String], default: [] },
+    // #94: version of the terms the member accepted, and when
+    termsVersion: { type: String, default: "" },
+    termsAcceptedAt: { type: Date, default: null },
     // #61: who may start a conversation with this member, and members they blocked
     messagesFrom: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
     blockedUsers: { type: [Schema.Types.ObjectId], default: [] },

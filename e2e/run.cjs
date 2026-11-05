@@ -940,6 +940,25 @@ async function createProfile(p, opts) {
   }
   check("verify everyone waiting in one click", waiting === 1 && (await admin.locator(".verify-all").count()) === 0 && /verified/.test(await admin.locator(".notice--ok").first().innerText()));
 
+  // ── Suspicious accounts; members accept updated terms
+  await signup(browser, "Spam Account", "spam@mailinator.com", { confirm: false });
+  await admin.goto(`${BASE}/admin?section=suspicious`);
+  check("suspicious accounts are listed with reasons", (await admin.locator(".suspicious li:has-text('spam@mailinator.com') >> text=Throw-away email address").count()) === 1);
+  await admin.goto(`${BASE}/admin?section=sections`);
+  await admin.fill("textarea[name=changes]", "We now explain how messages are moderated.");
+  await admin.click('button:has-text("Ask everyone to accept the updated terms")');
+  await admin.waitForURL(/section=sections&done=/);
+  check("the admin who published the terms isn't asked again", new URL(admin.url()).pathname === "/admin");
+  await ayse.goto(`${BASE}/jobs`);
+  check("members are asked to accept updated terms", new URL(ayse.url()).pathname === "/accept-terms" && (await ayse.locator("text=how messages are moderated").count()) === 1);
+  check("legal pages stay readable before accepting", (await ayse.goto(`${BASE}/terms`)) && new URL(ayse.url()).pathname === "/terms");
+  await ayse.goto(`${BASE}/jobs`);
+  await ayse.check("input[name=accept]");
+  await ayse.click('button:has-text("Accept and continue")');
+  await ayse.waitForURL(`${BASE}/jobs`);
+  check("after accepting, members continue where they were", new URL(ayse.url()).pathname === "/jobs");
+  check("visitors aren't asked", (await anon.goto(`${BASE}/jobs`)) && new URL(anon.url()).pathname === "/jobs");
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

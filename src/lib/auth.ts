@@ -1,4 +1,5 @@
 import "server-only";
+import { TERMS_BASELINE, termsVersion } from "./legal";
 import { createHash, randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -81,6 +82,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     passwordHash?: string;
     emailPrefs?: { profileUpdates?: boolean };
     bannedAt?: Date | null;
+    termsVersion?: string;
   }>();
   if (!user || user.bannedAt) return null; // suspended accounts are signed out everywhere
   const emailVerified = Boolean(user.emailVerifiedAt);
@@ -97,6 +99,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     emailVerified,
     hasPassword: Boolean(user.passwordHash),
     emailPrefs: { profileUpdates: user.emailPrefs?.profileUpdates !== false },
+    needsTerms: (user.termsVersion || TERMS_BASELINE) < (await termsVersion()),
   };
 });
 

@@ -273,6 +273,8 @@ export interface SessionUser {
   emailVerified: boolean;
   hasPassword: boolean;
   emailPrefs: { profileUpdates: boolean };
+  /** #94: the terms changed since the member last accepted them */
+  needsTerms?: boolean;
 }
 
 /** #45: profile parts a person can show to signed-in members only. */

@@ -110,3 +110,21 @@ export async function deleteBlogPostAction(fd: FormData): Promise<void> {
   }
   redirect(`/admin?section=blog&done=${encodeURIComponent("Post deleted.")}`);
 }
+
+/** #94: Admin → Sections: the terms changed; every member must accept them again. */
+export async function requireTermsAcceptanceAction(fd: FormData): Promise<void> {
+  const user = await moderator();
+  if (user.role !== "admin") redirect("/admin?section=sections&error=" + encodeURIComponent("Only admins can do this."));
+  const changes = str(fd.get("changes"), 2000);
+  if (changes.length < 10) redirect("/admin?section=sections&error=" + encodeURIComponent("Describe in a sentence or two what changed."));
+  const { setMeta } = await import("../maintenance");
+  const { revalidateTag } = await import("next/cache");
+  const { connectDB } = await import("../db");
+  const { User } = await import("../models");
+  const version = new Date().toISOString().slice(0, 19) + "Z";
+  await setMeta("terms", { version, changes });
+  revalidateTag("terms", { expire: 0 });
+  await connectDB();
+  await User.updateOne({ _id: user.id }, { $set: { termsVersion: version, termsAcceptedAt: new Date() } }); // the admin who published them
+  redirect("/admin?section=sections&done=" + encodeURIComponent("Every member will be asked to accept the updated terms."));
+}

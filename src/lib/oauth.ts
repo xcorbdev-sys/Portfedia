@@ -1,4 +1,5 @@
 import "server-only";
+import { termsVersion } from "./legal";
 import { connectDB } from "./db";
 import { Session, User } from "./models";
 import { siteUrl } from "./site";
@@ -153,6 +154,8 @@ export async function createOAuthUser(profile: OAuthProfile, name: string): Prom
     passwordHash: "",
     emailVerifiedAt: profile.emailVerified ? new Date() : null,
     ageConfirmedAt: new Date(),
+    termsVersion: await termsVersion(), // the signup form asks to accept the terms
+    termsAcceptedAt: new Date(),
     [idField(profile.provider)]: profile.providerId,
   });
   return String(user._id);

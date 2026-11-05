@@ -1,5 +1,6 @@
 "use server";
 
+import { termsVersion } from "../legal";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
@@ -61,7 +62,7 @@ export async function registerAction(_: FormState, fd: FormData): Promise<FormSt
 
   await connectDB();
   if (await User.exists({ email })) return { error: "An account with this email already exists. Try logging in." };
-  const user = await User.create({ name, email, passwordHash: await bcrypt.hash(password, 12), ageConfirmedAt: new Date() });
+  const user = await User.create({ name, email, passwordHash: await bcrypt.hash(password, 12), ageConfirmedAt: new Date(), termsVersion: await termsVersion(), termsAcceptedAt: new Date() });
   await sendVerificationEmail(String(user._id), email, name);
   await createSession(String(user._id));
   redirect("/create?welcome=1");
