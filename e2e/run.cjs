@@ -797,6 +797,33 @@ async function createProfile(p, opts) {
   await ayse.waitForURL(/prefs=1/);
   check("notification kinds can be switched off", !(await ayse.locator("input[name=n_follower]").isChecked()) && (await ayse.locator("input[name=n_update]").isChecked()));
 
+  // ── App install (PWA), undo for deletions, members-only profile parts, profile templates
+  const mf = await anon.request.get(`${BASE}/manifest.webmanifest`);
+  check("web app manifest", mf.status() === 200 && (await mf.json()).name === "Portfedia");
+  check("service worker and offline page", (await anon.request.get(`${BASE}/sw.js`)).status() === 200 && (await anon.goto(`${BASE}/offline`)).status() === 200);
+  await elif.goto(`${BASE}/org/elif-analytics`);
+  await elif.locator('#updates li:has-text("weekly email reports") button:has-text("Delete")').click();
+  await elif.waitForURL(/removed=/);
+  check("deleted update is gone", (await elif.locator("#updates li:has-text('weekly email reports')").count()) === 0);
+  await elif.click('.undo-notice button:has-text("Undo")');
+  await elif.waitForURL(/restored=1/);
+  check("undo brings the update back", (await elif.locator("#updates li:has-text('weekly email reports')").count()) === 1);
+  await deniz.goto(`${BASE}/edit`);
+  for (let i = 0; i < 3; i++) await deniz.click('button:has-text("Continue")');
+  await deniz.check("input[name=private_career]");
+  await deniz.check("input[name=private_links]");
+  await deniz.click('button:has-text("Save changes")');
+  await deniz.waitForURL(`${BASE}${denizPath}`);
+  check("members still see the career", (await deniz.locator("#career").count()) === 1);
+  await anon.goto(`${BASE}${denizPath}`);
+  check("visitors don't see members-only parts", (await anon.locator("h1:has-text('Deniz Aksoy')").count()) === 1 && (await anon.locator("#career").count()) === 0);
+  const tpl = await signup(browser, "Tarik Yilmaz", "tarik@example.com");
+  await tpl.goto(`${BASE}/create`);
+  await tpl.click("text=Person Profile");
+  await tpl.click('button:has-text("Continue")');
+  await tpl.click('.template-picker button:has-text("Founder")');
+  check("profile templates fill in a structure", /## Founding/.test(await tpl.inputValue("#body")));
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

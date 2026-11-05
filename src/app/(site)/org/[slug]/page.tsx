@@ -25,12 +25,13 @@ import { featureUnlocked, followNetwork, keyPeopleOf, makersOf, personSlugsByNam
 import { NetworkSummary } from "@/components/NetworkDialog";
 import { latestLaunch } from "@/lib/launches";
 import { attendance, canPostUpdates, listUpdates } from "@/lib/page-social";
-import { attendAction, deleteUpdateAction, postUpdateAction } from "@/lib/actions/page-social";
+import { attendAction, deleteUpdateAction, postUpdateAction, restoreUpdateAction } from "@/lib/actions/page-social";
+import { UndoNotice } from "@/components/UndoNotice";
 import { ORG_CATEGORIES, SAAS_PRICING } from "@/lib/types";
 import { SafeImg } from "@/components/SafeImg";
 import { getFeatures } from "@/lib/features";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ posted?: string; updateError?: string; removed?: string; restored?: string }> };
 
 const PREVIEW = 24;
 
@@ -62,7 +63,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 export default async function OrgPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { posted, updateError } = await searchParams;
+  const { posted, updateError, removed, restored } = await searchParams;
   const page = await load(slug);
   if (!page) {
     const moved = await findRenamedPage(slug); // former names and old addresses
@@ -271,6 +272,8 @@ export default async function OrgPage({ params, searchParams }: Props) {
             <section className="p-section" id="updates">
               <h2>Updates</h2>
               {posted && <div className="notice notice--ok small">Posted. Your followers were notified.</div>}
+              {removed && canPost && <UndoNotice text="Update deleted." id={removed} action={restoreUpdateAction} fields={{ slug: page.slug }} />}
+              {restored && <div className="notice notice--ok small">Update restored.</div>}
               {updateError && <div className="notice notice--error small">{updateError}</div>}
               {canPost && (
                 <form action={postUpdateAction} className="update-form">

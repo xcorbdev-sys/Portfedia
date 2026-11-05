@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { describeAlert, listAlerts } from "@/lib/job-tools";
-import { deleteJobAlertAction } from "@/lib/actions/jobs";
+import { deleteJobAlertAction, restoreJobAlertAction } from "@/lib/actions/jobs";
+import { UndoNotice } from "@/components/UndoNotice";
 import { Breadcrumbs } from "@/components/ui";
 import { requireFeature } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Job alerts", robots: { index: false } };
 
-export default async function JobAlertsPage({ searchParams }: { searchParams: Promise<{ created?: string; deleted?: string; error?: string }> }) {
+export default async function JobAlertsPage({ searchParams }: { searchParams: Promise<{ created?: string; deleted?: string; restored?: string; error?: string }> }) {
   await requireFeature("jobs"); // the section can be switched off in Admin → Sections
   const user = await requireUser("/jobs/alerts");
   const sp = await searchParams;
@@ -22,7 +23,8 @@ export default async function JobAlertsPage({ searchParams }: { searchParams: Pr
         <Link href="/jobs">jobs page</Link> and press <b>Email me new jobs like these</b>.
       </p>
       {sp.created && <div className="notice notice--ok">Alert created. We&apos;ll email {user.email} when new jobs match.</div>}
-      {sp.deleted && <div className="notice notice--ok">Alert deleted.</div>}
+      {sp.deleted && <UndoNotice text="Alert deleted." id={sp.deleted} action={restoreJobAlertAction} />}
+      {sp.restored && <div className="notice notice--ok">Alert restored.</div>}
       {sp.error && <div className="notice notice--error">{sp.error}</div>}
       {alerts.length === 0 ? (
         <div className="empty" style={{ marginTop: 14 }}>You have no job alerts.</div>

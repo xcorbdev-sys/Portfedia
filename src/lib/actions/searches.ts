@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "../auth";
-import { addSavedSearch, cleanSearch, deleteSavedSearch, searchHref } from "../saved-searches";
+import { addSavedSearch, cleanSearch, deleteSavedSearch, restoreSavedSearch, searchHref } from "../saved-searches";
 import { MUTABLE_NOTIFICATIONS } from "../notifications";
 import { connectDB } from "../db";
 import { User } from "../models";
@@ -21,8 +21,17 @@ export async function saveSearchAction(fd: FormData): Promise<void> {
 export async function deleteSavedSearchAction(fd: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account/searches");
-  await deleteSavedSearch(user.id, str(fd.get("id"), 40));
-  redirect("/account/searches?deleted=1");
+  const id = str(fd.get("id"), 40);
+  await deleteSavedSearch(user.id, id);
+  redirect(`/account/searches?deleted=${encodeURIComponent(id)}`);
+}
+
+/** #44: undo a deleted saved search. */
+export async function restoreSavedSearchAction(fd: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/account/searches");
+  await restoreSavedSearch(user.id, str(fd.get("id"), 40));
+  redirect("/account/searches?restored=1");
 }
 
 /** #39: which notification kinds arrive in the site, and which emails are sent. */

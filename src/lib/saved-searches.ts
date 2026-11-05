@@ -39,7 +39,7 @@ export function cleanSearch(input: { kind?: unknown; q?: unknown; sector?: unkno
 
 export async function listSavedSearches(userId: string): Promise<SavedSearchView[]> {
   await connectDB();
-  const rows = await SavedSearch.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 }).lean<{ _id: unknown; kind: SearchKind; q: string; sector: string }[]>();
+  const rows = await SavedSearch.find({ userId: new Types.ObjectId(userId), deletedAt: null }).sort({ createdAt: -1 }).lean<{ _id: unknown; kind: SearchKind; q: string; sector: string }[]>();
   return rows.map((r) => ({ id: String(r._id), kind: r.kind, q: r.q, sector: r.sector }));
 }
 
@@ -47,8 +47,8 @@ export async function addSavedSearch(userId: string, s: { kind: SearchKind; q: s
   if (!s.q && !s.sector && s.kind === "all") return "Type something to search for, or pick a filter, before saving the search.";
   await connectDB();
   const uid = new Types.ObjectId(userId);
-  if (await SavedSearch.exists({ userId: uid, ...s })) return "You already saved this search.";
-  if ((await SavedSearch.countDocuments({ userId: uid })) >= MAX_SAVED_SEARCHES) return `You can save up to ${MAX_SAVED_SEARCHES} searches. Delete one first.`;
+  if (await SavedSearch.exists({ userId: uid, deletedAt: null, ...s })) return "You already saved this search.";
+  if ((await SavedSearch.countDocuments({ userId: uid, deletedAt: null })) >= MAX_SAVED_SEARCHES) return `You can save up to ${MAX_SAVED_SEARCHES} searches. Delete one first.`;
   await SavedSearch.create({ userId: uid, ...s });
   return null;
 }
@@ -56,7 +56,14 @@ export async function addSavedSearch(userId: string, s: { kind: SearchKind; q: s
 export async function deleteSavedSearch(userId: string, id: string) {
   if (!Types.ObjectId.isValid(id)) return;
   await connectDB();
-  await SavedSearch.deleteOne({ _id: id, userId: new Types.ObjectId(userId) });
+  // #44: kept for a day so it can be undone
+  await SavedSearch.updateOne({ _id: id, userId: new Types.ObjectId(userId) }, { $set: { deletedAt: new Date() } });
+}
+
+export async function restoreSavedSearch(userId: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) return;
+  await connectDB();
+  await SavedSearch.updateOne({ _id: id, userId: new Types.ObjectId(userId) }, { $set: { deletedAt: null } });
 }
 
 function filterFor(s: { kind: SearchKind; q: string; sector: string }): Record<string, unknown> {
@@ -76,7 +83,7 @@ function filterFor(s: { kind: SearchKind; q: string; sector: string }): Record<s
  */
 export async function sendSearchAlerts(): Promise<number> {
   await connectDB();
-  const due = await SavedSearch.find({ lastSentAt: { $lt: new Date(Date.now() - 20 * 3600_000) } })
+  const due = await SavedSearch.find({ deletedAt: null, lastSentAt: { $lt: new Date(Date.now() - 20 * 3600_000) } })
     .limit(500)
     .lean<{ _id: unknown; userId: unknown; kind: SearchKind; q: string; sector: string; lastSentAt: Date; createdAt: Date; seen: string[] }[]>();
   let sent = 0;

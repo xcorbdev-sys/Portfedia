@@ -17,7 +17,7 @@ export type UpdateRow = { id: string; text: string; url: string; createdAt: Date
 
 export async function listUpdates(pageId: string, limit = 5): Promise<UpdateRow[]> {
   await connectDB();
-  const rows = await PageUpdate.find({ pageId: new Types.ObjectId(pageId) }).sort({ createdAt: -1 }).limit(limit).lean<{ _id: unknown; text: string; url?: string; createdAt: Date }[]>();
+  const rows = await PageUpdate.find({ pageId: new Types.ObjectId(pageId), deletedAt: null }).sort({ createdAt: -1 }).limit(limit).lean<{ _id: unknown; text: string; url?: string; createdAt: Date }[]>();
   return rows.map((r) => ({ id: String(r._id), text: r.text, url: r.url ?? "", createdAt: r.createdAt }));
 }
 
@@ -50,7 +50,15 @@ export async function deleteUpdate(user: SessionUser, slug: string, id: string):
   const page = await getPageBySlug(slug, ["org", "school"]);
   if (!page || !canPostUpdates(user, page) || !Types.ObjectId.isValid(id)) return;
   await connectDB();
-  await PageUpdate.deleteOne({ _id: id, pageId: new Types.ObjectId(page._id) });
+  // #44: kept for a day so it can be undone
+  await PageUpdate.updateOne({ _id: id, pageId: new Types.ObjectId(page._id) }, { $set: { deletedAt: new Date() } });
+}
+
+export async function restoreUpdate(user: SessionUser, slug: string, id: string): Promise<void> {
+  const page = await getPageBySlug(slug, ["org", "school"]);
+  if (!page || !canPostUpdates(user, page) || !Types.ObjectId.isValid(id)) return;
+  await connectDB();
+  await PageUpdate.updateOne({ _id: id, pageId: new Types.ObjectId(page._id) }, { $set: { deletedAt: null } });
 }
 
 /* ───────────── Events: "I'm going" ───────────── */

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Globe, Mail } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { findRenamedPage } from "@/lib/account";
-import { canView, isMembersOnly, isPublic } from "@/lib/visibility";
+import { canView, isMembersOnly, isPublic, forVisitors } from "@/lib/visibility";
 import { ReviewBanner } from "@/components/Review";
 import { currentRole, existingPages, getBacklinks, getCards, getInvestments, getPageBySlug, isFollowing } from "@/lib/pages";
 import { InvestmentsList } from "@/components/Funding";
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // #75: no details for previews or search engines
     return { title: (await getCurrentUser()) ? page.title : "Members-only profile", robots: { index: false, follow: false } };
   }
-  const role = currentRole(page);
+  const role = (await getCurrentUser()) ? currentRole(page) : currentRole(forVisitors(page));
   const description = stripWikiLinks(page.summary) || plainExcerpt(page.body) || `${page.title}, ${role}`;
   return {
     title: page.title,
@@ -74,7 +74,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 export default async function PersonPage({ params }: Props) {
   const { slug } = await params;
-  const page = await load(slug);
+  let page = await load(slug);
   if (!page) {
     const moved = await findRenamedPage(slug);
     if (moved) permanentRedirect(pageHref(moved.type, moved.slug));
@@ -98,6 +98,8 @@ export default async function PersonPage({ params }: Props) {
       </div>
     );
   }
+  // #45: parts the owner shows to members only
+  if (!user) page = forVisitors(page);
   const orgSlugs = [...new Set([...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)])];
   const [existing, backlinks, related, following, investments, recommendations, viewerPage, thanked] = await Promise.all([
     existingPages([...page.outLinks.map((l) => l.slug), ...page.awards.map((a) => slugify(a.issuer)), ...page.volunteering.map((v) => slugify(v.org))].filter(Boolean)),

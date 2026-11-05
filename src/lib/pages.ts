@@ -10,7 +10,7 @@ import { trashImage } from "./image-trash";
 import { readSnapshot } from "./snapshots";
 import { PUBLIC_FILTER, statusAfterOwnerSave } from "./visibility";
 import type {
-  EventInfo, InvestorInfo, OrgCategory, Plan, RaisingInfo, SaasInfo,
+  EventInfo, InvestorInfo, PrivateField, OrgCategory, Plan, RaisingInfo, SaasInfo,
   Acquisition, Award, Education, Experience, FundingRound, Job, LanguageLevel, Leader, LinkedName, Milestone, Office, OpenTo, OrgInfobox, Patent, PressItem, Project, Publication, Talk, Ticker, Volunteering, PageDoc, PageType, PersonInfobox, RevisionDoc, SessionUser, SourceRef, StoredImage,
 } from "./types";
 import { JOB_DAYS } from "./jobs";
@@ -96,6 +96,7 @@ function toPage(d: any): PageDoc {
     thanksCount: d.thanksCount ?? 0,
     noindex: Boolean(d.noindex),
     visibility: d.visibility === "members" ? "members" : "public",
+    membersOnlyFields: Array.isArray(d.membersOnlyFields) ? d.membersOnlyFields : [],
     cover: d.cover?.url ? { key: d.cover.key, url: d.cover.url } : null,
     revisionCount: d.revisionCount ?? 0,
     createdAt: d.createdAt,
@@ -855,6 +856,7 @@ export interface PersonInput {
   openTo: OpenTo[];
   noindex: boolean;
   visibility: "public" | "members";
+  membersOnlyFields: PrivateField[];
   editSummary: string;
   image?: StoredImage | null; // undefined = keep, null = remove
   cover?: StoredImage | null;
@@ -916,6 +918,7 @@ export async function savePersonPage(user: SessionUser, input: PersonInput, opts
     outLinks: extractWikiLinks(input.body),
     noindex: input.noindex,
     visibility: input.visibility,
+    membersOnlyFields: input.membersOnlyFields,
   };
 
   let page;

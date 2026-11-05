@@ -1,5 +1,7 @@
 "use client";
 
+import { TemplatePicker } from "./TemplatePicker";
+import { PRIVATE_FIELDS, type PrivateField } from "@/lib/types";
 import { useActionState, useRef, useState, startTransition } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { autosavePersonAction, savePersonAction } from "@/lib/actions/pages";
@@ -97,6 +99,7 @@ export function PersonForm({
           <h2>Basic Info</h2>
           <p className="muted small">This is what people see first on your profile.</p>
         </div>
+        {!page && <TemplatePicker />}
         <ImagePicker current={page?.image ?? null} name={name} label="Photo" />
         <CoverPicker current={page?.cover ?? null} />
         <div className="grid-2">
@@ -286,6 +289,16 @@ export function PersonForm({
             <input type="checkbox" name="noindex" defaultChecked={page?.noindex} /> Hide my profile from search engines (Google, Bing…)
           </label>
         </div>
+        <fieldset className="field private-fields">
+          <legend className="label">Show only to signed-in members</legend>
+          <span className="hint">Visitors who aren&apos;t signed in, and search engines, won&apos;t see these parts of your profile.</span>
+          {(Object.keys(PRIVATE_FIELDS) as PrivateField[]).map((k) => (
+            <label key={k} className="check">
+              <input type="checkbox" name={`private_${k}`} defaultChecked={page?.membersOnlyFields?.includes(k)} /> {PRIVATE_FIELDS[k]}
+            </label>
+          ))}
+          <span className="hint">Company pages still list the people who work there.</span>
+        </fieldset>
         <div className="field">
           <label htmlFor="editSummary">Edit summary</label>
           <input id="editSummary" name="editSummary" className="input" maxLength={300} placeholder={page ? "e.g. Added my new role" : "Profile created"} />

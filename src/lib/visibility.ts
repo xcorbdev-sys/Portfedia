@@ -1,4 +1,4 @@
-import type { PageStatus, PageType } from "./types";
+import type { PageDoc, PageStatus, PageType } from "./types";
 
 /** Statuses that are never shown to the public (person profiles awaiting or failing review). */
 export const HIDDEN_STATUSES: PageStatus[] = ["pending", "rejected"];
@@ -33,4 +33,21 @@ export function statusAfterOwnerSave(current: PageStatus | null): PageStatus {
   if (current === null) return "pending"; // new profile = new application
   if (current === "rejected") return "pending"; // edited after rejection = resubmitted
   return current; // pending stays pending, published stays published
+}
+
+/** #45: the profile as a visitor who isn't signed in sees it (members-only parts removed). */
+export function forVisitors(page: PageDoc): PageDoc {
+  const hide = new Set(page.membersOnlyFields ?? []);
+  if (!hide.size) return page;
+  const ib = { ...page.infobox };
+  if (hide.has("location")) Object.assign(ib, { location: "", birthPlace: "" });
+  if (hide.has("links")) Object.assign(ib, { website: "", github: "", linkedin: "", email: "", emailPublic: false });
+  if (hide.has("languages")) Object.assign(ib, { languages: "", skills: "" });
+  return {
+    ...page,
+    infobox: ib,
+    experiences: hide.has("career") ? [] : page.experiences,
+    educations: hide.has("education") ? [] : page.educations,
+    languageLevels: hide.has("languages") ? [] : page.languageLevels,
+  };
 }

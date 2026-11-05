@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "../auth";
-import { deleteUpdate, postUpdate, toggleAttendance } from "../page-social";
+import { deleteUpdate, restoreUpdate, postUpdate, toggleAttendance } from "../page-social";
 import { revalidatePath } from "../revalidate";
 import { str } from "../validate";
 import { rateLimit } from "../rate-limit";
@@ -24,7 +24,17 @@ export async function deleteUpdateAction(fd: FormData): Promise<void> {
   if (!user) redirect(`/login?next=/org/${slug}`);
   await deleteUpdate(user, slug, str(fd.get("id"), 40));
   revalidatePath(`/org/${slug}`);
-  redirect(`/org/${slug}?removed=1#updates`);
+  redirect(`/org/${slug}?removed=${encodeURIComponent(str(fd.get("id"), 40))}#updates`);
+}
+
+/** #44: undo a deleted update. */
+export async function restoreUpdateAction(fd: FormData): Promise<void> {
+  const slug = str(fd.get("slug"), 120);
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=/org/${slug}`);
+  await restoreUpdate(user, slug, str(fd.get("id"), 40));
+  revalidatePath(`/org/${slug}`);
+  redirect(`/org/${slug}?restored=1#updates`);
 }
 
 export async function attendAction(fd: FormData): Promise<void> {

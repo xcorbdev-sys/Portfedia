@@ -54,7 +54,7 @@ export async function savedJobs(userId: string) {
 
 export async function listAlerts(userId: string) {
   await connectDB();
-  return (await JobAlert.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 }).lean<(JobFilters & { _id: unknown })[]>()).map((a) => ({
+  return (await JobAlert.find({ userId: new Types.ObjectId(userId), deletedAt: null }).sort({ createdAt: -1 }).lean<(JobFilters & { _id: unknown })[]>()).map((a) => ({
     id: String(a._id),
     q: a.q,
     type: a.type,
@@ -68,8 +68,8 @@ export async function listAlerts(userId: string) {
 export async function addAlert(userId: string, f: JobFilters): Promise<string | null> {
   await connectDB();
   const uid = new Types.ObjectId(userId);
-  if ((await JobAlert.countDocuments({ userId: uid })) >= 10) return "You can have up to 10 job alerts. Delete one first.";
-  if (await JobAlert.exists({ userId: uid, ...f })) return "You already have an alert for this search.";
+  if ((await JobAlert.countDocuments({ userId: uid, deletedAt: null })) >= 10) return "You can have up to 10 job alerts. Delete one first.";
+  if (await JobAlert.exists({ userId: uid, deletedAt: null, ...f })) return "You already have an alert for this search.";
   await JobAlert.create({ userId: uid, ...f });
   return null;
 }
@@ -77,7 +77,14 @@ export async function addAlert(userId: string, f: JobFilters): Promise<string | 
 export async function deleteAlert(userId: string, id: string) {
   if (!Types.ObjectId.isValid(id)) return;
   await connectDB();
-  await JobAlert.deleteOne({ _id: id, userId: new Types.ObjectId(userId) });
+  // #44: kept for a day so it can be undone
+  await JobAlert.updateOne({ _id: id, userId: new Types.ObjectId(userId) }, { $set: { deletedAt: new Date() } });
+}
+
+export async function restoreAlert(userId: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) return;
+  await connectDB();
+  await JobAlert.updateOne({ _id: id, userId: new Types.ObjectId(userId) }, { $set: { deletedAt: null } });
 }
 
 export const describeAlert = (a: Partial<JobFilters>) =>
@@ -89,7 +96,7 @@ export const describeAlert = (a: Partial<JobFilters>) =>
  */
 export async function sendJobAlerts(): Promise<number> {
   await connectDB();
-  const due = await JobAlert.find({ lastSentAt: { $lt: new Date(Date.now() - 20 * 3600_000) } }).limit(500).lean<(JobFilters & { _id: unknown; userId: unknown; lastSentAt: Date })[]>();
+  const due = await JobAlert.find({ deletedAt: null, lastSentAt: { $lt: new Date(Date.now() - 20 * 3600_000) } }).limit(500).lean<(JobFilters & { _id: unknown; userId: unknown; lastSentAt: Date })[]>();
   if (!due.length) return 0;
   const all = await listJobs();
   let sent = 0;

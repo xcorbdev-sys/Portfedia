@@ -20,10 +20,13 @@ export function proxy(request: NextRequest) {
     "img-src 'self' blob: data: https:",
     "font-src 'self' data:",
     "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'self'",
+    // The careers widget (#69) is made to be shown on companies' own websites
+    request.nextUrl.pathname.startsWith("/embed/") ? "frame-ancestors *" : "frame-ancestors 'self'",
     ...(https ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 
@@ -38,7 +41,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|media|org-badge|icon.svg|favicon.ico|robots.txt|sitemap).*)",
+      source: "/((?!api|_next/static|_next/image|media|org-badge|icon.svg|favicon.ico|robots.txt|sitemap|sw.js|icons|manifest.webmanifest).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

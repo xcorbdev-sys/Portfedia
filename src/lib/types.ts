@@ -240,6 +240,8 @@ export interface PageDoc {
   thanksCount: number;
   noindex: boolean;
   visibility: "public" | "members";
+  /** #45: parts of a public profile only signed-in members see */
+  membersOnlyFields: PrivateField[];
   cover: StoredImage | null;
   revisionCount: number;
   createdAt: Date;
@@ -266,3 +268,13 @@ export interface SessionUser {
   hasPassword: boolean;
   emailPrefs: { profileUpdates: boolean };
 }
+
+/** #45: profile parts a person can show to signed-in members only. */
+export const PRIVATE_FIELDS = {
+  location: "Location and place of birth",
+  links: "Website and social links",
+  career: "Career history",
+  education: "Education",
+  languages: "Languages and skills",
+} as const;
+export type PrivateField = keyof typeof PRIVATE_FIELDS;

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser, safeNext } from "../auth";
-import { addAlert, deleteAlert, toggleSavedJob } from "../job-tools";
+import { addAlert, deleteAlert, restoreAlert, toggleSavedJob } from "../job-tools";
 import { JOB_TYPES, LEVELS, WORKPLACES } from "../jobs";
 import { str } from "../validate";
 import { rateLimit } from "../rate-limit";
@@ -42,6 +42,15 @@ export async function createJobAlertAction(fd: FormData): Promise<void> {
 export async function deleteJobAlertAction(fd: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/jobs/alerts");
-  await deleteAlert(user.id, str(fd.get("id"), 40));
-  redirect("/jobs/alerts?deleted=1");
+  const id = str(fd.get("id"), 40);
+  await deleteAlert(user.id, id);
+  redirect(`/jobs/alerts?deleted=${encodeURIComponent(id)}`);
+}
+
+/** #44: undo a deleted alert. */
+export async function restoreJobAlertAction(fd: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/jobs/alerts");
+  await restoreAlert(user.id, str(fd.get("id"), 40));
+  redirect("/jobs/alerts?restored=1");
 }

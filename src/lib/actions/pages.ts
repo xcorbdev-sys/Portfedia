@@ -1,5 +1,7 @@
 "use server";
 
+import { PRIVATE_FIELDS, type PrivateField } from "../types";
+import { hasTemplateHints } from "../profile-templates";
 import { redirect } from "next/navigation";
 import { expireOrg, revalidatePath } from "../revalidate";
 import { getCurrentUser } from "../auth";
@@ -387,6 +389,7 @@ async function personFromForm(user: SessionUser, fd: FormData): Promise<{ error:
     openTo,
     noindex: bool(fd.get("noindex")),
     visibility: fd.get("visibility") === "members" ? "members" : "public",
+    membersOnlyFields: (Object.keys(PRIVATE_FIELDS) as PrivateField[]).filter((k) => fd.get(`private_${k}`) === "on"),
     editSummary: str(fd.get("editSummary"), 300),
     image,
     cover,
@@ -401,6 +404,8 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
   const parsed = await personFromForm(user, fd);
   if ("error" in parsed) return { error: parsed.error };
   const { input, prev } = parsed;
+  // #47: template hints must be replaced before the profile is submitted (drafts may keep them)
+  if (hasTemplateHints(input.body)) return { error: "Your biography still has ✎ lines from the template. Replace them with your own text or delete them." };
   const page = await savePersonPage(user, input);
 
   if (isPublic(page)) {

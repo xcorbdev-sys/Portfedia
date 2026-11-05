@@ -3,6 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { siteUrl } from "@/lib/site";
 import { NavProgress } from "@/components/NavProgress";
+import { ServiceWorker } from "@/components/ServiceWorker";
 import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
@@ -19,6 +20,8 @@ const baseMetadata: Metadata = {
     "Reliable, connected and continuously updated profiles of people, companies, investors and institutions. Portfedia helps you understand the business world better.",
   openGraph: { siteName: "Portfedia", locale: "en_US", type: "website" },
   twitter: { card: "summary_large_image" },
+  appleWebApp: { capable: true, title: "Portfedia", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
   // Ownership checks for Google Search Console and Bing Webmaster Tools (codes from their "HTML tag" method)
   verification: {
     ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
@@ -52,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <NavProgress />
         </Suspense>
         {children}
+        <ServiceWorker />
         <footer className="site-footer">
           <div className="container site-footer__inner">
             <span>© {new Date().getFullYear()} Portfedia · Information on profiles is provided by their owners; ✓ items are confirmed by the other party.</span>

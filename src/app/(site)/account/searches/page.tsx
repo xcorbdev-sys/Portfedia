@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { describeSearch, listSavedSearches, MAX_SAVED_SEARCHES, searchHref } from "@/lib/saved-searches";
-import { deleteSavedSearchAction } from "@/lib/actions/searches";
+import { deleteSavedSearchAction, restoreSavedSearchAction } from "@/lib/actions/searches";
+import { UndoNotice } from "@/components/UndoNotice";
 import { Breadcrumbs } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Saved searches", robots: { index: false } };
 
-export default async function SavedSearchesPage({ searchParams }: { searchParams: Promise<{ saved?: string; deleted?: string; error?: string }> }) {
+export default async function SavedSearchesPage({ searchParams }: { searchParams: Promise<{ saved?: string; deleted?: string; restored?: string; error?: string }> }) {
   const user = await requireUser("/account/searches");
   const sp = await searchParams;
   const searches = await listSavedSearches(user.id);
@@ -21,7 +22,8 @@ export default async function SavedSearchesPage({ searchParams }: { searchParams
         and press <b>Save this search</b>. Up to {MAX_SAVED_SEARCHES}.
       </p>
       {sp.saved && <div className="notice notice--ok">Search saved. We&apos;ll let you know about new matches.</div>}
-      {sp.deleted && <div className="notice notice--ok">Saved search deleted.</div>}
+      {sp.deleted && <UndoNotice text="Saved search deleted." id={sp.deleted} action={restoreSavedSearchAction} />}
+      {sp.restored && <div className="notice notice--ok">Saved search restored.</div>}
       {sp.error && <div className="notice notice--error">{sp.error}</div>}
       {searches.length === 0 ? (
         <div className="empty" style={{ marginTop: 14 }}>You have no saved searches.</div>

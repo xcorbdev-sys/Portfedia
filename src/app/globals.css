@@ -845,3 +845,9 @@ pre.diff-add { background: var(--ok-soft); border-color: color-mix(in srgb, var(
 .save-search { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 .notif-prefs fieldset { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
 .notif-prefs legend { font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+.undo-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.private-fields { border: 0; padding: 0; margin: 0; }
+.template-picker { display: grid; gap: 6px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); }
+.template-picker .label { font-weight: 600; font-size: .86rem; }
+.template-picker__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.template-picker__chips .chip { cursor: pointer; border: 0; font: inherit; }

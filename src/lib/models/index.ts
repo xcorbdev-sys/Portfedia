@@ -237,6 +237,8 @@ const PageSchema = new Schema<any>(
     noindex: { type: Boolean, default: false },
     // #75: "members" profiles are only visible to signed-in members (and never in lists or search engines)
     visibility: { type: String, enum: ["public", "members"], default: "public" },
+    // #45: parts of a public profile only signed-in members see
+    membersOnlyFields: { type: [String], default: [] },
     // #66: wide banner image
     cover: { type: new Schema<any>({ key: String, url: String, hash: String, thumbUrl: String }, { _id: false }), default: null },
     revisionCount: { type: Number, default: 0 },
@@ -485,6 +487,7 @@ export const SavedJob = getModel("SavedJob", SavedJobSchema);
 /** "Email me new jobs like these": the filters of a jobs search, checked once a day */
 const JobAlertSchema = new Schema<any>(
   {
+    deletedAt: { type: Date, default: null }, // #44: undo window
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     q: { type: String, default: "" },
     type: { type: String, default: "" },
@@ -526,6 +529,7 @@ export const LaunchVote = getModel("LaunchVote", LaunchVoteSchema);
 /* ───────────── Organization updates and event attendance ───────────── */
 const PageUpdateSchema = new Schema<any>(
   {
+    deletedAt: { type: Date, default: null }, // #44: undo window
     pageId: { type: Schema.Types.ObjectId, ref: "Page", required: true },
     authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String, required: true, maxlength: 1000 },
@@ -567,6 +571,7 @@ export const BlogPost = getModel("BlogPost", BlogPostSchema);
 /* ───────────── Saved searches with alerts (#37) ───────────── */
 const SavedSearchSchema = new Schema<any>(
   {
+    deletedAt: { type: Date, default: null }, // #44: undo window
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     kind: { type: String, enum: ["all", "people", "companies", "saas"], default: "all" },
     q: { type: String, default: "" },

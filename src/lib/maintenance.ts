@@ -95,6 +95,14 @@ export async function runMigrations(): Promise<string[]> {
 /* ───────────── Retention & clean-up (#9, #10, #41, #42) ───────────── */
 
 /** Reports are kept for 3 years (as stated in the privacy policy). */
+/** #44: deleted items stay restorable ("Undo") for a day, then go for good. */
+async function purgeUndoable() {
+  const { JobAlert, PageUpdate, SavedSearch } = await import("./models");
+  const before = { deletedAt: { $ne: null, $lt: new Date(Date.now() - 86400_000) } };
+  const res = await Promise.all([JobAlert.deleteMany(before), PageUpdate.deleteMany(before), SavedSearch.deleteMany(before)]);
+  return res.reduce((n, r) => n + r.deletedCount, 0);
+}
+
 async function deleteOldReports() {
   const res = await Report.deleteMany({ createdAt: { $lt: new Date(Date.now() - 3 * 365 * DAY) } });
   return res.deletedCount;
@@ -129,6 +137,7 @@ export async function runMaintenance() {
     const summary = {
       migrations: await runMigrations(),
       oldReports: await deleteOldReports(),
+      purgedDeleted: await purgeUndoable(),
       unverifiedAccounts: await deleteStaleUnverifiedAccounts(),
       compressedRevisions: await compressOldRevisions(),
       purgedImages: await purgeImageTrash(),
