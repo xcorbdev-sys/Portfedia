@@ -740,6 +740,41 @@ async function createProfile(p, opts) {
   await anon.goto(`${BASE}/org/northwind-robotics`);
   check("company job section is back", (await anon.locator("#jobs").count()) === 1);
 
+  // ── SEO: city pages, SaaS alternatives, blog, RSS feeds, IndexNow key, structured data
+  await anon.goto(`${BASE}/cities`);
+  check("cities page lists cities", (await anon.locator('a[href="/cities/istanbul"]').count()) === 1);
+  await anon.goto(`${BASE}/cities/istanbul`);
+  check("city page lists its companies", (await anon.locator('a[href="/org/northwind-robotics"]').count()) >= 1);
+  await anon.goto(`${BASE}/org/northwind-robotics`);
+  check("headquarters links to the city", (await anon.locator('a[href="/cities/istanbul"]').count()) >= 1);
+  const altRes = await anon.goto(`${BASE}/saas/elif-analytics/alternatives`);
+  check("SaaS alternatives page", altRes.status() === 200 && (await anon.locator("h1:has-text('Elif Analytics alternatives')").count()) === 1);
+  await anon.goto(`${BASE}/org/elif-analytics`);
+  check("SaaS page has SoftwareApplication data", /"SoftwareApplication"/.test(await anon.content()));
+  await admin.goto(`${BASE}/admin?section=blog&edit=new`);
+  await admin.fill("input[name=title]", "Welcome to the Portfedia blog");
+  await admin.fill("input[name=summary]", "What we are building.");
+  await admin.fill("textarea[name=body]", "Portfedia is a living encyclopedia of the business world.\n\n## Why\nRead about [[Northwind Robotics]].");
+  await admin.check("input[name=published]");
+  await admin.click('form button:has-text("Save")');
+  await admin.waitForURL(/section=blog&done=/);
+  await anon.goto(`${BASE}/blog`);
+  check("blog lists published posts", (await anon.locator('a[href="/blog/welcome-to-the-portfedia-blog"]').count()) === 1);
+  await anon.goto(`${BASE}/blog/welcome-to-the-portfedia-blog`);
+  check("blog post renders with page links", (await anon.locator('.prose a[href="/org/northwind-robotics"]').count()) === 1 && /"BlogPosting"/.test(await anon.content()));
+  for (const f of ["people", "companies", "saas", "jobs", "launches", "blog"]) {
+    const r = await anon.request.get(`${BASE}/feeds/${f}.xml`);
+    check(`RSS feed ${f}`, r.status() === 200 && /<rss/.test(await r.text()));
+  }
+  const feedText = await (await anon.request.get(`${BASE}/feeds/companies.xml`)).text();
+  check("companies feed has new companies", /Northwind Robotics/.test(feedText));
+  await anon.goto(`${BASE}/`);
+  check("feeds are discoverable", (await anon.locator('link[rel=alternate][type="application/rss+xml"]').count()) >= 3);
+  const keyRes = await anon.request.get(`${BASE}/indexnow-key.txt`);
+  check("IndexNow key file", keyRes.status() === 200 && /^[a-f0-9]{32}$/.test((await keyRes.text()).trim()));
+  const sm = await (await anon.request.get(`${BASE}/sitemaps/0.xml`)).text();
+  check("sitemap has cities, alternatives and blog", /\/cities\/istanbul</.test(sm) && /\/saas\/elif-analytics\/alternatives</.test(sm) && /\/blog\/welcome-to-the-portfedia-blog</.test(sm));
+
   // ── Legal pages (privacy, KVKK, terms, cookies, legal notice)
   for (const path of ["/privacy", "/kvkk", "/terms", "/cookies", "/legal"]) {
     const res = await anon.goto(`${BASE}${path}`);

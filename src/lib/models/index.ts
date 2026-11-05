@@ -544,3 +544,20 @@ const AttendanceSchema = new Schema<any>(
 AttendanceSchema.index({ pageId: 1, userId: 1 }, { unique: true });
 export const Attendance = getModel("Attendance", AttendanceSchema);
 export const PageView = getModel("PageView", PageViewSchema);
+
+/* ───────────── Editorial blog (#24) ───────────── */
+const BlogPostSchema = new Schema<any>(
+  {
+    slug: { type: String, required: true, unique: true },
+    title: { type: String, required: true },
+    summary: { type: String, default: "" },
+    body: { type: String, default: "" },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    authorName: { type: String, default: "" },
+    published: { type: Boolean, default: false },
+    publishedAt: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+BlogPostSchema.index({ published: 1, publishedAt: -1 });
+export const BlogPost = getModel("BlogPost", BlogPostSchema);

@@ -19,6 +19,7 @@ async function ensureHandlers() {
   const [{ deliverEmail }, { fanOutToFollowers }] = await Promise.all([import("./email"), import("./notifications")]);
   registerJobHandler("email", (p) => deliverEmail(p as never));
   registerJobHandler("notify_followers", (p) => fanOutToFollowers(String(p.pageId), String(p.authorId), p as never));
+  registerJobHandler("indexnow", async (p) => (await import("./indexing")).deliverIndexNow(p as never));
 }
 
 export async function enqueue(type: string, payload: Record<string, unknown>): Promise<void> {

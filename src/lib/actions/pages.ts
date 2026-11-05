@@ -24,6 +24,7 @@ import { cleanSectors } from "../sectors";
 import { CURRENCIES, JOB_TYPES, LEVELS as JOB_LEVELS, SALARY_PERIODS, WORKPLACES } from "../jobs";
 import { featureUnlocked, paidPlansEnabled, planActive } from "../pages";
 import { featureOn } from "../features";
+import { announce } from "../indexing";
 
 const MAX_BODY = 100_000;
 const VERIFY_FIRST = "Please confirm your email address first. We sent you a link when you signed up; you can request a new one from the banner at the top of the page.";
@@ -407,6 +408,7 @@ export async function savePersonAction(_: FormState, fd: FormData): Promise<Form
     await notifyMentions(user, prev?.body ?? "", page.body, { title: `${page.title}'s profile`, href: `/${page.slug}` });
   }
   revalidatePath(`/${page.slug}`);
+  if (isPublic(page) && page.visibility !== "members" && !page.noindex) await announce([`/${page.slug}`]);
   // Organizations the person was removed from also need fresh data
   for (const e of prev?.experiences ?? []) expireOrg(e.orgSlug);
   for (const e of prev?.educations ?? []) expireOrg(e.schoolSlug);
@@ -468,6 +470,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
   });
   if (orgGuard) return { error: orgGuard };
   const orgExtras = parseOrgExtras(fd);
+  let orgExtrasJobs: Job[] | undefined;
   if (!slug && fd.get("category") === "saas" && !(await featureOn("saas"))) return { error: "SaaS projects can't be added right now." };
   // SaaS projects pick from the SaaS categories, other organizations from the industry list
   const orgSectors = cleanSectors(parseJsonList(fd.get("sectors")), fd.get("category") === "saas");
@@ -525,7 +528,7 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
       products,
       ...orgExtras,
       // Job listings: only the organization's own admins (and moderators) can publish them
-      jobs: canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: featuredJobs && j.featured })) : undefined,
+      jobs: (orgExtrasJobs = canManageJobs && fd.has("jobs") ? parseJobs(fd, prevOrg).map((j) => ({ ...j, featured: featuredJobs && j.featured })) : undefined),
       ...parseCategory(fd),
       raising: fd.has("raisingStage") ? parseRaising(fd, prevOrg) : undefined,
       // #97: brand colour is a Business-plan feature
@@ -561,6 +564,11 @@ export async function saveOrgAction(_: FormState, fd: FormData): Promise<FormSta
     throw err;
   }
   revalidatePath(`/org/${pageSlug}`);
+  {
+    // Search engines learn about the page and any new job listings right away
+    const newJobs = (orgExtrasJobs ?? []).filter((j) => !(prevOrg?.jobs ?? []).some((p) => p.id === j.id));
+    await announce([`/org/${pageSlug}`, ...newJobs.map((j) => `/jobs/${pageSlug}/${j.id}`)]);
+  }
   // Pages that show this organization's data (investors' "Investments", acquired companies, parent's "Group")
   const related = new Set([
     ...orgExtras.acquisitions.map((a) => a.slug),

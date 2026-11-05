@@ -1,6 +1,8 @@
 import { connection } from "next/server";
 import { cachedCollections, cachedJobs, cachedSitemapPart } from "@/lib/cached";
 import { siteUrl } from "@/lib/site";
+import { cachedCities, saasWithAlternatives } from "@/lib/discovery";
+import { cachedBlogPosts } from "@/lib/blog";
 import { pageHref } from "@/lib/wikitext";
 import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 
@@ -17,10 +19,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ part: stri
     const features = await getFeatures();
     const collections = await cachedCollections();
     urls.unshift(
-      ...["/", ...(Object.keys(FEATURES) as FeatureKey[]).filter((k) => features[k] && FEATURES[k].href && k !== "search").map((k) => FEATURES[k].href)].map((p) => ({ loc: `${base}${p}` })),
+      ...["/", ...(Object.keys(FEATURES) as FeatureKey[]).filter((k) => features[k] && FEATURES[k].href && k !== "search" && k !== "feeds").map((k) => FEATURES[k].href)].map((p) => ({ loc: `${base}${p}` })),
       ...collections.map((c) => ({ loc: `${base}/collections/${c.slug}` })),
       // Each open job has its own page (Google for Jobs reads them)
       ...(features.jobs ? await cachedJobs() : []).map((l) => ({ loc: `${base}/jobs/${l.org.slug}/${l.job.id}`, ...(l.job.postedAt ? { lastmod: new Date(l.job.postedAt).toISOString() } : {}) })),
+      // City pages (#22), SaaS alternatives (#23) and blog posts (#24)
+      ...(features.cities ? await cachedCities() : []).map((c) => ({ loc: `${base}/cities/${c.slug}` })),
+      ...(features.saas ? await saasWithAlternatives() : []).map((slug) => ({ loc: `${base}/saas/${slug}/alternatives` })),
+      ...(features.blog ? await cachedBlogPosts() : []).map((p) => ({ loc: `${base}/blog/${p.slug}`, lastmod: p.updatedAt })),
     );
   }
   if (urls.length === 0) return new Response("Not found", { status: 404 });

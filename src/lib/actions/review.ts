@@ -68,6 +68,8 @@ export async function approveApplicationAction(fd: FormData): Promise<void> {
   if (page) {
     revalidate(page.slug, [...page.experiences.map((e) => e.orgSlug), ...page.educations.map((e) => e.schoolSlug)]);
     await notifyOwner(page);
+    // A newly published profile: tell search engines right away
+    if (page.visibility !== "members" && !page.noindex) await (await import("../indexing")).announce([`/${page.slug}`]);
   }
   redirect(safeNext(fd.get("back"), "/admin"));
 }

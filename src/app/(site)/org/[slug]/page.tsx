@@ -1,3 +1,4 @@
+import { cityOf } from "@/lib/discovery";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
@@ -8,7 +9,7 @@ import { canEditOrg, getAlumniEmployers, getInvestments, getOrgRelations, getOrg
 import { slugify } from "@/lib/slug";
 import { pageHref, renderArticle, stripWikiLinks } from "@/lib/wikitext";
 import { formatDate, initials, plainExcerpt } from "@/lib/site";
-import { breadcrumbLd, ldJson, organizationLd } from "@/lib/seo";
+import { breadcrumbLd, eventLd, ldJson, organizationLd, softwareLd } from "@/lib/seo";
 import { Breadcrumbs, Thumb, VerifiedBadge } from "@/components/ui";
 import { Expandable, SectionNav } from "@/components/client";
 import { PageActions } from "@/components/PageActions";
@@ -213,7 +214,7 @@ export default async function OrgPage({ params, searchParams }: Props) {
           {(ib.founded || ib.headquarters || ib.employees || ib.sector) && (
             <div className="facts">
               <div className="fact"><CalendarDays /><span><small>Founded</small><b>{ib.founded ?? "—"}</b></span></div>
-              <div className="fact"><MapPin /><span><small>Headquarters</small><b>{ib.headquarters || "—"}</b></span></div>
+              <div className="fact"><MapPin /><span><small>Headquarters</small><b>{ib.headquarters ? (features.cities && cityOf(ib.headquarters) ? <Link href={`/cities/${slugify(cityOf(ib.headquarters))}`}>{ib.headquarters}</Link> : ib.headquarters) : "—"}</b></span></div>
               <div className="fact"><Users /><span><small>Employees</small><b>{ib.employees || "—"}</b></span></div>
               <div className="fact"><Building2 /><span><small>Sector</small><b>{ib.sector || "—"}</b></span></div>
             </div>
@@ -315,6 +316,11 @@ export default async function OrgPage({ params, searchParams }: Props) {
                 </span>
               </div>
             </div>
+          )}
+          {isSaas && page.sectors.length > 0 && (
+            <p className="small" style={{ margin: "10px 0 0" }}>
+              <Link href={`/saas/${page.slug}/alternatives`}>{page.title} alternatives →</Link>
+            </p>
           )}
           {isInvestor && page.investor && (page.investor.fundSize || page.investor.stages.length || page.investor.focus.length) ? (
             <div className="facts" style={{ marginTop: 14, gridTemplateColumns: "repeat(3, 1fr)" }}>
@@ -517,6 +523,8 @@ export default async function OrgPage({ params, searchParams }: Props) {
         </article>
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(organizationLd(page)) }} />
+      {softwareLd(page) && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(softwareLd(page)) }} />}
+      {eventLd(page) && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(eventLd(page)) }} />}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: ldJson(breadcrumbLd([isSaas ? { name: "SaaS Projects", path: "/saas" } : isSchool ? { name: "Education", path: "/education" } : { name: "Companies", path: "/companies" }, { name: page.title, path: `/org/${page.slug}` }])) }}

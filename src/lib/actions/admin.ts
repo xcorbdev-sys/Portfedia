@@ -61,3 +61,52 @@ export async function deleteCollectionAction(fd: FormData): Promise<void> {
   revalidatePath("/collections");
   redirect("/admin?section=import");
 }
+
+/* ───────────── Blog (#24) ───────────── */
+
+/** Admin → Blog: create or update a post. Publishing announces it to search engines. */
+export async function saveBlogPostAction(fd: FormData): Promise<void> {
+  const user = await moderator();
+  const { connectDB } = await import("../db");
+  const { BlogPost } = await import("../models");
+  const { slugify } = await import("../slug");
+  const { revalidateTag } = await import("next/cache");
+  const id = str(fd.get("id"), 30);
+  const title = str(fd.get("title"), 160);
+  const summary = str(fd.get("summary"), 300);
+  const body = str(fd.get("body"), 60_000);
+  const published = bool(fd.get("published"));
+  const back = `/admin?section=blog${id ? `&edit=${id}` : "&edit=new"}`;
+  if (title.length < 3) redirect(`${back}&error=${encodeURIComponent("Give the post a title.")}`);
+  if (body.length < 20) redirect(`${back}&error=${encodeURIComponent("Write the post first (at least a few sentences).")}`);
+  await connectDB();
+  let slug = slugify(str(fd.get("slug"), 80) || title) || "post";
+  const clash = await BlogPost.findOne({ slug, ...(id && /^[a-f0-9]{24}$/.test(id) ? { _id: { $ne: id } } : {}) }).lean();
+  if (clash) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+  const existing = id && /^[a-f0-9]{24}$/.test(id) ? await BlogPost.findById(id) : null;
+  const doc = existing ?? new BlogPost({ authorId: user.id, authorName: user.name });
+  const firstPublish = published && !doc.published;
+  Object.assign(doc, { slug, title, summary, body, published, publishedAt: published ? (doc.publishedAt ?? new Date()) : null });
+  await doc.save();
+  revalidateTag("blog", { expire: 0 });
+  revalidatePath("/blog");
+  if (firstPublish || (published && existing)) {
+    const { announce } = await import("../indexing");
+    await announce([`/blog/${slug}`, "/blog"]);
+  }
+  redirect(`/admin?section=blog&done=${encodeURIComponent(published ? "Post published." : "Draft saved.")}`);
+}
+
+export async function deleteBlogPostAction(fd: FormData): Promise<void> {
+  await moderator();
+  const id = str(fd.get("id"), 30);
+  if (/^[a-f0-9]{24}$/.test(id)) {
+    const { connectDB } = await import("../db");
+    const { BlogPost } = await import("../models");
+    const { revalidateTag } = await import("next/cache");
+    await connectDB();
+    await BlogPost.deleteOne({ _id: id });
+    revalidateTag("blog", { expire: 0 });
+  }
+  redirect(`/admin?section=blog&done=${encodeURIComponent("Post deleted.")}`);
+}

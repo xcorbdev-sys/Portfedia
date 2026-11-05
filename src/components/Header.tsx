@@ -20,6 +20,8 @@ const MOBILE_EXTRA: { href: string; label: string; feature?: FeatureKey }[] = [
   { href: "/raising", label: "Raising now", feature: "raising" },
   { href: "/launches", label: "Launches", feature: "launches" },
   { href: "/mentors", label: "Mentors", feature: "mentors" },
+  { href: "/cities", label: "Cities", feature: "cities" },
+  { href: "/blog", label: "Blog", feature: "blog" },
   { href: "/help", label: "Help", feature: "help" },
 ];
 

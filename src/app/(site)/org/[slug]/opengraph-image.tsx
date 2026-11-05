@@ -10,7 +10,12 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   if (!page) return profileCard({ title: "Portfedia", subtitle: "", summary: "", image: null, kind: "org", verified: false });
   return profileCard({
     title: page.title,
-    subtitle: page.infobox.sector || (page.type === "school" ? "Educational institution" : "Organization"),
+    subtitle:
+      page.category === "saas"
+        ? ["SaaS", page.infobox.sector].filter(Boolean).join(" · ")
+        : page.category === "event" && page.event?.start
+          ? [new Date(page.event.start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), page.event.city].filter(Boolean).join(" · ")
+          : page.infobox.sector || (page.type === "school" ? "Educational institution" : "Organization"),
     summary: page.summary,
     image: page.image,
     kind: "org",

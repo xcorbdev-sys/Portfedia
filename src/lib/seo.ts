@@ -68,6 +68,55 @@ export function organizationLd(p: PageDoc) {
   };
 }
 
+/** SaaS projects also describe the product itself (Google "software app" results). */
+export function softwareLd(p: PageDoc) {
+  if (p.category !== "saas") return null;
+  const base = siteUrl();
+  const free = p.saas?.pricing === "free" || p.saas?.pricing === "open-source" || p.saas?.pricing === "freemium";
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: p.title,
+    url: p.infobox.website || `${base}/org/${p.slug}`,
+    description: p.summary ? stripWikiLinks(p.summary) : undefined,
+    applicationCategory: "BusinessApplication",
+    applicationSubCategory: p.sectors?.[0],
+    operatingSystem: p.saas?.platforms?.length ? p.saas.platforms.join(", ") : "Web",
+    image: p.image?.url ? (p.image.url.startsWith("/") ? `${base}${p.image.url}` : p.image.url) : undefined,
+    datePublished: p.infobox.founded ? String(p.infobox.founded) : undefined,
+    ...(free ? { offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } } : {}),
+    publisher: { "@id": `${base}/org/${p.slug}#org` },
+  };
+}
+
+/** Event pages (Google event results). */
+export function eventLd(p: PageDoc) {
+  if (p.category !== "event" || !p.event?.start) return null;
+  const base = siteUrl();
+  const online = p.event.format === "Online";
+  const place = { "@type": "Place", name: p.event.city || p.title, address: { "@type": "PostalAddress", addressLocality: p.event.city || undefined } };
+  const virtual = { "@type": "VirtualLocation", url: p.infobox.website || `${base}/org/${p.slug}` };
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: p.title,
+    description: p.summary ? stripWikiLinks(p.summary) : undefined,
+    startDate: new Date(p.event.start).toISOString().slice(0, 10),
+    endDate: p.event.end ? new Date(p.event.end).toISOString().slice(0, 10) : undefined,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: online
+      ? "https://schema.org/OnlineEventAttendanceMode"
+      : p.event.format === "Hybrid"
+        ? "https://schema.org/MixedEventAttendanceMode"
+        : "https://schema.org/OfflineEventAttendanceMode",
+    location: online ? virtual : p.event.format === "Hybrid" ? [place, virtual] : place,
+    image: p.image?.url ? (p.image.url.startsWith("/") ? `${base}${p.image.url}` : p.image.url) : undefined,
+    organizer: { "@type": "Organization", name: p.title, url: p.infobox.website || `${base}/org/${p.slug}` },
+    performer: p.event.speakers.length ? p.event.speakers.map((s) => ({ "@type": "Person", name: s.name })) : undefined,
+    url: `${base}/org/${p.slug}`,
+  };
+}
+
 export function websiteLd() {
   return {
     "@context": "https://schema.org",

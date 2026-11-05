@@ -154,6 +154,7 @@ export async function bulkApplicationsAction(fd: FormData): Promise<void> {
   const note = str(fd.get("note"), 1000) || "Your profile does not meet our guidelines yet.";
   for (const slug of slugs) await decideApplication(mod, slug, approve ? { approve: true, verified: false } : { approve: false, note });
   for (const slug of slugs) revalidatePath(`/${slug}`);
+  if (approve) await (await import("../indexing")).announce(slugs.map((s) => `/${s}`));
   redirect("/admin");
 }
 

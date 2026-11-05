@@ -12,14 +12,30 @@ import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 // Wordmark typeface: Merriweather Black (SIL Open Font License), bundled so builds need no network
 const logoFont = localFont({ src: "./fonts/merriweather-latin-900-normal.woff2", weight: "900", variable: "--font-logo", display: "swap" });
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: "Portfedia — The living encyclopedia of the business world", template: "%s — Portfedia" },
   description:
     "Reliable, connected and continuously updated profiles of people, companies, investors and institutions. Portfedia helps you understand the business world better.",
   openGraph: { siteName: "Portfedia", locale: "en_US", type: "website" },
   twitter: { card: "summary_large_image" },
+  // Ownership checks for Google Search Console and Bing Webmaster Tools (codes from their "HTML tag" method)
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
+    ...(process.env.BING_SITE_VERIFICATION ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } } : {}),
+  },
 };
+
+/** Site-wide metadata, plus the RSS feeds (#27) of the sections that are switched on, for feed readers to discover. */
+export async function generateMetadata(): Promise<Metadata> {
+  const features = await getFeatures();
+  if (!features.feeds) return baseMetadata;
+  const { FEEDS } = await import("@/lib/feeds");
+  const feeds = (Object.keys(FEEDS) as (keyof typeof FEEDS)[])
+    .filter((n) => FEEDS[n].needs.every((k) => features[k]))
+    .map((n) => ({ url: `/feeds/${n}.xml`, title: `Portfedia: ${FEEDS[n].title}` }));
+  return { ...baseMetadata, alternates: { types: { "application/rss+xml": feeds } } };
+}
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",

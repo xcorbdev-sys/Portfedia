@@ -10,18 +10,19 @@ import { pageHref } from "@/lib/wikitext";
 import { Breadcrumbs, Thumb } from "@/components/ui";
 import { ReviewControls } from "@/components/Review";
 import { AdminImport } from "@/components/AdminImport";
-import { saveFeaturesAction, saveGlobeAction } from "@/lib/actions/admin";
+import { deleteBlogPostAction, saveBlogPostAction, saveFeaturesAction, saveGlobeAction } from "@/lib/actions/admin";
+import { allBlogPosts, getBlogPostById } from "@/lib/blog";
 import { FEATURES, getFeatures, type FeatureKey } from "@/lib/features";
 import { r2Configured } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
-type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string; done?: string };
+type SP = { section?: string; tab?: string; q?: string; error?: string; reason?: string; done?: string; edit?: string };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<SP> }) {
   await requireModerator("/admin");
   const sp = await searchParams;
-  const section = ["reports", "users", "import", "overview", "home", "sections"].includes(sp.section ?? "") ? sp.section! : "applications";
+  const section = ["reports", "users", "import", "overview", "home", "sections", "blog"].includes(sp.section ?? "") ? sp.section! : "applications";
   const [pendingApps, openReports] = await Promise.all([countPendingApplications(), countOpenReports()]);
 
   return (
@@ -35,6 +36,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin?section=users" aria-current={section === "users" ? "page" : undefined}>Users</Link>
         <Link href="/admin?section=import" aria-current={section === "import" ? "page" : undefined}>Collections</Link>
         <Link href="/admin?section=home" aria-current={section === "home" ? "page" : undefined}>Home page</Link>
+        <Link href="/admin?section=blog" aria-current={section === "blog" ? "page" : undefined}>Blog</Link>
         <Link href="/admin?section=sections" aria-current={section === "sections" ? "page" : undefined}>Sections</Link>
       </nav>
       {!r2Configured() && (
@@ -53,6 +55,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {section === "import" && <AdminImport />}
       {section === "home" && <HomeGlobe />}
       {section === "sections" && <Sections />}
+      {section === "blog" && <Blog edit={sp.edit} />}
     </div>
   );
 }
@@ -457,5 +460,76 @@ async function Overview() {
         Last maintenance run: {s.maintenance?.at ? formatDateTime(String(s.maintenance.at)) : "not yet"}.
       </p>
     </>
+  );
+}
+
+/* ───────────── Blog (#24) ───────────── */
+
+async function Blog({ edit }: { edit?: string }) {
+  if (edit) {
+    const post = edit === "new" ? null : await getBlogPostById(edit);
+    return (
+      <section className="card">
+        <form action={saveBlogPostAction} className="card__body form-grid" style={{ display: "grid", gap: 12 }}>
+          <h2 className="card__title">{post ? "Edit post" : "New post"}</h2>
+          {post && <input type="hidden" name="id" value={post.id} />}
+          <label className="field">
+            <span className="label">Title</span>
+            <input className="input" name="title" required maxLength={160} defaultValue={post?.title} />
+          </label>
+          <label className="field">
+            <span className="label">Address (optional)</span>
+            <input className="input" name="slug" maxLength={80} defaultValue={post?.slug} placeholder="made from the title" />
+          </label>
+          <label className="field">
+            <span className="label">Summary (shown in lists and search results)</span>
+            <input className="input" name="summary" maxLength={300} defaultValue={post?.summary} />
+          </label>
+          <label className="field">
+            <span className="label">Text (Markdown: ## headings, **bold**, [links](https://…), [[Page title]] links to pages)</span>
+            <textarea className="textarea" name="body" rows={18} required defaultValue={post?.body} />
+          </label>
+          <label className="check">
+            <input type="checkbox" name="published" defaultChecked={post?.published} /> Published
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn--primary" type="submit">Save</button>
+            <Link className="btn btn--ghost" href="/admin?section=blog">Cancel</Link>
+          </div>
+        </form>
+      </section>
+    );
+  }
+  const posts = await allBlogPosts();
+  return (
+    <section className="card">
+      <div className="card__body">
+        <div className="section__head">
+          <h2 className="card__title">Blog posts</h2>
+          <Link className="btn btn--primary btn--sm" href="/admin?section=blog&edit=new">New post</Link>
+        </div>
+        {posts.length === 0 ? (
+          <p className="muted">No posts yet.</p>
+        ) : (
+          <ul className="result-list">
+            {posts.map((p) => (
+              <li key={p.id}>
+                <div className="result" style={{ gridTemplateColumns: "1fr auto auto" }}>
+                  <span>
+                    <Link className="result__name" href={`/admin?section=blog&edit=${p.id}`}>{p.title}</Link>
+                    <span className="result__sub">{p.published ? <>Published {formatDate(p.publishedAt!)} · <Link href={`/blog/${p.slug}`}>/blog/{p.slug}</Link></> : "Draft"}</span>
+                  </span>
+                  <Link className="btn btn--sm btn--ghost" href={`/admin?section=blog&edit=${p.id}`}>Edit</Link>
+                  <form action={deleteBlogPostAction}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button className="btn btn--sm btn--ghost" type="submit">Delete</button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
